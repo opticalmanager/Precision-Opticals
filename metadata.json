@@ -1,0 +1,10 @@
+{
+  "name": "Precision Optics",
+  "description": "Precision Optics luxury eyewear store featuring high-end sunglasses, eyeglasses, brand collections, virtual try-on, and lens customization.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
