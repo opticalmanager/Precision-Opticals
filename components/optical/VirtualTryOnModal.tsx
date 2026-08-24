@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Camera, X, RefreshCw, ZoomIn, ZoomOut, Move, ShoppingBag } from "lucide-react";
-import { Product } from "@/src/types";
+import { Product } from "@/types";
 import { Button } from "@/components/ui/button";
 
 interface VirtualTryOnModalProps {

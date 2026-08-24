@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ArrowRight } from "lucide-react";
-import { LUXURY_BRANDS } from "@/src/data/brands";
+import { LUXURY_BRANDS } from "@/data/brands";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 

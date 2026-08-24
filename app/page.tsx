@@ -34,8 +34,8 @@ import { OrderTrackingModal } from "@/components/pages/OrderTrackingModal";
 import { GemsLoyaltyWidget } from "@/components/widgets/GemsLoyaltyWidget";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 
-import { PRODUCTS } from "@/src/data/products";
-import { Product, FilterState, SelectedLensConfig, Order } from "@/src/types";
+import { PRODUCTS } from "@/data/products";
+import { Product, FilterState, SelectedLensConfig, Order } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 

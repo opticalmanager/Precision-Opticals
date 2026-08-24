@@ -8,7 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { checkoutSchema, type CheckoutFormValues } from "@/lib/validations";
 import { formatCurrency, generateTrackingId, getEstimatedDeliveryDate } from "@/lib/utils";
-import { Order } from "@/src/types";
+import { Order } from "@/types";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

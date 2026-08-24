@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { X, Check, FileText, Upload, Glasses, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
-import { Product, LensTypeOption, LensPackage, SelectedLensConfig } from "@/src/types";
+import { Product, LensTypeOption, LensPackage, SelectedLensConfig } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

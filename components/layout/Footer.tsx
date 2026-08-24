@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Instagram, Facebook, ArrowRight, ShieldCheck, Award, Clock } from "lucide-react";
-import { LUXURY_BRANDS } from "@/src/data/brands";
+import { LUXURY_BRANDS } from "@/data/brands";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { Order, UserProfile, PrescriptionData } from "@/src/types";
+import { Order, UserProfile, PrescriptionData } from "@/types";
 
 interface AuthContextType {
   user: UserProfile;

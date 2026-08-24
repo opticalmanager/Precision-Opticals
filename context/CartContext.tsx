@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import { CartItem, Product, ProductVariant, SelectedLensConfig } from "@/src/types";
+import { CartItem, Product, ProductVariant, SelectedLensConfig } from "@/types";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 
