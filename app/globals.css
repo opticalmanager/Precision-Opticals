@@ -2,17 +2,17 @@
 
 @layer base {
   :root {
-    --bg-cream: #F4ECE1;
-    --bg-cream-light: #F8F2E8;
-    --brand-orange: #C85A1B;
-    --brand-orange-dark: #A84A12;
-    --text-dark: #332219;
-    --text-muted: #736053;
-    --border-cream: #E5DACB;
+    --bg-cream: #FAF7F2;
+    --bg-cream-light: #FAF3EB;
+    --brand-orange: #C86A28;
+    --brand-orange-dark: #E83E00;
+    --text-dark: #2A1E17;
+    --text-muted: #6B5E55;
+    --border-cream: #E8DCCF;
   }
 
   body {
-    font-family: 'Nunito Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-cream);
     color: var(--text-dark);
     margin: 0;
@@ -25,19 +25,11 @@
   }
 
   h1, h2, h3, h4, h5, h6, .font-serif {
-    font-family: 'Nunito Sans', system-ui, sans-serif;
-    font-weight: 700;
-  }
-
-  .font-heading {
     font-family: 'Playfair Display', Georgia, serif;
   }
 
-  /* Luxury Script font for "Sale" tag matching Gem Opticians */
-  .sale-script {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-style: italic;
-    font-weight: 400;
+  .font-sans {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
 }
 

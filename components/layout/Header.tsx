@@ -1,873 +1,1085 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ArrowRight } from "lucide-react";
-import { LUXURY_BRANDS } from "@/data/brands";
-import { useCart } from "@/context/CartContext";
-import { useWishlist } from "@/context/WishlistContext";
+import React, { useState } from 'react';
+import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ChevronRight, Glasses, Calendar, Phone } from 'lucide-react';
+import { LUXURY_BRANDS } from '@/data/brands';
+import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 
 interface HeaderProps {
   onOpenSearch: () => void;
+  onOpenAiStylist?: () => void;
   onSelectCategory: (category: string) => void;
   onSelectBrand: (brandId: string) => void;
   activeCategory: string;
-  currentPage?: "home" | "shop" | "contact" | "appointment" | "wishlist";
-  onNavigate?: (page: "home" | "shop" | "contact" | "appointment" | "wishlist") => void;
+  currentPage?: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist';
+  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenSearch,
+  onOpenAiStylist,
   onSelectCategory,
   onSelectBrand,
   activeCategory,
-  currentPage = "home",
-  onNavigate,
+  currentPage = 'home',
+  onNavigate
 }) => {
   const { cartCount, openCart } = useCart();
   const { wishlistCount } = useWishlist();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleMouseEnter = (menuKey: string) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setHoveredMenu(menuKey);
-  };
-
-  const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => {
-      setHoveredMenu(null);
-    }, 150);
-  };
-
-  const handleNavClick = (
-    category?: string,
-    page: "home" | "shop" | "contact" | "appointment" | "wishlist" = "shop"
-  ) => {
-    setMobileMenuOpen(false);
-    setHoveredMenu(null);
-
-    if (page === "contact" || page === "appointment" || page === "wishlist") {
-      if (onNavigate) onNavigate(page);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleNavClick = (category?: string, page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' = 'shop') => {
+    if (page === 'contact' || page === 'appointment' || page === 'wishlist') {
+      if (onNavigate) {
+        onNavigate(page);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (page === "home") {
-      if (onNavigate) onNavigate("home");
-      if (category === "about") {
+    if (page === 'home') {
+      if (onNavigate) {
+        onNavigate('home');
+      }
+      if (category === 'about') {
         setTimeout(() => {
-          const aboutElem = document.getElementById("about-us");
-          if (aboutElem) aboutElem.scrollIntoView({ behavior: "smooth" });
+          const aboutElem = document.getElementById('about-us');
+          if (aboutElem) {
+            aboutElem.scrollIntoView({ behavior: 'smooth' });
+          }
         }, 100);
       } else {
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
       return;
     }
 
-    if (onNavigate) onNavigate("shop");
-    if (category) onSelectCategory(category);
+    if (onNavigate) {
+      onNavigate('shop');
+    }
+    if (category) {
+      onSelectCategory(category);
+    }
   };
 
   return (
-    <header 
-      className="sticky top-0 z-40 w-full bg-[#F4ECE1] border-b border-[#E5DACB]/60 transition-all duration-200"
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* ────────── ROW 1: Brand Logo + Search/Cart ────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3.5 pb-2 flex items-center justify-between">
-        {/* Left: Mobile Hamburger */}
-        <div className="flex-1 flex items-center justify-start lg:hidden">
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1 text-[#332219] hover:text-[#C85A1B] focus:outline-none cursor-pointer"
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+    <header className="sticky top-0 z-40 w-full bg-[#FAF3EB] border-b border-[#E8DCCF]">
+      {/* Main Header Row */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+        {/* Left Section */}
+        <div className="flex-1 flex items-center justify-start gap-3">
+          {/* Mobile Menu Toggle */}
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-1 text-stone-800 hover:text-black focus:outline-none cursor-pointer"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={onOpenSearch}
+              className="p-1 text-stone-800 hover:text-black focus:outline-none cursor-pointer"
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Left spacer on desktop */}
-        <div className="hidden lg:flex flex-1" />
-
-        {/* Center: Stylized Brand Logo (Compact & refined like Gem Opticians) */}
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
+        {/* Center Brand Logo */}
+        <div className="shrink-0 flex justify-center text-center">
           <button
-            onClick={() => handleNavClick(undefined, "home")}
-            className="group focus:outline-none cursor-pointer flex flex-col items-center"
+            onClick={() => handleNavClick('all', 'home')}
+            className="inline-flex flex-col items-center group focus:outline-none cursor-pointer"
           >
-            {/* Custom Stylized Monogram Icon P & O Lenses */}
-            <div className="flex items-center justify-center gap-0.5 mb-0.5 group-hover:scale-105 transition-transform duration-200">
-              <svg width="34" height="18" viewBox="0 0 34 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="9" cy="9" r="7" stroke="#C85A1B" strokeWidth="2" fill="none"/>
-                <circle cx="25" cy="9" r="7" stroke="#C85A1B" strokeWidth="2" fill="none"/>
-                <path d="M16 8.5C17.5 7.5 16.5 7.5 18 8.5" stroke="#C85A1B" strokeWidth="2" strokeLinecap="round"/>
-                <text x="9" y="12" textAnchor="middle" fill="#C85A1B" fontSize="8" fontWeight="bold" fontFamily="sans-serif">P</text>
-                <text x="25" y="12" textAnchor="middle" fill="#C85A1B" fontSize="8" fontWeight="bold" fontFamily="sans-serif">O</text>
-              </svg>
+            <div className="w-6 h-6 rounded-full border border-stone-800 flex items-center justify-center group-hover:bg-orange-600 group-hover:border-orange-600 transition-colors mb-0.5">
+              <Glasses className="w-3.5 h-3.5 text-stone-900 group-hover:text-white transition-colors" />
             </div>
-
-            {/* Brand Name - Rich Espresso Dark Brown like Gem Opticians */}
-            <h1 className="text-[16px] sm:text-[19px] lg:text-[21px] font-bold tracking-[0.3em] text-[#2C1C13] uppercase leading-none group-hover:text-[#C85A1B] transition-colors">
+            <h1 className="font-serif text-base sm:text-lg lg:text-xl tracking-[0.18em] font-bold text-stone-900 uppercase leading-none">
               PRECISION OPTICS
             </h1>
-
-            {/* Established Subtitle */}
-            <p className="text-[9px] tracking-[0.25em] text-[#7A6658] uppercase font-bold mt-1">
+            <span className="text-[8px] tracking-[0.25em] text-orange-700 font-sans mt-0.5 uppercase font-semibold">
               ESTD. 1969
-            </p>
+            </span>
           </button>
         </div>
 
-        {/* Right: Search + Cart */}
-        <div className="flex-1 flex items-center justify-end gap-5">
+        {/* Right Top Actions */}
+        <div className="flex-1 flex items-center justify-end gap-3 sm:gap-4 text-[10px] tracking-widest font-medium text-stone-800">
           <button
             onClick={onOpenSearch}
-            className="text-[11px] font-bold tracking-[0.18em] text-[#332219] hover:text-[#C85A1B] uppercase transition-colors cursor-pointer hidden sm:block"
+            className="hidden lg:flex items-center gap-1 hover:text-orange-600 focus:outline-none uppercase cursor-pointer"
           >
-            SEARCH
+            <Search className="w-3.5 h-3.5" />
+            <span>SEARCH</span>
           </button>
 
-          {/* Mobile search icon */}
+          {/* APPOINTMENT BUTTON */}
           <button
-            onClick={onOpenSearch}
-            className="sm:hidden p-1 text-[#332219] hover:text-[#C85A1B] transition-colors cursor-pointer"
-            aria-label="Search"
+            onClick={() => handleNavClick('all', 'appointment')}
+            className={`hidden sm:flex items-center gap-1 hover:text-orange-600 focus:outline-none uppercase cursor-pointer ${
+              currentPage === 'appointment' ? 'text-orange-600 font-bold' : ''
+            }`}
+            title="Book Eye Test Appointment"
           >
-            <Search className="w-4 h-4" />
+            <Calendar className="w-3.5 h-3.5 text-stone-700" />
+            <span className="hidden md:inline">APPOINTMENT</span>
           </button>
 
-          {/* Wishlist */}
+          {/* WISHLIST BUTTON */}
           <button
-            onClick={() => handleNavClick(undefined, "wishlist")}
-            className="relative p-1 text-[#332219] hover:text-[#C85A1B] transition-colors cursor-pointer hidden sm:block"
-            title="Saved Frames"
+            onClick={() => handleNavClick('all', 'wishlist')}
+            className="hidden sm:flex items-center gap-1 hover:text-orange-600 focus:outline-none uppercase relative cursor-pointer"
+            title="Wishlist"
           >
-            <Heart className="w-[18px] h-[18px]" />
+            <Heart className="w-3.5 h-3.5 text-stone-700" />
+            <span className="hidden md:inline">WISHLIST</span>
             {wishlistCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#C85A1B] text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+              <span className="bg-orange-600 text-white text-[9px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-sans">
                 {wishlistCount}
               </span>
             )}
           </button>
 
-          {/* Cart */}
+          {/* CART BUTTON */}
           <button
             onClick={openCart}
-            className="text-[11px] font-bold tracking-[0.18em] text-[#332219] hover:text-[#C85A1B] uppercase transition-colors cursor-pointer flex items-center gap-1"
-            title="Shopping Bag"
+            className="flex items-center gap-1.5 focus:outline-none uppercase relative bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-full transition-colors shadow-sm text-[10px] font-bold cursor-pointer"
           >
-            <span className="hidden sm:inline">CART</span>
-            <span className="hidden sm:inline">({cartCount})</span>
-            <ShoppingBag className="w-4 h-4 sm:hidden" />
-            {cartCount > 0 && (
-              <span className="sm:hidden absolute -top-1 -right-1 bg-[#332219] text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
+            <ShoppingBag className="w-3.5 h-3.5 text-white" />
+            <span className="font-extrabold tracking-wider">CART ({cartCount})</span>
           </button>
         </div>
       </div>
 
-      {/* ────────── ROW 2: Main Navigation Bar ────────── */}
-      <nav className="hidden lg:block bg-[#F4ECE1] relative pb-2 pt-0.5">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-5 xl:gap-7">
-          {/* 1. NEW ARRIVALS */}
-          <div
-            className="py-1.5 cursor-pointer"
-            onMouseEnter={() => handleMouseEnter("new")}
-          >
-            <button
-              onClick={() => handleNavClick("new", "shop")}
-              className={`text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase transition-colors ${
-                hoveredMenu === "new" || (currentPage === "shop" && activeCategory === "new")
-                  ? "text-[#C85A1B]"
-                  : "text-[#3D2C22] hover:text-[#C85A1B]"
-              }`}
+      {/* Main Nav Items (Desktop) */}
+      <nav className="hidden lg:block border-t border-[#E8DCCF] bg-[#FAF3EB]">
+        <div className="max-w-7xl mx-auto px-4 relative">
+          <ul className="flex items-center justify-center space-x-6 text-[10.5px] tracking-[0.12em] font-medium uppercase text-stone-800">
+            {/* EYEGLASSES / EYEWEAR */}
+            <li
+              className="py-2.5 group"
+              onMouseEnter={() => setHoveredMenu('eyewear')}
+              onMouseLeave={() => setHoveredMenu(null)}
             >
-              NEW ARRIVALS
-            </button>
-          </div>
+              <button
+                onClick={() => handleNavClick('eyeglasses', 'shop')}
+                className={`hover:text-orange-600 transition-colors font-semibold flex items-center gap-1 cursor-pointer ${
+                  currentPage === 'shop' && activeCategory === 'eyeglasses' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : ''
+                }`}
+              >
+                <span>EYEGLASSES</span>
+                <ChevronDown className="w-3 h-3 opacity-60 group-hover:rotate-180 transition-transform" />
+              </button>
 
-          {/* 2. META LOGO (Prominent Official Meta Brand Image matching Gem Opticians 1:1) */}
-          <div
-            className="py-1.5 cursor-pointer flex items-center px-0.5"
-            onMouseEnter={() => handleMouseEnter("meta-smart")}
-          >
-            <button
-              onClick={() => handleNavClick("meta-smart", "shop")}
-              className="transition-opacity hover:opacity-80 flex items-center cursor-pointer"
-              title="Meta Smart Eyewear"
-            >
-              <img
-                src="/images/meta_logo.png"
-                alt="Meta"
-                className="h-[26px] sm:h-[28px] lg:h-[30px] w-auto object-contain"
-              />
-            </button>
-          </div>
+              {/* EYEGLASSES Megamenu Dropdown */}
+              {hoveredMenu === 'eyewear' && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                  {/* MEN Eyeglasses Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          MEN <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✔</span> FREE Anti-Glare Lenses Included
+                        </span>
+                      </div>
+                      <img
+                        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
+                        alt="Men Eyeglasses"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
+                      />
+                    </div>
 
-          {/* 3. SUNGLASSES */}
-          <div
-            className="py-1.5 cursor-pointer"
-            onMouseEnter={() => handleMouseEnter("sunglasses")}
-          >
-            <button
-              onClick={() => handleNavClick("sunglasses", "shop")}
-              className={`text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase transition-colors ${
-                hoveredMenu === "sunglasses" || (currentPage === "shop" && activeCategory === "sunglasses")
-                  ? "text-[#C85A1B]"
-                  : "text-[#3D2C22] hover:text-[#C85A1B]"
-              }`}
-            >
-              SUNGLASSES
-            </button>
-          </div>
+                    <div className="space-y-2">
+                      {[
+                        {
+                          brands: 'Tom Ford | Ray-Ban | GAST',
+                          price: 'Starts at ₹3,000',
+                          img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Gucci | Prada | Saint Laurent',
+                          price: 'Starts at ₹4,500',
+                          img: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Lindberg | Moscot | Oliver Peoples',
+                          price: 'Starts at ₹6,000',
+                          img: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=200&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('men', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.brands}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* 4. EYEGLASSES */}
-          <div
-            className="py-1.5 cursor-pointer"
-            onMouseEnter={() => handleMouseEnter("eyeglasses")}
-          >
-            <button
-              onClick={() => handleNavClick("eyeglasses", "shop")}
-              className={`text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase transition-colors ${
-                hoveredMenu === "eyeglasses" || (currentPage === "shop" && activeCategory === "eyeglasses")
-                  ? "text-[#C85A1B]"
-                  : "text-[#3D2C22] hover:text-[#C85A1B]"
-              }`}
-            >
-              EYEGLASSES
-            </button>
-          </div>
+                  {/* WOMEN Eyeglasses Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#FAF3EB] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          WOMEN <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✔</span> FREE Anti-Glare Lenses Included
+                        </span>
+                      </div>
+                      <img
+                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+                        alt="Women Eyeglasses"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
+                      />
+                    </div>
 
-          {/* 5. SHOP BY BRAND */}
-          <div
-            className="py-1.5 cursor-pointer"
-            onMouseEnter={() => handleMouseEnter("brands")}
-          >
-            <button
-              onClick={() => handleNavClick("all", "shop")}
-              className={`text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase transition-colors flex items-center gap-1 ${
-                hoveredMenu === "brands" ? "text-[#C85A1B]" : "text-[#3D2C22] hover:text-[#C85A1B]"
-              }`}
-            >
-              <span>SHOP BY BRAND</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
+                    <div className="space-y-2">
+                      {[
+                        {
+                          brands: 'Prada | Gucci | Saint Laurent',
+                          price: 'Starts at ₹3,500',
+                          img: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Tom Ford | Dolce & Gabbana',
+                          price: 'Starts at ₹4,000',
+                          img: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'GAST | Ray-Ban | Cartier',
+                          price: 'Starts at ₹5,000',
+                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=200&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('women', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.brands}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* 6. SALE (Prominent Official Red Cursive Script Image) */}
-          <div className="py-1.5 cursor-pointer flex items-center px-0.5">
-            <button
-              onClick={() => handleNavClick("sale", "shop")}
-              className="transition-transform hover:scale-105 cursor-pointer flex items-center"
-              title="Special Offers & Sale"
-            >
-              <img
-                src="/images/sale_logo.png"
-                alt="Sale"
-                className="h-[28px] sm:h-[32px] w-auto object-contain"
-              />
-            </button>
-          </div>
+                  {/* KIDS & TEENS Eyeglasses Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#F5EBE1] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          KIDS & TEENS <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✔</span> FREE Anti-Break Lenses Included
+                        </span>
+                      </div>
+                      <span className="w-10 h-10 rounded-full bg-stone-900 text-[#FAF3EB] font-serif font-bold text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                        Junior
+                      </span>
+                    </div>
 
-          {/* 7. KIDS */}
-          <div
-            className="py-1.5 cursor-pointer"
-            onMouseEnter={() => handleMouseEnter("kids")}
-          >
-            <button
-              onClick={() => handleNavClick("kids", "shop")}
-              className={`text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase transition-colors ${
-                hoveredMenu === "kids" || (currentPage === "shop" && activeCategory === "kids")
-                  ? "text-[#C85A1B]"
-                  : "text-[#3D2C22] hover:text-[#C85A1B]"
-              }`}
-            >
-              KIDS
-            </button>
-          </div>
+                    <div className="space-y-2">
+                      {[
+                        {
+                          title: 'Juniors | 5 to 8 years',
+                          price: 'Starts at ₹1,200',
+                          img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          title: 'Tweens | 8 to 12 years',
+                          price: 'Starts at ₹1,500',
+                          img: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          title: 'Teens | 12 to 17 years',
+                          price: 'Starts at ₹1,800',
+                          img: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=200&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('kids', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.title} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.title}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </li>
 
-          {/* 8. CONTACT LENSES */}
-          <div className="py-1.5 cursor-pointer">
-            <button
-              onClick={() => handleNavClick(undefined, "contact")}
-              className="text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase text-[#3D2C22] hover:text-[#C85A1B] transition-colors"
+            {/* NEW ARRIVALS */}
+            <li
+              className="py-2.5 group"
+              onMouseEnter={() => setHoveredMenu('new-arrivals')}
+              onMouseLeave={() => setHoveredMenu(null)}
             >
-              CONTACT LENSES
-            </button>
-          </div>
+              <button
+                onClick={() => handleNavClick('new', 'shop')}
+                className={`hover:text-orange-600 transition-colors flex items-center gap-1 cursor-pointer ${
+                  currentPage === 'shop' && activeCategory === 'new' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : ''
+                }`}
+              >
+                NEW ARRIVALS
+              </button>
 
-          {/* 9. ABOUT US */}
-          <div className="py-1.5 cursor-pointer">
-            <button
-              onClick={() => handleNavClick("about", "home")}
-              className="text-[11.5px] xl:text-[12.5px] font-semibold tracking-[0.16em] uppercase text-[#3D2C22] hover:text-[#C85A1B] transition-colors"
+              {/* Megamenu dropdown */}
+              {hoveredMenu === 'new-arrivals' && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-xl p-5 grid grid-cols-3 gap-6 text-left normal-case tracking-normal z-50 rounded-b-md text-xs mt-0.5">
+                  <div>
+                    <h4 className="font-serif font-bold text-[11px] tracking-widest uppercase text-stone-900 mb-2 border-b border-stone-200 pb-1">
+                      SHOP NEW
+                    </h4>
+                    <ul className="space-y-1.5 text-[11px] text-stone-700">
+                      <li>
+                        <button onClick={() => handleNavClick('sunglasses', 'shop')} className="hover:text-orange-600 font-medium cursor-pointer">
+                          New Sunglasses
+                        </button>
+                      </li>
+                      <li>
+                        <button onClick={() => handleNavClick('eyeglasses', 'shop')} className="hover:text-orange-600 font-medium cursor-pointer">
+                          New Eyeglasses
+                        </button>
+                      </li>
+                      <li>
+                        <button onClick={() => handleNavClick('meta-smart', 'shop')} className="hover:text-orange-600 font-medium cursor-pointer">
+                          New Meta Smart Glasses
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-serif font-bold text-[11px] tracking-widest uppercase text-stone-900 mb-2 border-b border-stone-200 pb-1">
+                      NEW THIS WEEK
+                    </h4>
+                    <ul className="space-y-1 text-[11px] text-stone-700">
+                      {['GAST Milano', 'Jacques Marie Mage', 'T Henri', 'Off-White', 'Tom Ford', 'Gucci', 'Lindberg'].map((brand) => (
+                        <li key={brand}>
+                          <button
+                            onClick={() => {
+                              onSelectBrand(brand.toLowerCase().replace(/\s+/g, '-'));
+                              if (onNavigate) onNavigate('shop');
+                              setHoveredMenu(null);
+                            }}
+                            className="hover:text-orange-600 transition-colors cursor-pointer"
+                          >
+                            {brand}
+                          </button>
+                        </li>
+                      ))}
+                      <li className="pt-1.5">
+                        <button onClick={() => handleNavClick('new', 'shop')} className="text-orange-600 font-bold text-[10px] underline cursor-pointer">
+                          View All New Arrivals →
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-orange-100/60 p-2.5 rounded-md border border-orange-200/80 flex flex-col justify-between">
+                    <img
+                      src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=500&q=80"
+                      alt="Featured Lindberg"
+                      className="w-full h-28 object-cover rounded-xs mb-1.5"
+                    />
+                    <div>
+                      <span className="text-[9px] tracking-widest uppercase font-serif text-orange-600 font-bold">FEATURED BRAND</span>
+                      <h5 className="font-serif font-bold text-xs text-stone-900">LINDBERG TITANIUM</h5>
+                      <p className="text-[10px] text-stone-600 leading-tight mt-0.5">Visionary screwless Titanium frames.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </li>
+
+            {/* META SMART GLASSES */}
+            <li className="py-2.5">
+              <button
+                onClick={() => handleNavClick('meta-smart', 'shop')}
+                className={`hover:text-orange-600 transition-colors flex items-center gap-1 cursor-pointer ${
+                  currentPage === 'shop' && activeCategory === 'meta-smart' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : ''
+                }`}
+              >
+                <span className="bg-stone-900 text-white font-bold px-1 py-0.2 rounded-xs text-[9px] lowercase font-sans">
+                  ∞ Meta
+                </span>
+                <span>SMART GLASSES</span>
+              </button>
+            </li>
+
+            {/* SUNGLASSES */}
+            <li
+              className="py-2.5 group"
+              onMouseEnter={() => setHoveredMenu('sunglasses')}
+              onMouseLeave={() => setHoveredMenu(null)}
             >
-              ABOUT US
-            </button>
-          </div>
+              <button
+                onClick={() => handleNavClick('sunglasses', 'shop')}
+                className={`hover:text-orange-600 transition-colors flex items-center gap-1 cursor-pointer ${
+                  currentPage === 'shop' && activeCategory === 'sunglasses' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : ''
+                }`}
+              >
+                <span>SUNGLASSES</span>
+                <ChevronDown className="w-3 h-3 opacity-60 group-hover:rotate-180 transition-transform" />
+              </button>
+
+              {/* SUNGLASSES Megamenu Dropdown */}
+              {hoveredMenu === 'sunglasses' && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                  {/* MEN Sunglasses Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          MEN <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✔</span> 100% UV400 Polarized Lenses
+                        </span>
+                      </div>
+                      <img
+                        src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80"
+                        alt="Men Sunglasses"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        {
+                          brands: 'Ray-Ban | Oakley | Persol',
+                          price: 'Starts at ₹3,200',
+                          img: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Tom Ford | Gucci | Prada',
+                          price: 'Starts at ₹5,500',
+                          img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Oliver Peoples | Jacques Marie Mage',
+                          price: 'Starts at ₹8,500',
+                          img: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=200&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.brands}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* WOMEN Sunglasses Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#FAF3EB] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          WOMEN <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✔</span> 100% UV400 Polarized Lenses
+                        </span>
+                      </div>
+                      <img
+                        src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80"
+                        alt="Women Sunglasses"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        {
+                          brands: 'Prada | Miu Miu | Saint Laurent',
+                          price: 'Starts at ₹4,200',
+                          img: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Gucci | Dolce & Gabbana | Chanel',
+                          price: 'Starts at ₹6,000',
+                          img: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          brands: 'Tom Ford | Celine | Dior',
+                          price: 'Starts at ₹7,500',
+                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=200&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.brands}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* LUXURY & SPORT Sunglasses Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#F5EBE1] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          LUXURY & SPORT <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✔</span> Impact-Resistant Lenses
+                        </span>
+                      </div>
+                      <img
+                        src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=120&q=80"
+                        alt="Sport Sunglasses"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        {
+                          title: 'Sports & Driving Lenses',
+                          price: 'Starts at ₹2,500',
+                          img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          title: 'Aviators & Wayfarers',
+                          price: 'Starts at ₹2,900',
+                          img: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=200&q=80'
+                        },
+                        {
+                          title: 'Oversized & Cat Eye',
+                          price: 'Starts at ₹3,800',
+                          img: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=200&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.title} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.title}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </li>
+
+            {/* LUXURY BRANDS */}
+            <li
+              className="py-2.5 group"
+              onMouseEnter={() => setHoveredMenu('brands')}
+              onMouseLeave={() => setHoveredMenu(null)}
+            >
+              <button
+                onClick={() => handleNavClick('all', 'shop')}
+                className="hover:text-orange-600 transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+              >
+                <span>LUXURY BRANDS</span>
+                <ChevronDown className="w-3 h-3 opacity-60 group-hover:rotate-180 transition-transform" />
+              </button>
+
+              {hoveredMenu === 'brands' && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[880px] max-w-[calc(100vw-2rem)] bg-white border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-12 gap-6 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                  {/* Left Brand List */}
+                  <div className="col-span-4 pr-2 border-r border-stone-200">
+                    <h4 className="font-serif font-black text-xs tracking-widest uppercase text-[#C86A28] mb-3 pb-1 border-b border-stone-200">
+                      LUXURY BRANDS
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-800 font-sans">
+                      {[
+                        { name: 'Ray-Ban', id: 'ray-ban' },
+                        { name: 'Dolce & Gabbana', id: 'dolce-gabbana' },
+                        { name: 'Oakley', id: 'oakley' },
+                        { name: 'Tom Ford', id: 'tom-ford' },
+                        { name: 'Gucci', id: 'gucci' },
+                        { name: 'Prada', id: 'prada' },
+                        { name: 'Oliver Peoples', id: 'oliver-peoples' },
+                        { name: 'Persol', id: 'persol' },
+                        { name: 'Silhouette', id: 'silhouette' },
+                        { name: 'Moscot', id: 'moscot' },
+                        { name: 'Lindberg', id: 'lindberg' }
+                      ].map((brand) => (
+                        <li key={brand.id}>
+                          <button
+                            onClick={() => {
+                              onSelectBrand(brand.id);
+                              if (onNavigate) onNavigate('shop');
+                              setHoveredMenu(null);
+                            }}
+                            className="w-full text-left font-bold text-stone-800 hover:text-[#C86A28] hover:translate-x-1 transition-all py-0.5 flex items-center justify-between group cursor-pointer"
+                          >
+                            <span>{brand.name}</span>
+                            <span className="text-[10px] text-stone-400 group-hover:text-[#C86A28] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Right Featured Release Card */}
+                  <div className="col-span-8 bg-[#FAF7F2] rounded-2xl p-6 border border-[#E8DCCF] flex items-center gap-6 relative overflow-hidden shadow-xs">
+                    <div className="w-48 h-36 shrink-0 bg-white rounded-xl p-3 border border-stone-200 flex items-center justify-center shadow-2xs">
+                      <img
+                        src="https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=500&q=80"
+                        alt="Astro Diamond Bevel Frames"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-[10px] font-sans font-extrabold tracking-[0.2em] text-[#C86A28] uppercase block mb-1">
+                        EXCLUSIVE RELEASE
+                      </span>
+                      <h3 className="font-serif font-extrabold text-stone-900 text-lg uppercase tracking-tight leading-tight mb-2">
+                        ASTRO DIAMOND BEVEL FRAMES
+                      </h3>
+                      <p className="text-xs text-stone-600 font-sans leading-relaxed mb-4">
+                        Japanese Beta Titanium alloy, ultra-lightweight 8.5g frame with anti-fatigue polarized UV lenses.
+                      </p>
+                      <button
+                        onClick={() => {
+                          handleNavClick('all', 'shop');
+                          setHoveredMenu(null);
+                        }}
+                        className="bg-[#C86A28] hover:bg-[#b05a1f] text-white font-black text-[10px] tracking-widest uppercase px-5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                      >
+                        EXPLORE COLLECTION
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </li>
+
+            {/* KIDS */}
+            <li className="py-2.5">
+              <button
+                onClick={() => handleNavClick('kids', 'shop')}
+                className={`hover:text-orange-600 transition-colors cursor-pointer ${
+                  currentPage === 'shop' && activeCategory === 'kids' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : ''
+                }`}
+              >
+                KIDS
+              </button>
+            </li>
+
+            {/* SALE */}
+            <li className="py-2.5">
+              <button
+                onClick={() => handleNavClick('sale', 'shop')}
+                className="font-serif italic font-bold text-orange-600 text-xs hover:text-orange-700 tracking-normal cursor-pointer"
+              >
+                Sale
+              </button>
+            </li>
+
+            {/* CONTACT LENSES / CONTACTS */}
+            <li
+              className="py-2.5 group"
+              onMouseEnter={() => setHoveredMenu('contacts')}
+              onMouseLeave={() => setHoveredMenu(null)}
+            >
+              <button
+                onClick={() => handleNavClick('contact-lenses', 'shop')}
+                className={`hover:text-orange-600 transition-colors font-semibold flex items-center gap-1 cursor-pointer ${
+                  currentPage === 'shop' && activeCategory === 'contact-lenses' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : ''
+                }`}
+              >
+                <span>CONTACTS</span>
+                <ChevronDown className="w-3 h-3 opacity-60 group-hover:rotate-180 transition-transform" />
+              </button>
+
+              {/* CONTACTS Megamenu Dropdown */}
+              {hoveredMenu === 'contacts' && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                  {/* CLEAR Contacts Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          CLEAR <span className="font-normal text-stone-600 text-xs">Contacts</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✦</span> 10% OFF with Gold
+                        </span>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-white p-1 shadow-xs border border-[#E8DCCF] flex items-center justify-center overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=100&q=80" alt="Clear Contacts" className="w-full h-full object-cover rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        {
+                          title: 'Distance power (-ve)',
+                          price: 'Starts at ₹319',
+                          img: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=150&q=80'
+                        },
+                        {
+                          title: 'Toric / Cylindrical',
+                          price: 'Starts at ₹379',
+                          img: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=150&q=80'
+                        },
+                        {
+                          title: 'Multi-Focal',
+                          price: 'Starts at ₹2,599',
+                          img: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=150&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('contact-lenses', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.title} className="w-9 h-9 object-cover rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.title}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* COLOR Contacts Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#FAF3EB] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          COLOR <span className="font-normal text-stone-600 text-xs">Contacts</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✦</span> 10% OFF with Gold
+                        </span>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-white p-1 shadow-xs border border-[#E8DCCF] flex items-center justify-center overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=100&q=80" alt="Color Contacts" className="w-full h-full object-cover rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        {
+                          title: 'Zero Power',
+                          price: 'Starts at ₹189',
+                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=150&q=80'
+                        },
+                        {
+                          title: 'With Power',
+                          price: 'Starts at ₹199',
+                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=150&q=80'
+                        },
+                        {
+                          title: 'Color Combos',
+                          price: 'Buy 4 at the price of 3!',
+                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=150&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('contact-lenses', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.title} className="w-9 h-9 object-cover rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.title}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Solution & Accessories Column */}
+                  <div className="space-y-3">
+                    <div className="bg-[#F5EBE1] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                      <div>
+                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
+                          Solution & <span className="font-normal text-stone-600 text-xs">Accessories</span>
+                        </h4>
+                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
+                          <span>✦</span> 10% OFF with Gold
+                        </span>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-white p-1 shadow-xs border border-[#E8DCCF] flex items-center justify-center overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=100&q=80" alt="Lens Solution" className="w-full h-full object-cover rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {[
+                        {
+                          title: 'Solution',
+                          price: 'Starts at ₹149',
+                          img: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=150&q=80'
+                        },
+                        {
+                          title: 'Accessories',
+                          price: 'Starts at ₹159',
+                          img: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=150&q=80'
+                        },
+                        {
+                          title: 'Travel Lens Care Kits',
+                          price: 'Starts at ₹299',
+                          img: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=150&q=80'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleNavClick('contact-lenses', 'shop');
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={item.img} alt={item.title} className="w-9 h-9 object-cover rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DCCF]/60" />
+                            <div>
+                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
+                                {item.title}
+                              </div>
+                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
+                                {item.price}
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </li>
+
+            {/* BOOK EYE TEST */}
+            <li className="py-2.5">
+              <button
+                onClick={() => handleNavClick('all', 'appointment')}
+                className={`hover:text-orange-600 font-bold transition-colors cursor-pointer ${
+                  currentPage === 'appointment' ? 'text-orange-600 border-b-2 border-orange-600 pb-0.5' : 'text-orange-600'
+                }`}
+              >
+                BOOK EYE TEST
+              </button>
+            </li>
+
+            {/* CONTACT US */}
+            <li className="py-2.5">
+              <button
+                onClick={() => handleNavClick('all', 'contact')}
+                className={`hover:text-orange-600 font-semibold transition-colors cursor-pointer ${
+                  currentPage === 'contact' ? 'text-orange-600 font-bold border-b-2 border-orange-600 pb-0.5' : 'text-stone-800'
+                }`}
+              >
+                CONTACT US
+              </button>
+            </li>
+          </ul>
         </div>
-
-        {/* ────────── FULL-WIDTH MEGA MENU DROPDOWN PANEL (Matching Gem Opticians exactly) ────────── */}
-        {hoveredMenu && (
-          <div
-            className="absolute top-full left-0 right-0 bg-[#F4ECE1] border-t border-[#E5DACB]/80 shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-200"
-            onMouseEnter={() => {
-              if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            }}
-            onMouseLeave={handleMouseLeave}
-          >
-            <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
-              {/* MEGA MENU: SUNGLASSES */}
-              {hoveredMenu === "sunglasses" && (
-                <div className="grid grid-cols-5 gap-8 items-start">
-                  {/* Col 1: BY GENDER */}
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      BY GENDER
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li>
-                        <button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">
-                          Men's frames
-                        </button>
-                      </li>
-                      <li>
-                        <button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">
-                          Women's frames
-                        </button>
-                      </li>
-                      <li>
-                        <button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">
-                          Unisex
-                        </button>
-                      </li>
-                      <li className="pt-2">
-                        <button onClick={() => handleNavClick("sunglasses", "shop")} className="text-[#C85A1B] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                          Shop all <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Col 2: BY SHAPE */}
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      BY SHAPE
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Aviator</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Wayfarer</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Cat Eye</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Oversized & Square</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Round</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Rectangle</button></li>
-                    </ul>
-                  </div>
-
-                  {/* Col 3: TOP BRANDS */}
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      TOP BRANDS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => onSelectBrand("gucci")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Gucci</button></li>
-                      <li><button onClick={() => onSelectBrand("prada")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Prada</button></li>
-                      <li><button onClick={() => onSelectBrand("tom")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Tom Ford</button></li>
-                      <li><button onClick={() => onSelectBrand("ray")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Ray-Ban</button></li>
-                      <li><button onClick={() => onSelectBrand("gast")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">GAST Milano</button></li>
-                      <li><button onClick={() => onSelectBrand("theo")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Theo Belgium</button></li>
-                      <li className="pt-2">
-                        <button onClick={() => handleNavClick("all", "shop")} className="text-[#C85A1B] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                          All brands <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Col 4: EXCLUSIVE BRANDS */}
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      EXCLUSIVE BRANDS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => onSelectBrand("cartier")} className="hover:text-[#C85A1B] transition-colors cursor-pointer font-serif italic font-semibold">Cartier Paris</button></li>
-                      <li><button onClick={() => onSelectBrand("lindberg")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Lindberg Denmark</button></li>
-                      <li><button onClick={() => onSelectBrand("maybach")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Maybach 18k Gold</button></li>
-                      <li><button onClick={() => onSelectBrand("jacques")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Jacques Marie Mage</button></li>
-                      <li><button onClick={() => onSelectBrand("akoni")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Akoni Japan</button></li>
-                      <li className="pt-2">
-                        <button onClick={() => handleNavClick("all", "shop")} className="text-[#C85A1B] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                          All exclusive <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Col 5: SPOTLIGHT BANNER CARD */}
-                  <div className="col-span-1 bg-[#F8F2E8] border border-[#E5DACB] rounded-xl overflow-hidden p-4 text-center space-y-2 shadow-xs hover:shadow-md transition-shadow">
-                    <div className="h-36 rounded-lg overflow-hidden relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80"
-                        alt="Cartier Haute Couture"
-                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold tracking-widest text-[#C85A1B] uppercase block pt-1">
-                      CARTIER HAUTE COUTURE
-                    </span>
-                    <p className="text-[11px] font-serif font-bold text-[#2C1C13] uppercase leading-tight">
-                      HAND-SCULPTED GOLD SUNWEAR
-                    </p>
-                    <button
-                      onClick={() => onSelectBrand("cartier")}
-                      className="text-[10px] font-bold uppercase tracking-widest text-[#332219] hover:text-[#C85A1B] underline pt-1 inline-block cursor-pointer"
-                    >
-                      EXPLORE CARTIER
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* MEGA MENU: EYEGLASSES */}
-              {hoveredMenu === "eyeglasses" && (
-                <div className="grid grid-cols-5 gap-8 items-start">
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      BY GENDER
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Men's Optical</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Women's Optical</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Unisex Frames</button></li>
-                      <li className="pt-2"><button onClick={() => handleNavClick("eyeglasses", "shop")} className="text-[#C85A1B] font-bold hover:underline flex items-center gap-1 cursor-pointer">Shop all optical <ArrowRight className="w-3 h-3" /></button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      BY FRAME STYLE
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Rimless Titanium</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Full-Rim Acetate</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Half-Rim Surgical Steel</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Round Classic</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Rectangle Executive</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      CLINICAL BRANDS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => onSelectBrand("lindberg")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Lindberg Denmark (2.7g)</button></li>
-                      <li><button onClick={() => onSelectBrand("cartier")} className="hover:text-[#C85A1B] transition-colors cursor-pointer font-serif italic">Cartier Atelier</button></li>
-                      <li><button onClick={() => onSelectBrand("mykita")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Mykita Berlin</button></li>
-                      <li><button onClick={() => onSelectBrand("tom")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Tom Ford</button></li>
-                      <li><button onClick={() => onSelectBrand("ray")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Ray-Ban</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      ZEISS & LENS TECH
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><span className="text-[#332219]">Single Vision HD</span></li>
-                      <li><span className="text-[#332219]">Progressive 3D Corridor</span></li>
-                      <li><span className="text-[#332219]">BlueLight Screen Shield</span></li>
-                      <li><span className="text-[#332219]">Transitions® Photochromic</span></li>
-                      <li className="pt-2"><button onClick={() => handleNavClick(undefined, "appointment")} className="text-[#C85A1B] font-bold hover:underline flex items-center gap-1 cursor-pointer">Book 12-Step Exam <ArrowRight className="w-3 h-3" /></button></li>
-                    </ul>
-                  </div>
-
-                  <div className="col-span-1 bg-[#F8F2E8] border border-[#E5DACB] rounded-xl overflow-hidden p-4 text-center space-y-2 shadow-xs">
-                    <div className="h-36 rounded-lg overflow-hidden relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=600&q=80"
-                        alt="Zeiss Optical Precision"
-                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold tracking-widest text-[#C85A1B] uppercase block pt-1">
-                      CLINICAL OPTOMETRY
-                    </span>
-                    <p className="text-[11px] font-serif font-bold text-[#2C1C13] uppercase leading-tight">
-                      ZEISS 3D DIGITAL CENTERATION
-                    </p>
-                    <button
-                      onClick={() => handleNavClick(undefined, "appointment")}
-                      className="text-[10px] font-bold uppercase tracking-widest text-[#332219] hover:text-[#C85A1B] underline pt-1 inline-block cursor-pointer"
-                    >
-                      BOOK CLINIC VISIT
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* MEGA MENU: SHOP BY BRAND */}
-              {hoveredMenu === "brands" && (
-                <div className="grid grid-cols-5 gap-8 items-start">
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      HERITAGE HOUSES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => onSelectBrand("cartier")} className="hover:text-[#C85A1B] transition-colors cursor-pointer font-serif italic font-semibold">Cartier Paris</button></li>
-                      <li><button onClick={() => onSelectBrand("maybach")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Maybach 18k Gold</button></li>
-                      <li><button onClick={() => onSelectBrand("jacques")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Jacques Marie Mage</button></li>
-                      <li><button onClick={() => onSelectBrand("lindberg")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Lindberg Titanium</button></li>
-                      <li><button onClick={() => onSelectBrand("akoni")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Akoni Japan</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      DESIGNER HOUSES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => onSelectBrand("tom")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Tom Ford</button></li>
-                      <li><button onClick={() => onSelectBrand("gucci")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Gucci</button></li>
-                      <li><button onClick={() => onSelectBrand("prada")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Prada</button></li>
-                      <li><button onClick={() => onSelectBrand("ray")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Ray-Ban</button></li>
-                      <li><button onClick={() => onSelectBrand("gast")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">GAST Milano</button></li>
-                      <li><button onClick={() => onSelectBrand("theo")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Theo Belgium</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      SPECIALTY SERIES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Ray-Ban Meta Smart</button></li>
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Precision Junior Flex</button></li>
-                      <li><button onClick={() => handleNavClick("new", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Bespoke Private Vault</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      BY MATERIAL
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("all", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">18k Gold Plated</button></li>
-                      <li><button onClick={() => handleNavClick("all", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Japanese Beta-Titanium</button></li>
-                      <li><button onClick={() => handleNavClick("all", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Mazzucchelli Acetate</button></li>
-                      <li><button onClick={() => handleNavClick("all", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Natural Buffalo Horn</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="col-span-1 bg-[#F8F2E8] border border-[#E5DACB] rounded-xl overflow-hidden p-4 text-center space-y-2 shadow-xs">
-                    <div className="h-36 rounded-lg overflow-hidden relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=600&q=80"
-                        alt="Jacques Marie Mage"
-                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold tracking-widest text-[#C85A1B] uppercase block pt-1">
-                      LIMITED ARCHIVE
-                    </span>
-                    <p className="text-[11px] font-serif font-bold text-[#2C1C13] uppercase leading-tight">
-                      JACQUES MARIE MAGE DEALAN
-                    </p>
-                    <button
-                      onClick={() => onSelectBrand("jacques")}
-                      className="text-[10px] font-bold uppercase tracking-widest text-[#332219] hover:text-[#C85A1B] underline pt-1 inline-block cursor-pointer"
-                    >
-                      VIEW ARCHIVE
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* MEGA MENU: NEW ARRIVALS */}
-              {hoveredMenu === "new" && (
-                <div className="grid grid-cols-5 gap-8 items-start">
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      NEW COLLECTIONS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("new", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Spring / Summer '26 Drops</button></li>
-                      <li><button onClick={() => handleNavClick("new", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Collector's Edition Vault</button></li>
-                      <li><button onClick={() => handleNavClick("new", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Titanium Rimless Series</button></li>
-                      <li><button onClick={() => handleNavClick("new", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Fresh Gradient Tints</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      HOTTEST DROPS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => onSelectBrand("gast")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">GAST Astro Rimless 53</button></li>
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Ray-Ban Meta Wayfarer</button></li>
-                      <li><button onClick={() => onSelectBrand("cartier")} className="hover:text-[#C85A1B] transition-colors cursor-pointer font-serif italic">Cartier CT0344O 18k</button></li>
-                      <li><button onClick={() => onSelectBrand("lindberg")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Lindberg Blok 2.7g</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      CATEGORY DROPS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">New Sunglasses</button></li>
-                      <li><button onClick={() => handleNavClick("eyeglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">New Optical Frames</button></li>
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">New Junior Polymer</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      POPULAR SHAPES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Geometric Titanium</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Bevelled Square Acetate</button></li>
-                      <li><button onClick={() => handleNavClick("sunglasses", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Rimless Aviator</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="col-span-1 bg-[#F8F2E8] border border-[#E5DACB] rounded-xl overflow-hidden p-4 text-center space-y-2 shadow-xs">
-                    <div className="h-36 rounded-lg overflow-hidden relative">
-                      <img
-                        src="/images/banner_new_arrival_1785154858163.jpg"
-                        alt="New Arrivals"
-                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold tracking-widest text-[#C85A1B] uppercase block pt-1">
-                      JUST DROPPED
-                    </span>
-                    <p className="text-[11px] font-serif font-bold text-[#2C1C13] uppercase leading-tight">
-                      SPRING / SUMMER '26 ATELIER
-                    </p>
-                    <button
-                      onClick={() => handleNavClick("new", "shop")}
-                      className="text-[10px] font-bold uppercase tracking-widest text-[#332219] hover:text-[#C85A1B] underline pt-1 inline-block cursor-pointer"
-                    >
-                      DISCOVER DROPS
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* MEGA MENU: META SMART */}
-              {hoveredMenu === "meta-smart" && (
-                <div className="grid grid-cols-5 gap-8 items-start">
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      META AI SMART GLASSES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Wayfarer Smart Series</button></li>
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Headliner Round Smart</button></li>
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Transitions® Smart Lenses</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      KEY FEATURES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><span className="text-[#332219]">Ultra-Wide 12MP Camera</span></li>
-                      <li><span className="text-[#332219]">5-Mic Spatial Audio Array</span></li>
-                      <li><span className="text-[#332219]">Open-Ear Audio Speakers</span></li>
-                      <li><span className="text-[#332219]">Voice-Activated Meta AI</span></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      FRAME FINISHES
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Matte Black / Green</button></li>
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Shiny Black / Clear</button></li>
-                      <li><button onClick={() => handleNavClick("meta-smart", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Jeans Blue / Sapphire</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      CONNECTIVITY
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><span className="text-[#332219]">Instagram & FB Live-Stream</span></li>
-                      <li><span className="text-[#332219]">Hands-Free Calling</span></li>
-                      <li><span className="text-[#332219]">Charging Travel Case</span></li>
-                    </ul>
-                  </div>
-
-                  <div className="col-span-1 bg-[#F8F2E8] border border-[#E5DACB] rounded-xl overflow-hidden p-4 text-center space-y-2 shadow-xs">
-                    <div className="h-36 rounded-lg overflow-hidden relative">
-                      <img
-                        src="/images/meta_ai_glasses_1786080854572.jpg"
-                        alt="Ray-Ban Meta Smart Glasses"
-                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold tracking-widest text-[#C85A1B] uppercase block pt-1">
-                      SPATIAL AUDIO & AI
-                    </span>
-                    <p className="text-[11px] font-serif font-bold text-[#2C1C13] uppercase leading-tight">
-                      RAY-BAN META WAYFARER
-                    </p>
-                    <button
-                      onClick={() => handleNavClick("meta-smart", "shop")}
-                      className="text-[10px] font-bold uppercase tracking-widest text-[#332219] hover:text-[#C85A1B] underline pt-1 inline-block cursor-pointer"
-                    >
-                      EXPLORE META SMART
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* MEGA MENU: KIDS */}
-              {hoveredMenu === "kids" && (
-                <div className="grid grid-cols-5 gap-8 items-start">
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      BY AGE GROUP
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Juniors (Ages 3-7)</button></li>
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Pre-Teens (Ages 8-12)</button></li>
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Teens (Ages 13+)</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      PROTECTION TECH
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><span className="text-[#332219]">BlueLight Screen Shield</span></li>
-                      <li><span className="text-[#332219]">100% UV400 Protection</span></li>
-                      <li><span className="text-[#332219]">Myopia Progression Control</span></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      FRAME DURABILITY
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><span className="text-[#332219]">BPA-Free Memory Polymer</span></li>
-                      <li><span className="text-[#332219]">360° Unbreakable Flexible Hinges</span></li>
-                      <li><span className="text-[#332219]">Anti-Drop Head Strap Included</span></li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2C1C13]">
-                      COLORS
-                    </h3>
-                    <ul className="space-y-2 text-[12px] font-medium text-[#685548]">
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Ocean Blue / Yellow</button></li>
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Berry Pink / Coral</button></li>
-                      <li><button onClick={() => handleNavClick("kids", "shop")} className="hover:text-[#C85A1B] transition-colors cursor-pointer">Matte Black Active</button></li>
-                    </ul>
-                  </div>
-
-                  <div className="col-span-1 bg-[#F8F2E8] border border-[#E5DACB] rounded-xl overflow-hidden p-4 text-center space-y-2 shadow-xs">
-                    <div className="h-36 rounded-lg overflow-hidden relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=600&q=80"
-                        alt="Precision Junior Flex"
-                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold tracking-widest text-[#C85A1B] uppercase block pt-1">
-                      UNBREAKABLE & ACTIVE
-                    </span>
-                    <p className="text-[11px] font-serif font-bold text-[#2C1C13] uppercase leading-tight">
-                      PRECISION JUNIOR FLEX PRO
-                    </p>
-                    <button
-                      onClick={() => handleNavClick("kids", "shop")}
-                      className="text-[10px] font-bold uppercase tracking-widest text-[#332219] hover:text-[#C85A1B] underline pt-1 inline-block cursor-pointer"
-                    >
-                      EXPLORE JUNIOR
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* ────────── Mobile Drawer Menu ────────── */}
+      {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#F8F2E8] border-b border-[#E5DACB] px-4 py-6 space-y-4 text-xs font-bold uppercase tracking-wider">
-          <div className="space-y-3 pb-4 border-b border-[#E5DACB]">
+        <div className="lg:hidden bg-[#FAF3EB] border-t border-[#E8DCCF] px-4 pt-3 pb-6 space-y-3">
+          <div className="space-y-1 divide-y divide-stone-300/60 text-[11px] tracking-wider uppercase font-medium text-stone-900">
             <button
-              onClick={() => handleNavClick(undefined, "home")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
+              onClick={() => {
+                handleNavClick('all', 'shop');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 hover:text-orange-600 font-bold text-orange-700 cursor-pointer"
             >
-              Home
+              Shop Eyewear Collection
             </button>
             <button
-              onClick={() => handleNavClick("new", "shop")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
-            >
-              New Arrivals
-            </button>
-            <button
-              onClick={() => handleNavClick("sunglasses", "shop")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
+              onClick={() => {
+                handleNavClick('sunglasses', 'shop');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 hover:text-orange-600 cursor-pointer"
             >
               Sunglasses
             </button>
             <button
-              onClick={() => handleNavClick("eyeglasses", "shop")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
+              onClick={() => {
+                handleNavClick('meta-smart', 'shop');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 text-stone-900 font-bold flex items-center gap-1 cursor-pointer"
             >
-              Eyeglasses
+              ∞ Meta Smart Glasses
             </button>
             <button
-              onClick={() => handleNavClick("meta-smart", "shop")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
+              onClick={() => {
+                handleNavClick('kids', 'shop');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 hover:text-orange-600 cursor-pointer"
             >
-              Meta Smart Glasses
+              Kids Eyewear
             </button>
             <button
-              onClick={() => handleNavClick("kids", "shop")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
+              onClick={() => {
+                handleNavClick('sale', 'shop');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 font-serif italic text-orange-600 text-xs lowercase cursor-pointer"
             >
-              Kids
+              Sale Offers
+            </button>
+            <button
+              onClick={() => {
+                handleNavClick('all', 'contact');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 text-stone-900 font-bold flex items-center gap-1.5 text-orange-700 cursor-pointer"
+            >
+              <Phone className="w-3.5 h-3.5 text-orange-600" />
+              <span>Contact Us</span>
             </button>
           </div>
 
-          <div className="space-y-2 pt-2">
-            <button
-              onClick={() => handleNavClick(undefined, "appointment")}
-              className="block w-full text-left text-[#C85A1B] font-bold py-1 cursor-pointer"
-            >
-              Book Eye Test
-            </button>
-            <button
-              onClick={() => handleNavClick(undefined, "contact")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
-            >
-              Store Locator
-            </button>
-            <button
-              onClick={() => handleNavClick(undefined, "wishlist")}
-              className="block w-full text-left text-[#332219] py-1 cursor-pointer"
-            >
-              Saved Frames ({wishlistCount})
-            </button>
+          <div className="pt-3 border-t border-stone-300/70">
+            <span className="text-[9px] tracking-widest uppercase text-stone-600 font-semibold block mb-2">
+              POPULAR BRANDS
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              {['Cartier', 'Tom Ford', 'Maybach', 'GAST', 'Jacques Marie Mage', 'Lindberg'].map((b) => (
+                <button
+                  key={b}
+                  onClick={() => {
+                    onSelectBrand(b.toLowerCase().replace(/\s+/g, '-'));
+                    if (onNavigate) onNavigate('shop');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="bg-[#FFFDF9] p-1.5 rounded-sm text-stone-800 text-left border border-[#E8DCCF] font-serif cursor-pointer"
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

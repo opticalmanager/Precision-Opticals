@@ -224,7 +224,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4ECE1] text-[#332219] selection:bg-[#C85A1B] selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-[#FAF7F2] text-[#2A1E17] selection:bg-[#C86A28] selection:text-white flex flex-col justify-between">
       <div>
         {/* Main Header */}
         <Header

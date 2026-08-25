@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
@@ -8,7 +10,7 @@ interface AccordionItem {
 }
 
 export const NeedToKnowSection: React.FC = () => {
-  const [openId, setOpenId] = useState<string | null>('sunglasses-range');
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const toggleAccordion = (id: string) => {
     setOpenId(openId === id ? null : id);
@@ -17,53 +19,87 @@ export const NeedToKnowSection: React.FC = () => {
   const items: AccordionItem[] = [
     {
       id: 'sunglasses-range',
-      title: 'Range of Luxury Sunglasses & Lens Coatings',
+      title: 'Range of Sunglasses',
       content: (
         <div className="space-y-3 text-stone-600 text-xs sm:text-sm leading-relaxed font-sans">
           <p>
-            Protect your eyes with style. Our sunglasses collection offers 100% UV400 protection against UVA and UVB rays. Choose from polarized lenses that eliminate water/road glare, gradient tint options for sophisticated metropolitan wear, and Transitions Gen 8 photochromic lenses that adapt indoors and outdoors.
+            Protect your eyes with style. Our sunglasses collection offers 100% UV400 protection against harmful UVA and UVB rays. Choose from polarized lenses that cut glaring reflections, gradient tint options for sophisticated city wear, and photochromic lenses that adapt seamlessly from indoors to outdoors.
           </p>
           <ul className="list-disc pl-5 space-y-1 text-stone-700">
-            <li><strong>Shapes:</strong> Aviator, Wayfarer, Round, Cat Eye, Geometric, and Rectangle.</li>
-            <li><strong>Materials:</strong> Hand-sculpted Italian acetate, Japanese titanium, and 18k gold plating.</li>
-            <li><strong>Prescription Sun Lenses:</strong> Convert any luxury sunglasses into your custom optical power.</li>
+            <li><strong>Popular Shapes:</strong> Aviator, Wayfarer, Round, Cat Eye, Geometric, Rectangle, and Clubmaster.</li>
+            <li><strong>Premium Materials:</strong> Handcrafted Italian acetate, ultra-light grade-1 titanium, and gold-plated wireframes.</li>
+            <li><strong>Prescription Power Sunglasses:</strong> Custom tailor your corrective power into high-definition sunglass lenses.</li>
           </ul>
         </div>
       ),
     },
     {
       id: 'frames-lenses-range',
-      title: 'Custom German & French Prescription Lens Packages',
+      title: 'Range of Frames & Lenses',
       content: (
         <div className="space-y-3 text-stone-600 text-xs sm:text-sm leading-relaxed font-sans">
           <p>
-            Every prescription pair is robotic-surfaced to 0.01 diopter tolerance. We partner directly with Carl Zeiss® and Essilor® to ensure edge-to-edge HD clarity.
+            Whether you prefer rimless minimalist frames, lightweight titanium wireframes, or bold full-rim acetate statement pieces, our frame catalogue caters to every face shape and aesthetic.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             <div className="bg-white p-3 rounded-xl border border-[#E8DCCF]">
               <h5 className="font-bold text-[#1C1917] text-xs uppercase mb-1">Prescription Lens Types</h5>
-              <p className="text-xs text-stone-600">Single Vision, Zeiss SmartLife Progressives, Zero-Power Blue Light Shield, and High-Index 1.67 Ultra-Thin.</p>
+              <p className="text-xs text-stone-600">Single Vision (Distance/Reading), Digital Progressives (No-line bifocals), Anti-Fatigue lenses, and High-Index ultra-thin lenses.</p>
             </div>
             <div className="bg-white p-3 rounded-xl border border-[#E8DCCF]">
-              <h5 className="font-bold text-[#1C1917] text-xs uppercase mb-1">Protective Coatings</h5>
-              <p className="text-xs text-stone-600">Oleophobic smudge-proof, super-hydrophobic water repellent, anti-scratch diamond hard-coat, and blue-violet block.</p>
+              <h5 className="font-bold text-[#1C1917] text-xs uppercase mb-1">Advanced Coatings</h5>
+              <p className="text-xs text-stone-600">Anti-reflective scratch-proof coating, hydrophobic water-repellent coating, oleophobic smudge protection, and blue-light shielding.</p>
             </div>
           </div>
         </div>
       ),
     },
     {
-      id: 'faqs',
-      title: 'Prescriptions, Warranty & 7-Day Exchange Policy',
+      id: 'contact-lenses-range',
+      title: 'Range of Contact Lenses',
       content: (
         <div className="space-y-3 text-stone-600 text-xs sm:text-sm leading-relaxed font-sans">
+          <p>
+            Experience ultimate freedom with high-moisture silicone hydrogel contact lenses that let your eyes breathe comfortably all day long.
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-stone-700">
+            <li><strong>Modality:</strong> Daily disposables, fortnightly, monthly disposables, and extended wear lenses.</li>
+            <li><strong>Specialty Lenses:</strong> Toric lenses for astigmatism, multifocal lenses for presbyopia, and natural color lenses.</li>
+            <li><strong>Top Brands:</strong> Acuvue, Bausch & Lomb, Alcon Air Optix, Biofinity, and FreshLook.</li>
+          </ul>
+        </div>
+      ),
+    },
+    {
+      id: 'computer-glasses-range',
+      title: 'Range of Computer Glasses',
+      content: (
+        <div className="space-y-3 text-stone-600 text-xs sm:text-sm leading-relaxed font-sans">
+          <p>
+            Designed specifically for digital screen users, software professionals, gamers, and students. Our computer glasses feature specialized blue light filtering technology that blocks harmful 415-455nm high-energy visible (HEV) light emitted by laptops, smartphones, and LED monitors.
+          </p>
+          <p>
+            Benefits include reduced eye fatigue, elimination of digital headaches, improved contrast clarity, and better sleep quality after nighttime screen usage. Available in zero-power (plain protection) as well as customized prescription powers.
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: 'faqs',
+      title: 'Frequently Asked Questions',
+      content: (
+        <div className="space-y-4 text-stone-600 text-xs sm:text-sm leading-relaxed font-sans">
           <div>
-            <h5 className="font-bold text-[#1C1917] text-xs uppercase mb-1">How do I submit my prescription?</h5>
-            <p>You can enter your SPH/CYL/AXIS numbers directly in our 3-step lens wizard, upload an image/PDF of your doctor slip, or choose "Submit Later" to send via WhatsApp after placing your order.</p>
+            <h5 className="font-bold text-[#1C1917] text-sm mb-1">How do I submit my lens prescription?</h5>
+            <p>You can upload an image of your prescription during checkout, email it to our support team, or select &quot;I will provide prescription later&quot;. Our opticians will verify your prescription before crafting your custom lenses.</p>
           </div>
           <div>
-            <h5 className="font-bold text-[#1C1917] text-xs uppercase mb-1">What is the Precision Optics Guarantee?</h5>
-            <p>All frames include a 1-year manufacturer warranty and a 7-day unconditional optical fit guarantee. If your prescription does not feel comfortable, our master optometrists will re-calibrate your lenses free of charge.</p>
+            <h5 className="font-bold text-[#1C1917] text-sm mb-1">What is the 7-day return policy?</h5>
+            <p>If you are not 100% satisfied with your order, you can initiate a return or exchange within 7 days of delivery. The product must be unused in its original packaging with tags intact.</p>
+          </div>
+          <div>
+            <h5 className="font-bold text-[#1C1917] text-sm mb-1">Can I book a free home eye test?</h5>
+            <p>Yes! Simply click on &quot;Book Eye Test&quot; in our header to schedule a certified optometrist visit to your doorstep with 100+ frames to try on in person.</p>
           </div>
         </div>
       ),
@@ -71,38 +107,57 @@ export const NeedToKnowSection: React.FC = () => {
   ];
 
   return (
-    <section className="bg-[#FAF7F2] py-14 px-4 sm:px-6 lg:px-8 border-t border-[#E8DCCF]">
+    <section className="bg-[#FAF7F2] py-14 sm:py-18 px-4 sm:px-6 lg:px-8 border-t border-b border-[#E8DCCF]">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <span className="text-[10px] font-sans font-bold tracking-[0.2em] text-[#C85A1B] uppercase block mb-1">
-            CLINICAL KNOWLEDGE BASE
+        
+        {/* Section Header */}
+        <div className="text-center mb-10 sm:mb-12">
+          <span className="text-[10px] font-sans font-bold tracking-[0.2em] text-[#C86A28] uppercase block mb-1">
+            FREQUENTLY ASKED QUESTIONS &amp; GUIDES
           </span>
-          <h2 className="text-3xl font-bold text-[#1C1917] font-serif">
-            Need to Know
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#1C1917] tracking-tight font-sans mb-2">
+            Need to <span className="font-serif italic font-normal text-[#C86A28]">Know</span>
           </h2>
+          <p className="text-xs sm:text-sm text-stone-600 font-medium font-sans">
+            Get clarity on products, prescription lenses, home testing, and orders.
+          </p>
         </div>
 
-        <div className="space-y-3">
+        {/* Accordion Stack */}
+        <div className="space-y-3.5 sm:space-y-4">
           {items.map((item) => {
             const isOpen = openId === item.id;
+
             return (
               <div
                 key={item.id}
-                className="bg-white border border-[#E8DCCF] transition-colors"
+                className="bg-white rounded-2xl shadow-xs border border-[#E8DCCF] overflow-hidden transition-all duration-300 hover:border-[#C86A28]/40"
               >
+                {/* Accordion Header Row */}
                 <button
                   onClick={() => toggleAccordion(item.id)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left font-serif font-bold text-sm sm:text-base text-[#1C1917] hover:text-[#C85A1B] transition-colors cursor-pointer"
+                  className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-[#FAF8F5] transition-colors focus:outline-none cursor-pointer"
+                  aria-expanded={isOpen}
                 >
-                  <span>{item.title}</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-300 ${
-                      isOpen ? 'transform rotate-180 text-[#C85A1B]' : 'text-stone-400'
+                  <span className="font-bold text-sm sm:text-base text-[#1C1917] tracking-tight font-sans">
+                    {item.title}
+                  </span>
+
+                  {/* Circle toggle button */}
+                  <div
+                    className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 transition-all duration-300 ${
+                      isOpen
+                        ? 'rotate-180 bg-[#C86A28] border-[#C86A28] text-white'
+                        : 'bg-[#FAF3EB] border-[#E8DCCF] text-stone-700'
                     }`}
-                  />
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
                 </button>
+
+                {/* Expanded Content */}
                 {isOpen && (
-                  <div className="px-6 pb-6 pt-2 border-t border-stone-100 animate-in fade-in duration-200">
+                  <div className="px-6 pb-6 pt-2 border-t border-[#FAF3EB] bg-[#FAF8F5]/50 animate-fadeIn">
                     {item.content}
                   </div>
                 )}
@@ -110,6 +165,7 @@ export const NeedToKnowSection: React.FC = () => {
             );
           })}
         </div>
+
       </div>
     </section>
   );

@@ -1,10 +1,10 @@
+"use client";
+
 import React, { useState, useRef, useMemo } from 'react';
-import { Heart, ShoppingBag, ChevronRight, ChevronLeft, Sparkles, Glasses } from 'lucide-react';
-import { Product } from '../../types';
-import { useCart } from '../../context/CartContext';
-import { useWishlist } from '../../context/WishlistContext';
-import { formatINR } from '../../utils/formatters';
-import { ImageWithFallback } from '../common/ImageWithFallback';
+import { Heart, ShoppingBag, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Product } from '@/types';
+import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 
 interface JustDroppedSectionProps {
   products: Product[];
@@ -15,20 +15,48 @@ interface JustDroppedSectionProps {
 export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
   products,
   onSelectProduct,
-  onViewAll
+  onViewAll,
 }) => {
   const { addToCartDirect } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [activeTab, setActiveTab] = useState<'new' | 'bestsellers'>('new');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Filter Just Dropped / New Arrivals
   const justDroppedProducts = useMemo(() => {
-    return products.filter((p) => p.isNewArrival || p.isLimitedEdition);
+    const specificIds = [
+      'just-dropped-grey-wayfarer',
+      'just-dropped-metallic-aviator',
+      'just-dropped-blue-square-computer',
+      'just-dropped-green-square-sunglasses',
+      'gast-astro-as02-53',
+      'gast-pai-pa04-48',
+      'ray-ban-meta-wayfarer-matte-black',
+      'lindberg-blok-titanium-6584'
+    ];
+
+    const matched = specificIds
+      .map((id) => products.find((p) => p.id === id))
+      .filter((p): p is Product => p !== undefined);
+
+    const newArrivals = products.filter((p) => p.isNewArrival);
+    const combined = [...matched, ...newArrivals];
+    const uniqueMap = new Map<string, Product>();
+    combined.forEach((item) => uniqueMap.set(item.id, item));
+    return Array.from(uniqueMap.values());
   }, [products]);
 
+  // Filter Best Sellers
   const bestSellerProducts = useMemo(() => {
     const bestSellers = products.filter((p) => p.isBestSeller);
-    return bestSellers.length > 0 ? bestSellers : products.slice(0, 8);
+    if (bestSellers.length >= 4) return bestSellers;
+    
+    // Fallback if less than 4
+    const fallback = products.slice(0, 8);
+    const combined = [...bestSellers, ...fallback];
+    const uniqueMap = new Map<string, Product>();
+    combined.forEach((item) => uniqueMap.set(item.id, item));
+    return Array.from(uniqueMap.values());
   }, [products]);
 
   const displayedProducts = activeTab === 'new' ? justDroppedProducts : bestSellerProducts;
@@ -43,33 +71,26 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
   return (
     <section className="bg-[#FAF7F2] py-12 sm:py-16 border-b border-[#E8DCCF]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-          <div>
-            <span className="text-[11px] font-sans font-bold tracking-widest text-[#C85A1B] uppercase block">
-              CURATED EXCELLENCE
-            </span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#2A1E17]">
-              {activeTab === 'new' ? 'Just Dropped Arrivals' : 'Most Coveted Bestsellers'}
-            </h2>
-          </div>
-
-          <div className="bg-white p-1 rounded-2xl border border-[#E8DCCF] inline-flex items-center gap-1 shadow-2xs">
+        
+        {/* Centered Tab Toggle (Just Dropped / New Arrivals vs Best Sellers) */}
+        <div className="flex justify-center mb-8 sm:mb-10">
+          <div className="bg-white/90 p-1.5 rounded-2xl border border-[#E8DCCF] inline-flex items-center gap-1 shadow-2xs">
             <button
               onClick={() => setActiveTab('new')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
+              className={`px-6 sm:px-8 py-2.5 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
                 activeTab === 'new'
                   ? 'bg-[#2A1E17] text-white shadow-xs'
-                  : 'text-stone-600 hover:text-[#2A1E17]'
+                  : 'text-stone-600 hover:text-[#2A1E17] hover:bg-[#FAF3EB]'
               }`}
             >
               Just Dropped
             </button>
             <button
               onClick={() => setActiveTab('bestsellers')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
+              className={`px-6 sm:px-8 py-2.5 rounded-xl text-xs sm:text-sm font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
                 activeTab === 'bestsellers'
                   ? 'bg-[#2A1E17] text-white shadow-xs'
-                  : 'text-stone-600 hover:text-[#2A1E17]'
+                  : 'text-stone-600 hover:text-[#2A1E17] hover:bg-[#FAF3EB]'
               }`}
             >
               Best Sellers
@@ -77,108 +98,125 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
           </div>
         </div>
 
-        <div className="relative group">
+        {/* Product Slider Container with Floating Nav Arrow */}
+        <div className="relative group/carousel">
+          {/* Scroll Left Button */}
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 sm:-translate-x-5 z-20 w-10 h-10 rounded-full bg-white text-[#2A1E17] shadow-xl border border-[#E8DCCF] flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 hover:bg-[#C86A28] hover:text-white transition-all duration-200 focus:outline-none cursor-pointer"
+            aria-label="Previous Products"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* Scroll Right Button */}
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 sm:translate-x-5 z-20 w-10 h-10 rounded-full bg-white text-[#2A1E17] shadow-xl border border-[#E8DCCF] flex items-center justify-center opacity-90 group-hover/carousel:opacity-100 hover:bg-[#C86A28] hover:text-white transition-all duration-200 focus:outline-none cursor-pointer"
+            aria-label="Next Products"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+
+          {/* Horizontal Product List Grid / Carousel */}
           <div
             ref={scrollContainerRef}
-            className="flex items-stretch gap-5 overflow-x-auto pb-4 pt-1 no-scrollbar scroll-smooth"
+            className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1 -mx-1"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {displayedProducts.map((product) => {
-              const saved = isWishlisted(product.id);
+              const wishlisted = isWishlisted(product.id);
+
               return (
                 <div
                   key={product.id}
                   onClick={() => onSelectProduct(product)}
-                  className="flex-shrink-0 w-72 sm:w-80 bg-white border border-[#E8DCCF] hover:border-[#C85A1B] p-4 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg cursor-pointer group/card"
+                  className="min-w-[260px] sm:min-w-[280px] lg:min-w-[0] lg:w-1/4 shrink-0 bg-white rounded-2xl p-4 flex flex-col justify-between relative group cursor-pointer transition-all duration-300 border border-[#E8DCCF] hover:border-[#C86A28]/60 shadow-2xs hover:shadow-lg hover:-translate-y-1"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="bg-[#2A1E17] text-white text-[9px] font-sans font-bold px-2 py-0.5 uppercase tracking-wider">
-                        {product.isNewArrival ? 'NEW DROP' : 'POPULAR'}
+                  {/* Heart Wishlist Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleWishlist(product.id, product.name);
+                    }}
+                    className="absolute top-3.5 right-3.5 z-10 p-2 rounded-full bg-white/90 hover:bg-[#C86A28] hover:text-white transition-all focus:outline-none shadow-2xs border border-[#E8DCCF] cursor-pointer"
+                    aria-label="Wishlist"
+                  >
+                    <Heart
+                      className={`w-4 h-4 transition-colors ${
+                        wishlisted
+                          ? 'fill-[#C86A28] text-[#C86A28]'
+                          : 'text-stone-400 group-hover:text-white'
+                      }`}
+                    />
+                  </button>
+
+                  {/* Product Image Area */}
+                  <div className="w-full h-44 sm:h-48 flex items-center justify-center p-3 relative bg-[#FAF8F5] rounded-xl border border-[#E8DCCF]/50 overflow-hidden mb-3">
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+
+                    {/* Badge at Bottom-Left of Image */}
+                    <div className="absolute bottom-2.5 left-2.5 z-10">
+                      <span className="bg-[#C86A28] text-white text-[9.5px] font-extrabold px-2.5 py-1 rounded-sm uppercase tracking-wider shadow-2xs">
+                        {activeTab === 'new' ? 'NEW ARRIVAL' : 'BEST SELLER'}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleWishlist(product.id, product.name);
-                        }}
-                        className="p-1 text-stone-400 hover:text-rose-600 transition-colors"
-                        title={saved ? 'Remove from wishlist' : 'Save to wishlist'}
-                      >
-                        <Heart className={`w-4 h-4 ${saved ? 'fill-rose-600 text-rose-600' : ''}`} />
-                      </button>
                     </div>
-
-                    <div className="w-full h-44 my-2 flex items-center justify-center overflow-hidden">
-                      <ImageWithFallback
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="max-h-full max-w-full object-contain transform group-hover/card:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-
-                    <span className="font-serif font-bold text-xs text-[#C85A1B] uppercase tracking-wider block">
-                      {product.brand}
-                    </span>
-                    <h4 className="font-bold text-sm text-[#2A1E17] mt-0.5 line-clamp-1">
-                      {product.name}
-                    </h4>
-                    <p className="text-xs text-stone-500 capitalize mt-0.5">
-                      {product.shape} • {product.rimType}
-                    </p>
                   </div>
 
-                  <div className="pt-4 border-t border-stone-100 flex items-center justify-between mt-3">
-                    <div>
-                      <span className="font-serif font-bold text-sm text-[#2A1E17]">
-                        {formatINR(product.price)}
+                  {/* Info Details */}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="space-y-0.5 mb-3">
+                      <span className="text-[10.5px] font-extrabold text-[#C86A28] tracking-wider uppercase block">
+                        {product.brand}
                       </span>
-                      {product.originalPrice && (
-                        <span className="text-[11px] text-stone-400 line-through ml-2">
-                          {formatINR(product.originalPrice)}
+                      <h3 className="font-bold text-xs sm:text-sm text-[#2A1E17] line-clamp-1 uppercase font-sans">
+                        {product.name}
+                      </h3>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        {product.originalPrice && (
+                          <span className="text-[11px] text-stone-400 line-through font-mono">
+                            ₹{product.originalPrice.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <span className="font-extrabold text-xs sm:text-sm text-[#2A1E17] font-sans">
+                          ₹{product.price.toLocaleString('en-IN')}.00
                         </span>
-                      )}
+                      </div>
                     </div>
 
+                    {/* Add To Cart Button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         addToCartDirect(product);
                       }}
-                      className="bg-[#2A1E17] hover:bg-[#C85A1B] text-white p-2 rounded text-xs transition-colors flex items-center gap-1 cursor-pointer"
-                      title="Add frame to cart"
+                      className="w-full bg-[#2A1E17] hover:bg-[#C86A28] active:scale-[0.98] text-white font-bold text-xs py-2.5 sm:py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 uppercase tracking-wider shadow-2xs cursor-pointer"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>ADD TO CART</span>
                     </button>
                   </div>
                 </div>
               );
             })}
           </div>
-
-          <button
-            onClick={() => scroll('left')}
-            aria-label="Scroll left"
-            className="absolute -left-3 top-1/2 -translate-y-1/2 bg-white/90 border border-stone-300 p-2.5 rounded-full shadow-md text-stone-700 hover:text-black transition-all cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => scroll('right')}
-            aria-label="Scroll right"
-            className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white/90 border border-stone-300 p-2.5 rounded-full shadow-md text-stone-700 hover:text-black transition-all cursor-pointer"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="mt-8 text-center">
+        {/* Centered VIEW ALL Button */}
+        <div className="flex justify-center mt-8 sm:mt-10">
           <button
             onClick={onViewAll}
-            className="inline-flex items-center gap-2 bg-[#2A1E17] hover:bg-[#C85A1B] text-white px-8 py-3 text-xs font-serif font-bold tracking-widest uppercase transition-colors shadow-md cursor-pointer"
+            className="bg-[#2A1E17] hover:bg-[#C86A28] text-white font-bold text-xs sm:text-sm tracking-widest uppercase px-10 py-3 rounded-full shadow-md hover:shadow-xl transition-all duration-300 focus:outline-none active:scale-95 border border-[#2A1E17] cursor-pointer"
           >
-            <span>VIEW COMPLETE CATALOG</span>
-            <ChevronRight className="w-4 h-4" />
+            VIEW ALL PRODUCTS
           </button>
         </div>
+
       </div>
     </section>
   );
