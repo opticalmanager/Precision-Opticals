@@ -90,20 +90,17 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center Brand Logo */}
-        <div className="shrink-0 flex justify-center text-center">
+        <div className="shrink-0 flex justify-center text-center py-0.5">
           <button
             onClick={() => handleNavClick('all', 'home')}
-            className="inline-flex flex-col items-center group focus:outline-none cursor-pointer"
+            className="inline-flex items-center justify-center group focus:outline-none cursor-pointer"
+            aria-label="Precision Optics Home"
           >
-            <div className="w-6 h-6 rounded-full border border-stone-800 flex items-center justify-center group-hover:bg-orange-600 group-hover:border-orange-600 transition-colors mb-0.5">
-              <Glasses className="w-3.5 h-3.5 text-stone-900 group-hover:text-white transition-colors" />
-            </div>
-            <h1 className="font-serif text-base sm:text-lg lg:text-xl tracking-[0.18em] font-bold text-stone-900 uppercase leading-none">
-              PRECISION OPTICS
-            </h1>
-            <span className="text-[8px] tracking-[0.25em] text-orange-700 font-sans mt-0.5 uppercase font-semibold">
-              ESTD. 1969
-            </span>
+            <img
+              src="/images/precision-optics-logo.png"
+              alt="Precision Optics"
+              className="h-8 sm:h-10 md:h-11 w-auto object-contain transition-transform group-hover:scale-105"
+            />
           </button>
         </div>
 

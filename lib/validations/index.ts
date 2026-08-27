@@ -34,24 +34,13 @@ export const appointmentSchema = z.object({
     .regex(/^[0-9+\s-]{10,15}$/, "Invalid phone format"),
   email: z.string().email("Please enter a valid email address"),
   service: z.string().min(1, "Please select an optical service"),
-  type: z.enum(["in-store", "home"]),
-  storeLocation: z.string().optional(),
+  type: z.enum(["in-store", "home"]).default("in-store"),
+  storeLocation: z.string().min(1, "Please select a boutique clinic location"),
   address: z.string().optional(),
   pincode: z.string().optional(),
   date: z.string().min(1, "Preferred date is required"),
   timeSlot: z.string().min(1, "Please select a time slot"),
-}).refine(
-  (data) => {
-    if (data.type === "home") {
-      return !!data.address && !!data.pincode && data.pincode.length === 6;
-    }
-    return true;
-  },
-  {
-    message: "Doorstep address and 6-digit pincode are required for home eye test",
-    path: ["address"],
-  }
-);
+});
 
 export type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 

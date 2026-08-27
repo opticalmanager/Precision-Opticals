@@ -98,8 +98,8 @@ export const NeedToKnowSection: React.FC = () => {
             <p>If you are not 100% satisfied with your order, you can initiate a return or exchange within 7 days of delivery. The product must be unused in its original packaging with tags intact.</p>
           </div>
           <div>
-            <h5 className="font-bold text-[#1C1917] text-sm mb-1">Can I book a free home eye test?</h5>
-            <p>Yes! Simply click on &quot;Book Eye Test&quot; in our header to schedule a certified optometrist visit to your doorstep with 100+ frames to try on in person.</p>
+            <h5 className="font-bold text-[#1C1917] text-sm mb-1">How do I book a Zero-Error Clinical Eye Exam?</h5>
+            <p>Simply click on &quot;Book Eye Test&quot; in our header to schedule a complimentary 12-step digital refractive examination at any of our 6 luxury boutique clinics with senior optometrists.</p>
           </div>
         </div>
       ),

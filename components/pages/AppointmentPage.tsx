@@ -129,7 +129,7 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
               Appointment Reserved!
             </h2>
             <p className="text-xs text-stone-600 leading-relaxed max-w-md mx-auto">
-              Your {appointmentType === "in-store" ? "In-Store 12-Step Eye Test" : "Home Eye Checkup"} has been scheduled under reference: <strong className="font-mono text-[#C85A1B]">{bookingId}</strong>.
+              Your In-Store 12-Step Clinical Eye Examination has been scheduled under reference: <strong className="font-mono text-[#C85A1B]">{bookingId}</strong>. Our senior clinic optician will welcome you for your complimentary exam.
             </p>
             <div className="pt-4 flex gap-3 justify-center">
               <Button onClick={onNavigateShop} variant="primary" className="py-3 px-6 h-auto">
@@ -144,28 +144,24 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Form (Span 7) */}
             <div className="lg:col-span-7 bg-white border border-[#E8DCCF] p-6 sm:p-8 rounded-xl shadow-xs space-y-6">
-              {/* Type Switcher */}
-              <div className="flex bg-[#FAF7F2] p-1 rounded-xl border border-[#E8DCCF] gap-1">
-                <button
-                  type="button"
-                  onClick={() => setValue("type", "in-store")}
-                  className={`flex-1 py-3 text-xs font-serif font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    appointmentType === "in-store" ? "bg-[#2A1E17] text-white shadow-xs" : "text-stone-700 hover:text-black"
-                  }`}
-                >
-                  <Building2 className="w-4 h-4" />
-                  <span>In-Store Clinic Exam</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setValue("type", "home")}
-                  className={`flex-1 py-3 text-xs font-serif font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    appointmentType === "home" ? "bg-[#2A1E17] text-white shadow-xs" : "text-stone-700 hover:text-black"
-                  }`}
-                >
-                  <Home className="w-4 h-4" />
-                  <span>Doorstep Home Eye Test</span>
-                </button>
+              {/* Clinic Banner */}
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#E8DCCF] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#2A1E17] text-white flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-sm uppercase text-stone-900">
+                      In-Store Zero-Error Clinical Eye Exam
+                    </h3>
+                    <p className="text-[11px] text-stone-600">
+                      12-step digital refractive protocol conducted by senior optometrists
+                    </p>
+                  </div>
+                </div>
+                <span className="hidden sm:inline-block text-[10px] font-bold text-[#C85A1B] bg-orange-100/70 border border-orange-200/80 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Complimentary
+                </span>
               </div>
 
               <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4 text-xs font-sans">
@@ -225,43 +221,17 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
                     </select>
                   </div>
 
-                  {appointmentType === "in-store" ? (
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold uppercase text-stone-700 mb-1">Select Precision Boutique Clinic *</label>
-                      <select
-                        {...register("storeLocation")}
-                        className="w-full bg-[#FAF7F2] border border-[#D5C2B1] p-2.5 rounded text-xs focus:outline-none focus:border-[#C85A1B] cursor-pointer"
-                      >
-                        {STORES.map((st) => (
-                          <option key={st} value={st}>{st}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="sm:col-span-2">
-                        <label className="block font-bold uppercase text-stone-700 mb-1">Doorstep Address *</label>
-                        <Input
-                          {...register("address")}
-                          placeholder="Complete residence / office address..."
-                          className={errors.address ? "border-rose-500 bg-rose-50/20" : ""}
-                        />
-                        {errors.address && (
-                          <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
-                            {errors.address.message}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block font-bold uppercase text-stone-700 mb-1">Pincode (6 Digits) *</label>
-                        <Input
-                          {...register("pincode")}
-                          placeholder="e.g. 110001"
-                          className={errors.pincode ? "border-rose-500 bg-rose-50/20" : ""}
-                        />
-                      </div>
-                    </>
-                  )}
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold uppercase text-stone-700 mb-1">Select Precision Boutique Clinic *</label>
+                    <select
+                      {...register("storeLocation")}
+                      className="w-full bg-[#FAF7F2] border border-[#D5C2B1] p-2.5 rounded text-xs focus:outline-none focus:border-[#C85A1B] cursor-pointer"
+                    >
+                      {STORES.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div>
                     <label className="block font-bold uppercase text-stone-700 mb-1">Preferred Date *</label>
