@@ -3,13 +3,12 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, ArrowUpRight, Heart } from 'lucide-react';
 import { Product } from '@/types';
-import { useWishlist } from '@/context/WishlistContext';
+import { HomeProductCard } from './HomeProductCard';
 
 interface TrendingSearchesSectionProps {
   products: Product[];
   onSelectProduct: (product: Product) => void;
-  onToggleWishlist?: (productId: string) => void;
-  wishlistIds?: string[];
+  onExploreTrending?: (pillId: string) => void;
 }
 
 interface SearchPill {
@@ -21,12 +20,8 @@ interface SearchPill {
 export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = ({
   products,
   onSelectProduct,
-  onToggleWishlist,
-  wishlistIds,
+  onExploreTrending,
 }) => {
-  const { wishlistIds: contextWishlistIds, toggleWishlist } = useWishlist();
-  const effectiveWishlistIds = wishlistIds || contextWishlistIds;
-  const handleToggle = onToggleWishlist || toggleWishlist;
   const [selectedPillId, setSelectedPillId] = useState<string>('ray-ban');
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -86,11 +81,9 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
       }
     }
 
-    // Always fallback to top bestsellers if few items match
     if (result.length < 4) {
       const bestSellers = products.filter((p) => p.isBestSeller);
       const combined = [...result, ...bestSellers];
-      // Deduplicate by ID
       const uniqueMap = new Map();
       combined.forEach((item) => uniqueMap.set(item.id, item));
       result = Array.from(uniqueMap.values());
@@ -107,25 +100,23 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
   };
 
   return (
-    <section className="bg-[#1C1612] text-white py-12 sm:py-16 relative overflow-hidden border-t border-b border-[#35271E]">
+    <section className="bg-[#FAF7F2] py-12 sm:py-16 relative overflow-hidden border-t border-b border-[#35271E]/20 select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Section Header */}
+        {/* Section Header Matching Figma */}
         <div className="text-center mb-6 sm:mb-8">
-          <p className="text-xs sm:text-sm font-medium tracking-widest text-[#D8C3B0] uppercase mb-1">
-            Trending Searches
+          <p className="text-xs sm:text-[13px] font-sans font-medium tracking-[2.5px] text-[#A8988B] uppercase mb-1.5">
+            TRENDING SEARCHES
           </p>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white flex items-center justify-center gap-2 font-serif">
-            <span>Most</span>
-            <span className="font-serif italic text-[#E07A38] font-normal">
-              Loved
-            </span>
-            <span className="text-2xl sm:text-3xl">❤️</span>
+          <h2 className="text-3xl sm:text-4xl md:text-[44px] font-normal tracking-tight text-[#2A1E17] flex items-center justify-center gap-2 font-serif">
+            <span className="text-[#8C7D73] font-serif font-normal">Most</span>
+            <span className="font-serif italic text-[#C86A28] font-normal ml-1">Loved</span>
+            <Heart className="w-6 h-6 sm:w-8 sm:h-8 fill-[#DC2626] text-[#DC2626] inline-block ml-1" />
           </h2>
         </div>
 
-        {/* Trending Search Pills Grid (Two Rows) */}
-        <div className="flex flex-col items-center gap-2.5 sm:gap-3 mb-10 sm:mb-12">
+        {/* Trending Search Pills Grid (Two Rows) Matching Figma */}
+        <div className="flex flex-col items-center gap-2.5 sm:gap-3 mb-8 sm:mb-10">
           {/* Row 1 */}
           <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
             {searchPills.slice(0, 3).map((pill) => {
@@ -133,15 +124,22 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
               return (
                 <button
                   key={pill.id}
-                  onClick={() => setSelectedPillId(pill.id)}
-                  className={`inline-flex items-center gap-1.5 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 cursor-pointer ${
+                  onClick={() => {
+                    if (isActive && onExploreTrending) {
+                      onExploreTrending(pill.id);
+                    } else {
+                      setSelectedPillId(pill.id);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-[13px] font-medium transition-all duration-300 cursor-pointer ${
                     isActive
-                      ? 'bg-[#FAF7F2] text-[#2A1E17] font-semibold shadow-lg scale-102'
-                      : 'bg-[#2E221A]/90 hover:bg-[#3E2F24] text-[#EADEC9] border border-[#443327]'
+                      ? 'bg-[#FAF7F2] text-[#2A1E17] font-semibold shadow-sm border border-[#D5C7B8]'
+                      : 'bg-[#3C322C] hover:bg-[#4D4039] text-white/95 border border-[#3C322C]'
                   }`}
+                  title={isActive ? `Explore ${pill.label} in Shop` : pill.label}
                 >
                   <span>{pill.label}</span>
-                  <ArrowUpRight className={`w-3.5 h-3.5 ${isActive ? 'text-[#2A1E17]' : 'text-[#B8A392]'}`} />
+                  <ArrowUpRight className={`w-3.5 h-3.5 ${isActive ? 'text-[#2A1E17]' : 'text-white/70'}`} />
                 </button>
               );
             })}
@@ -154,15 +152,22 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
               return (
                 <button
                   key={pill.id}
-                  onClick={() => setSelectedPillId(pill.id)}
-                  className={`inline-flex items-center gap-1.5 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 cursor-pointer ${
+                  onClick={() => {
+                    if (isActive && onExploreTrending) {
+                      onExploreTrending(pill.id);
+                    } else {
+                      setSelectedPillId(pill.id);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-[13px] font-medium transition-all duration-300 cursor-pointer ${
                     isActive
-                      ? 'bg-[#FAF7F2] text-[#2A1E17] font-semibold shadow-lg scale-102'
-                      : 'bg-[#2E221A]/90 hover:bg-[#3E2F24] text-[#EADEC9] border border-[#443327]'
+                      ? 'bg-[#FAF7F2] text-[#2A1E17] font-semibold shadow-sm border border-[#D5C7B8]'
+                      : 'bg-[#3C322C] hover:bg-[#4D4039] text-white/95 border border-[#3C322C]'
                   }`}
+                  title={isActive ? `Explore ${pill.label} in Shop` : pill.label}
                 >
                   <span>{pill.label}</span>
-                  <ArrowUpRight className={`w-3.5 h-3.5 ${isActive ? 'text-[#2A1E17]' : 'text-[#B8A392]'}`} />
+                  <ArrowUpRight className={`w-3.5 h-3.5 ${isActive ? 'text-[#2A1E17]' : 'text-white/70'}`} />
                 </button>
               );
             })}
@@ -170,104 +175,40 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
         </div>
 
         {/* Carousel Container with Side Navigation Buttons */}
-        <div className="relative px-2 sm:px-10">
+        <div className="relative group/carousel">
           
           {/* Left Scroll Arrow Button */}
           <button
             onClick={() => handleScroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#2E221A]/90 hover:bg-[#3E2F24] text-white border border-[#443327] backdrop-blur-md shadow-xl flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-[#C86A28] cursor-pointer"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 sm:-translate-x-5 z-30 w-10 h-10 rounded-full bg-white text-[#2A1E17] shadow-xl border border-[#E8DCCF] flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 hover:bg-[#C86A28] hover:text-white transition-all duration-200 focus:outline-none cursor-pointer"
             aria-label="Scroll Left"
           >
-            <ChevronLeft className="w-5 h-5 text-[#EADEC9]" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
 
           {/* Right Scroll Arrow Button */}
           <button
             onClick={() => handleScroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#2E221A]/90 hover:bg-[#3E2F24] text-white border border-[#443327] backdrop-blur-md shadow-xl flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-[#C86A28] cursor-pointer"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 sm:translate-x-5 z-30 w-10 h-10 rounded-full bg-white text-[#2A1E17] shadow-xl border border-[#E8DCCF] flex items-center justify-center opacity-85 group-hover/carousel:opacity-100 hover:bg-[#C86A28] hover:text-white transition-all duration-200 focus:outline-none cursor-pointer"
             aria-label="Scroll Right"
           >
-            <ChevronRight className="w-5 h-5 text-[#EADEC9]" />
+            <ChevronRight className="w-5 h-5" />
           </button>
 
           {/* Scrollable Track */}
           <div
             ref={carouselRef}
-            className="flex items-stretch gap-4 sm:gap-6 overflow-x-auto scrollbar-none py-2 px-1 scroll-smooth"
+            className="flex gap-4 sm:gap-5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1 -mx-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {activeProducts.map((product) => {
-              const isWishlisted = effectiveWishlistIds.includes(product.id);
-              return (
-                <div
-                  key={product.id}
-                  className="w-[240px] sm:w-[270px] shrink-0 bg-white rounded-2xl p-4 sm:p-5 text-stone-900 border border-slate-200/80 shadow-md relative group flex flex-col justify-between transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
-                >
-                  {/* Top Wishlist Heart Icon */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggle(product.id);
-                    }}
-                    className="absolute top-3.5 right-3.5 z-10 p-1.5 rounded-full hover:bg-rose-50 transition-colors focus:outline-none cursor-pointer"
-                    aria-label="Wishlist"
-                  >
-                    <Heart
-                      className={`w-5 h-5 transition-colors ${
-                        isWishlisted
-                          ? 'fill-rose-500 text-rose-500'
-                          : 'text-rose-400 hover:text-rose-600'
-                      }`}
-                    />
-                  </button>
-
-                  {/* Product Content Click Handler */}
-                  <div
-                    onClick={() => onSelectProduct(product)}
-                    className="cursor-pointer flex flex-col h-full"
-                  >
-                    {/* Image Box */}
-                    <div className="w-full h-36 sm:h-44 flex items-center justify-center p-2 mb-3 bg-white rounded-xl">
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    </div>
-
-                    {/* Meta Details */}
-                    <div className="mt-auto">
-                      <h4 className="font-bold text-xs sm:text-sm text-stone-900 tracking-wide mb-0.5 font-sans">
-                        {product.brand}
-                      </h4>
-                      <p className="text-xs text-stone-500 font-normal line-clamp-2 min-h-[32px] mb-2 leading-relaxed">
-                        {product.name}
-                      </p>
-
-                      {/* Size text if applicable */}
-                      <p className="text-[11px] text-stone-600 font-medium mb-1">
-                        Size: {product.specs?.lensWidth && product.specs.lensWidth >= 55 ? 'Large' : 'Medium'}
-                      </p>
-
-                      {/* Price & Taxes */}
-                      <div className="pt-1 border-t border-stone-100 flex items-baseline justify-between">
-                        <div>
-                          <span className="font-bold text-sm sm:text-base text-stone-900">
-                            ₹{product.price.toLocaleString('en-IN')}
-                          </span>
-                          <span className="block text-[10px] text-stone-400 font-normal">
-                            Inclusive of all taxes
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {activeProducts.map((product) => (
+              <HomeProductCard
+                key={product.id}
+                product={product}
+                onSelectProduct={onSelectProduct}
+              />
+            ))}
           </div>
-
         </div>
 
       </div>

@@ -37,8 +37,8 @@ export const BlogReelsSection: React.FC<BlogReelsSectionProps> = ({
       title: 'URBAN ICONS',
       subtitle: 'Built for the ones ahead',
       badgeStyle: 'stencil',
-      image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80',
-      taggedProductId: 'just-dropped-grey-wayfarer',
+      image: '/images/figma/reel_urban_icons.png',
+      taggedProductId: 'figma-fastrack-black-wayfarer',
       likes: '14.2k',
     },
     {
@@ -47,17 +47,17 @@ export const BlogReelsSection: React.FC<BlogReelsSectionProps> = ({
       title: 'Titanium',
       subtitle: 'The Science of Lightness',
       badgeStyle: 'clean',
-      image: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
-      taggedProductId: 'just-dropped-blue-square-computer',
+      image: '/images/figma/reel_titanium.png',
+      taggedProductId: 'figma-brown-gradient-rimless',
       likes: '18.9k',
     },
     {
       id: 'streak-drip',
-      brand: 'streak',
+      brand: 'STREAK',
       title: 'DRIP',
       badgeStyle: 'graffiti',
-      image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=800&q=80',
-      taggedProductId: 'just-dropped-metallic-aviator',
+      image: '/images/figma/reel_drip.png',
+      taggedProductId: 'figma-fastrack-gold-oval',
       likes: '22.1k',
     },
     {
@@ -66,35 +66,15 @@ export const BlogReelsSection: React.FC<BlogReelsSectionProps> = ({
       title: 'Flip-ups',
       subtitle: 'Seamless clip-on transition',
       badgeStyle: 'bold',
-      image: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=800&q=80',
-      taggedProductId: 'just-dropped-green-square-sunglasses',
+      image: '/images/figma/reel_flipups.png',
+      taggedProductId: 'figma-cartier-blue-rimless',
       likes: '9.8k',
-    },
-    {
-      id: 'retro-classic',
-      brand: 'HAPPSTER',
-      title: 'RETRO CLASSIC',
-      subtitle: 'Timeless optical silhouettes',
-      badgeStyle: 'clean',
-      image: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=800&q=80',
-      taggedProductId: 'just-dropped-pink-cat-eye',
-      likes: '16.5k',
-    },
-    {
-      id: 'polar-aviators',
-      brand: 'HAPPSTER',
-      title: 'METALLIC AVIATORS',
-      subtitle: 'Aerospace-grade precision',
-      badgeStyle: 'bold',
-      image: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=800&q=80',
-      taggedProductId: 'just-dropped-metallic-aviator',
-      likes: '11.3k',
     },
   ];
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const scrollAmount = direction === 'left' ? -340 : 340;
+      const scrollAmount = direction === 'left' ? -310 : 310;
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
@@ -119,18 +99,18 @@ export const BlogReelsSection: React.FC<BlogReelsSectionProps> = ({
   }, []);
 
   return (
-    <section className="bg-[#FAF7F2] py-14 sm:py-20 border-b border-[#E8DCCF] overflow-hidden select-none">
+    <section className="bg-[#FAF7F2] py-12 sm:py-16 border-b border-[#E8DCCF] overflow-hidden select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Section Header */}
-        <div className="text-center mb-10 sm:mb-12">
-          <span className="text-[10px] font-sans font-bold tracking-[0.2em] text-[#C86A28] uppercase block mb-1">
+        {/* Section Header Matching Figma Exact Typography */}
+        <div className="text-center mb-8 sm:mb-10">
+          <span className="text-xs sm:text-sm font-sans font-bold tracking-[3px] text-[#C86A28] uppercase block mb-1.5">
             CURATED LOOKBOOKS
           </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1C1917] tracking-wider uppercase font-sans">
+          <h2 className="text-3xl sm:text-4xl md:text-[46px] font-black text-[#111111] tracking-tight uppercase font-sans leading-none">
             NEW &amp; TRENDING
           </h2>
-          <p className="mt-1.5 text-xs sm:text-sm text-stone-600 tracking-widest font-semibold uppercase font-sans">
+          <p className="mt-2 text-xs sm:text-[13px] text-[#4A4A4A] tracking-[1.5px] font-medium uppercase font-sans">
             THE LATEST FRAMES, CRAFTED FOR YOUR LOOK AND LIFESTYLE.
           </p>
         </div>
@@ -139,96 +119,65 @@ export const BlogReelsSection: React.FC<BlogReelsSectionProps> = ({
         <div className="relative">
           <div
             ref={scrollRef}
-            className="flex items-center gap-4 sm:gap-5 overflow-x-auto scrollbar-none py-2 pb-6 scroll-smooth"
+            className="flex items-center justify-center gap-5 sm:gap-6 overflow-x-auto scrollbar-none py-2 pb-4 scroll-smooth"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {reelItems.map((item) => (
               <div
                 key={item.id}
                 onClick={() => setSelectedReel(item)}
-                className="w-[260px] sm:w-[290px] md:w-[310px] shrink-0 h-[380px] sm:h-[430px] rounded-2xl overflow-hidden relative group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 bg-stone-900 border border-[#E8DCCF]"
+                className="w-[260px] sm:w-[280px] md:w-[285px] shrink-0 aspect-[283/620] rounded-[24px] overflow-hidden relative group cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1.5"
               >
-                {/* Background Image */}
+                {/* Master cropped reel card */}
                 <img
                   src={item.image}
                   alt={item.title}
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-95"
+                  className="w-full h-full object-cover"
                   loading="lazy"
                 />
 
-                {/* Subtle gradient dark vignette at bottom */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1C1917]/90 via-[#1C1917]/30 to-transparent" />
-
-                {/* Centered Large Circular Play Button */}
-                <div className="absolute inset-0 flex items-center justify-center z-10">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-white/90 bg-[#1C1917]/40 backdrop-blur-xs text-white flex items-center justify-center shadow-2xl group-hover:scale-110 group-hover:bg-[#C86A28] group-hover:border-[#C86A28] group-hover:text-white transition-all duration-300">
-                    <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-current ml-1" />
-                  </div>
-                </div>
-
-                {/* Bottom Overlay Info & "SHOP NOW ▶" button */}
-                <div className="absolute bottom-5 left-5 right-5 z-10 flex flex-col items-start gap-3">
-                  
-                  {/* Brand & Collection Title Graphic styling */}
-                  <div className="text-white drop-shadow-md space-y-0.5">
-                    <span className="text-[10px] uppercase font-bold tracking-widest block text-[#C86A28]">
-                      {item.brand}
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-none text-white font-sans">
-                      {item.title}
-                    </h3>
-                    {item.subtitle && (
-                      <p className="text-[11px] font-medium text-stone-200 tracking-wide font-sans">
-                        {item.subtitle}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* White / Terracotta SHOP NOW ▶ Pill Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const prod = products.find(p => p.id === item.taggedProductId);
-                      if (prod && onSelectProduct) {
-                        onSelectProduct(prod);
-                      } else {
-                        setSelectedReel(item);
-                      }
-                    }}
-                    className="bg-white hover:bg-[#C86A28] text-[#1C1917] hover:text-white py-2 px-4 rounded-xl text-[11px] sm:text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-md transform active:scale-95 transition-all duration-200 border border-white/20 cursor-pointer"
-                  >
-                    <span>SHOP NOW</span>
-                    <span className="text-[10px] leading-none text-[#C86A28] group-hover:text-white">▶</span>
-                  </button>
-                </div>
+                {/* Clickable overlay for SHOP NOW */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const prod = products.find(p => p.id === item.taggedProductId);
+                    if (prod && onSelectProduct) {
+                      onSelectProduct(prod);
+                    } else {
+                      setSelectedReel(item);
+                    }
+                  }}
+                  className="absolute bottom-6 left-6 right-6 h-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  aria-label={`Shop ${item.title}`}
+                />
               </div>
             ))}
           </div>
 
-          {/* Bottom Scrollbar Indicator Bar matching homepage theme */}
-          <div className="mt-4 flex items-center gap-3 max-w-2xl mx-auto px-4">
+          {/* Bottom Scrollbar Indicator Bar matching Figma orange scroll */}
+          <div className="mt-6 flex items-center gap-3 max-w-md mx-auto px-4">
             <button
               onClick={() => handleScroll('left')}
-              className="text-stone-500 hover:text-[#C86A28] transition-colors focus:outline-none text-xs font-bold cursor-pointer"
+              className="text-[#C86A28] hover:text-orange-700 transition-colors focus:outline-none text-xs font-bold cursor-pointer"
               aria-label="Scroll left"
             >
               &#9664;
             </button>
 
             {/* Scroll progress track */}
-            <div className="flex-1 h-1.5 bg-[#E8DCCF] rounded-full overflow-hidden relative">
+            <div className="flex-1 h-1 bg-[#D9CDC2] rounded-full overflow-hidden relative">
               <div
-                className="h-full bg-[#C86A28] rounded-full transition-all duration-150"
+                className="h-full bg-[#E85D04] rounded-full transition-all duration-200"
                 style={{
-                  width: '35%',
-                  transform: `translateX(${scrollProgress * 1.8}%)`,
+                  width: '45%',
+                  transform: `translateX(${scrollProgress * 1.2}%)`,
                 }}
               />
             </div>
 
             <button
               onClick={() => handleScroll('right')}
-              className="text-stone-500 hover:text-[#C86A28] transition-colors focus:outline-none text-xs font-bold cursor-pointer"
+              className="text-stone-400 hover:text-[#C86A28] transition-colors focus:outline-none text-xs font-bold cursor-pointer"
               aria-label="Scroll right"
             >
               &#9654;

@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -26,7 +26,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#FAF7F2] text-[#2A1E17] antialiased selection:bg-[#C86A28] selection:text-white min-h-screen">
+      <body suppressHydrationWarning className="bg-[#FAF7F2] text-[#2A1E17] antialiased selection:bg-[#C86A28] selection:text-white min-h-screen">
         <AuthProvider>
           <WishlistProvider>
             <CartProvider>

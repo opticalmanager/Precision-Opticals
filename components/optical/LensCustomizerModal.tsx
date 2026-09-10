@@ -384,8 +384,9 @@ export const LensCustomizerModal: React.FC<LensCustomizerModalProps> = ({
                     className="text-xs text-stone-600 mt-2"
                   />
                   {uploadedFileName && (
-                    <span className="text-emerald-700 font-bold block mt-2 text-xs">
-                      ✓ Attached: {uploadedFileName}
+                    <span className="text-emerald-700 font-bold flex items-center gap-1 mt-2 text-xs">
+                      <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span>Attached: {uploadedFileName}</span>
                     </span>
                   )}
                 </div>

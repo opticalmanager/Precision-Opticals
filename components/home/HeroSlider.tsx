@@ -17,6 +17,16 @@ interface Slide {
 
 const HERO_SLIDES: Slide[] = [
   {
+    id: 'new-arrival-aurora',
+    brand: 'NEW ARRIVAL',
+    title: 'AURORA EYEWEAR',
+    subtitle: 'TITANIUM COLLECTION • PRECISION OPTICS LUXURY EYEWEAR',
+    buttonText: 'SHOP COLLECTION',
+    imageUrl: '/images/figma_hero_banner.png',
+    categoryFilter: 'sunglasses',
+    accentColor: '#C86A28'
+  },
+  {
     id: 'see-beyond',
     brand: 'PRECISION OPTICS',
     title: 'SEE BEYOND.',
@@ -45,16 +55,6 @@ const HERO_SLIDES: Slide[] = [
     imageUrl: '/images/banner_theo_eyewear_1785153543549.jpg',
     brandFilter: 'theo',
     accentColor: '#E83E00'
-  },
-  {
-    id: 'vision-redefined',
-    brand: 'NEW ARRIVAL',
-    title: 'VISION REDEFINED',
-    subtitle: 'DISCOVER THE NEW YOU • PREMIUM EYEWEAR • TIMELESS ELEGANCE & HD CLARITY',
-    buttonText: 'SHOP COLLECTION',
-    imageUrl: '/images/banner_new_arrival_1785154858163.jpg',
-    categoryFilter: 'eyeglasses',
-    accentColor: '#3B82F6'
   }
 ];
 

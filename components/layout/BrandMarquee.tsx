@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sparkles } from 'lucide-react';
 
 export const BRAND_LOGOS = [
   { id: 'ray-ban', filterQuery: 'ray', label: 'Ray-Ban', font: 'font-sans font-black tracking-tighter text-sm sm:text-base' },
@@ -40,7 +41,7 @@ export const BrandMarquee: React.FC<BrandMarqueeProps> = ({ onSelectBrand }) => 
                 {brand.label}
               </button>
               {idx < BRAND_LOGOS.length - 1 && (
-                <span className="text-white/40 text-[8px] font-serif shrink-0 select-none">✦</span>
+                <Sparkles className="w-2.5 h-2.5 text-white/50 shrink-0 select-none" />
               )}
             </React.Fragment>
           ))}

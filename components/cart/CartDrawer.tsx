@@ -7,11 +7,13 @@ import { ImageWithFallback } from '../common/ImageWithFallback';
 
 interface CartDrawerProps {
   onProceedToCheckout: () => void;
+  onViewCartPage?: () => void;
   allProducts?: Product[];
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
   onProceedToCheckout,
+  onViewCartPage,
   allProducts = []
 }) => {
   const {
@@ -309,6 +311,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <span>PROCEED TO SECURE CHECKOUT</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            {onViewCartPage && (
+              <button
+                onClick={() => {
+                  closeCart();
+                  onViewCartPage();
+                }}
+                className="w-full text-center text-xs font-semibold text-stone-600 hover:text-[#C85A1B] transition-colors py-1 cursor-pointer"
+              >
+                Or View Full Cart Page →
+              </button>
+            )}
           </div>
         )}
       </div>

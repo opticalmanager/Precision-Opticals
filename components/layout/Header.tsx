@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ChevronRight, Glasses, Calendar, Phone } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ChevronRight, Glasses, Calendar, Phone, Check, Sparkles } from 'lucide-react';
 import { LUXURY_BRANDS } from '@/data/brands';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -12,8 +12,8 @@ interface HeaderProps {
   onSelectCategory: (category: string) => void;
   onSelectBrand: (brandId: string) => void;
   activeCategory: string;
-  currentPage?: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist';
-  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist') => void;
+  currentPage?: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart';
+  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,15 +25,39 @@ export const Header: React.FC<HeaderProps> = ({
   currentPage = 'home',
   onNavigate
 }) => {
-  const { cartCount, openCart } = useCart();
-  const { wishlistCount } = useWishlist();
+  const { cartCount, openCart, closeCart } = useCart();
+  const { wishlistCount, openWishlist } = useWishlist();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
 
-  const handleNavClick = (category?: string, page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' = 'shop') => {
-    if (page === 'contact' || page === 'appointment' || page === 'wishlist') {
+  const handleNavClick = (category?: string, page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart' = 'shop') => {
+    if (page === 'wishlist') {
+      openWishlist();
+      return;
+    }
+
+    if (page === 'cart') {
+      closeCart();
+      if (onNavigate) {
+        onNavigate('cart');
+      } else if (typeof window !== 'undefined') {
+        window.location.href = '/cart';
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'contact' || page === 'appointment' || page === 'about' || page === 'privacy') {
       if (onNavigate) {
         onNavigate(page);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (category === 'about') {
+      if (onNavigate) {
+        onNavigate('about');
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -43,16 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
       if (onNavigate) {
         onNavigate('home');
       }
-      if (category === 'about') {
-        setTimeout(() => {
-          const aboutElem = document.getElementById('about-us');
-          if (aboutElem) {
-            aboutElem.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 100);
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -86,6 +101,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Search className="w-4 h-4" />
             </button>
+            <button
+              onClick={openWishlist}
+              className="p-1 text-stone-800 hover:text-black focus:outline-none relative cursor-pointer sm:hidden"
+              aria-label="Wishlist"
+              title="Saved Frames"
+            >
+              <Heart className="w-4 h-4" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] w-3 h-3 rounded-full flex items-center justify-center font-sans font-bold">
+                  {wishlistCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -98,6 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <img
               src="/images/precision-optics-logo.png"
+              srcSet="/images/precision-optics-logo.png 1x, /images/precision-optics-logo@2x.png 2x"
               alt="Precision Optics"
               className="h-8 sm:h-10 md:h-11 w-auto object-contain transition-transform group-hover:scale-105"
             />
@@ -128,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* WISHLIST BUTTON */}
           <button
-            onClick={() => handleNavClick('all', 'wishlist')}
+            onClick={openWishlist}
             className="hidden sm:flex items-center gap-1 hover:text-orange-600 focus:outline-none uppercase relative cursor-pointer"
             title="Wishlist"
           >
@@ -143,8 +172,14 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* CART BUTTON */}
           <button
-            onClick={openCart}
-            className="flex items-center gap-1.5 focus:outline-none uppercase relative bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-full transition-colors shadow-sm text-[10px] font-bold cursor-pointer"
+            onClick={() => {
+              closeCart();
+              handleNavClick(undefined, 'cart');
+            }}
+            className={`flex items-center gap-1.5 focus:outline-none uppercase relative ${
+              currentPage === 'cart' ? 'bg-[#2A1E17] ring-2 ring-orange-500' : 'bg-orange-600 hover:bg-orange-700'
+            } text-white px-3 py-1 rounded-full transition-colors shadow-sm text-[10px] font-bold cursor-pointer`}
+            title="View Shopping Cart"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-white" />
             <span className="font-extrabold tracking-wider">CART ({cartCount})</span>
@@ -242,20 +277,19 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </li>
 
-            {/* 2. META (Image Logo) */}
+            {/* 2. META (Figma Styled Pill) */}
             <li className="py-2.5 flex items-center">
               <button
                 onClick={() => handleNavClick('meta-smart', 'shop')}
-                className={`hover:opacity-75 transition-opacity flex items-center cursor-pointer ${
-                  currentPage === 'shop' && activeCategory === 'meta-smart' ? 'border-b-2 border-orange-600 pb-0.5' : ''
+                className={`border border-[#38BDF8] bg-[#F0F9FF] text-[#0284C7] hover:bg-[#E0F2FE] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 transition-all text-[11px] font-bold tracking-wider cursor-pointer shadow-2xs ${
+                  currentPage === 'shop' && activeCategory === 'meta-smart' ? 'ring-2 ring-[#0284C7]' : ''
                 }`}
                 title="Meta Smart Glasses"
               >
-                <img
-                  src="/images/meta-logo.png"
-                  alt="Meta"
-                  className="h-[14px] sm:h-[15px] w-auto object-contain"
-                />
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#0284C7]">
+                  <path d="M12 10.5C10.5 8.5 8.5 7.5 6 7.5C2.7 7.5 0 10.2 0 13.5C0 16.8 2.7 19.5 6 19.5C9.5 19.5 11.5 16 12 14.5C12.5 16 14.5 19.5 18 19.5C21.3 19.5 24 16.8 24 13.5C24 10.2 21.3 7.5 18 7.5C15.5 7.5 13.5 8.5 12 10.5ZM6 17.5C3.8 17.5 2 15.7 2 13.5C2 11.3 3.8 9.5 6 9.5C8 9.5 9.8 10.8 10.8 12.5C9.8 14.5 8 17.5 6 17.5ZM18 17.5C16 17.5 14.2 14.5 13.2 12.5C14.2 10.8 16 9.5 18 9.5C20.2 9.5 22 11.3 22 13.5C22 15.7 20.2 17.5 18 17.5Z" />
+                </svg>
+                <span>META</span>
               </button>
             </li>
 
@@ -286,7 +320,7 @@ export const Header: React.FC<HeaderProps> = ({
                           MEN <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✔</span> FREE Anti-Glare Lenses Included
+                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> FREE Anti-Glare Lenses Included
                         </span>
                       </div>
                       <img
@@ -347,7 +381,7 @@ export const Header: React.FC<HeaderProps> = ({
                           WOMEN <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✔</span> FREE Anti-Glare Lenses Included
+                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> FREE Anti-Glare Lenses Included
                         </span>
                       </div>
                       <img
@@ -408,7 +442,7 @@ export const Header: React.FC<HeaderProps> = ({
                           COMPUTER <span className="font-normal text-stone-600 text-xs">Glasses</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✔</span> 99% Blue-Cut Protection
+                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> 99% Blue-Cut Protection
                         </span>
                       </div>
                       <span className="w-10 h-10 rounded-full bg-stone-900 text-[#FAF3EB] font-serif font-bold text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
@@ -489,7 +523,7 @@ export const Header: React.FC<HeaderProps> = ({
                           MEN <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✔</span> 100% UV400 Polarized Lenses
+                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> 100% UV400 Polarized Lenses
                         </span>
                       </div>
                       <img
@@ -550,7 +584,7 @@ export const Header: React.FC<HeaderProps> = ({
                           WOMEN <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✔</span> 100% UV400 Polarized Lenses
+                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> 100% UV400 Polarized Lenses
                         </span>
                       </div>
                       <img
@@ -611,7 +645,7 @@ export const Header: React.FC<HeaderProps> = ({
                           LUXURY & SPORT <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✔</span> Impact-Resistant Lenses
+                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> Impact-Resistant Lenses
                         </span>
                       </div>
                       <img
@@ -694,7 +728,7 @@ export const Header: React.FC<HeaderProps> = ({
                           CLEAR <span className="font-normal text-stone-600 text-xs">Contacts</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✦</span> 10% OFF with Gold
+                          <Sparkles className="w-3 h-3 text-amber-500 shrink-0" /> 10% OFF with Gold
                         </span>
                       </div>
                       <div className="w-10 h-10 rounded-full bg-white p-1 shadow-xs border border-[#E8DCCF] flex items-center justify-center overflow-hidden">
@@ -753,7 +787,7 @@ export const Header: React.FC<HeaderProps> = ({
                           COLOR <span className="font-normal text-stone-600 text-xs">Contacts</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✦</span> 10% OFF with Gold
+                          <Sparkles className="w-3 h-3 text-amber-500 shrink-0" /> 10% OFF with Gold
                         </span>
                       </div>
                       <div className="w-10 h-10 rounded-full bg-white p-1 shadow-xs border border-[#E8DCCF] flex items-center justify-center overflow-hidden">
@@ -812,7 +846,7 @@ export const Header: React.FC<HeaderProps> = ({
                           Solution & <span className="font-normal text-stone-600 text-xs">Accessories</span>
                         </h4>
                         <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <span>✦</span> 10% OFF with Gold
+                          <Sparkles className="w-3 h-3 text-amber-500 shrink-0" /> 10% OFF with Gold
                         </span>
                       </div>
                       <div className="w-10 h-10 rounded-full bg-white p-1 shadow-xs border border-[#E8DCCF] flex items-center justify-center overflow-hidden">
@@ -952,34 +986,21 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </li>
 
-            {/* 7. SALE (Image Logo) */}
+            {/* 7. SALE (Figma Editorial Calligraphy Style) */}
             <li className="py-2.5 flex items-center">
               <button
                 onClick={() => handleNavClick('sale', 'shop')}
-                className="hover:scale-105 transition-transform flex items-center cursor-pointer"
+                className="hover:scale-105 transition-transform flex items-center gap-1.5 cursor-pointer py-1 px-1.5"
                 title="Sale Offers"
               >
-                <img
-                  src="/images/sale-logo.webp"
-                  alt="Sale"
-                  className="h-[22px] sm:h-[24px] w-auto object-contain"
-                />
+                <span className="font-serif italic font-black text-red-600 text-lg leading-none select-none">Sale</span>
+                <span className="text-[9px] font-extrabold tracking-wider text-stone-900 border-b-2 border-red-500 pb-0.5 leading-none uppercase">
+                  UP TO 40%
+                </span>
               </button>
             </li>
 
-            {/* 8. BOOK EYE TEST */}
-            <li className="py-2.5">
-              <button
-                onClick={() => handleNavClick('all', 'appointment')}
-                className={`hover:text-orange-600 font-bold transition-colors cursor-pointer ${
-                  currentPage === 'appointment' ? 'text-orange-600 border-b-2 border-orange-600 pb-0.5' : 'text-orange-600'
-                }`}
-              >
-                BOOK EYE TEST
-              </button>
-            </li>
-
-            {/* 9. CONTACT US */}
+            {/* 8. CONTACT US */}
             <li className="py-2.5">
               <button
                 onClick={() => handleNavClick('all', 'contact')}
@@ -988,6 +1009,16 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 CONTACT US
+              </button>
+            </li>
+
+            {/* 9. ABOUT US */}
+            <li className="py-2.5">
+              <button
+                onClick={() => handleNavClick('about', 'shop')}
+                className="hover:text-orange-600 font-semibold transition-colors cursor-pointer text-stone-800"
+              >
+                ABOUT US
               </button>
             </li>
           </ul>
@@ -1062,6 +1093,41 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <img src="/images/sale-logo.webp" alt="Sale" className="h-4 w-auto object-contain" />
               <span className="font-bold text-orange-600">Exclusive Offers</span>
+            </button>
+            <button
+              onClick={() => {
+                openWishlist();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 text-stone-900 font-bold flex items-center justify-between text-orange-700 cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-orange-600" />
+                <span>Saved Frames</span>
+              </div>
+              {wishlistCount > 0 && (
+                <span className="bg-orange-600 text-white text-[9px] px-2 py-0.5 rounded-full font-sans">
+                  {wishlistCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                closeCart();
+                handleNavClick(undefined, 'cart');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 text-stone-900 font-bold flex items-center justify-between text-orange-700 cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5">
+                <ShoppingBag className="w-3.5 h-3.5 text-orange-600" />
+                <span>Shopping Cart</span>
+              </div>
+              {cartCount > 0 && (
+                <span className="bg-orange-600 text-white text-[9px] px-2 py-0.5 rounded-full font-sans">
+                  {cartCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => {

@@ -40,6 +40,7 @@ export const appointmentSchema = z.object({
   pincode: z.string().optional(),
   date: z.string().min(1, "Preferred date is required"),
   timeSlot: z.string().min(1, "Please select a time slot"),
+  notes: z.string().optional(),
 });
 
 export type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -78,3 +79,23 @@ export const prescriptionSchema = z.object({
 });
 
 export type PrescriptionFormValues = z.infer<typeof prescriptionSchema>;
+
+/**
+ * Zod validation schema for Privacy & Data Subject Rights
+ */
+export const privacyRequestSchema = z.object({
+  fullName: z.string().min(2, "Full name is required"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().optional(),
+  requestType: z.enum([
+    "access_data",
+    "delete_data",
+    "opt_out_marketing",
+    "rectify_data",
+    "other",
+  ]),
+  details: z.string().min(5, "Please provide details regarding your request"),
+});
+
+export type PrivacyRequestFormValues = z.infer<typeof privacyRequestSchema>;
+

@@ -110,12 +110,9 @@ export const NeedToKnowSection: React.FC = () => {
     <section className="bg-[#FAF7F2] py-14 sm:py-18 px-4 sm:px-6 lg:px-8 border-t border-b border-[#E8DCCF]">
       <div className="max-w-4xl mx-auto">
         
-        {/* Section Header */}
-        <div className="text-center mb-10 sm:mb-12">
-          <span className="text-[10px] font-sans font-bold tracking-[0.2em] text-[#C86A28] uppercase block mb-1">
-            FREQUENTLY ASKED QUESTIONS &amp; GUIDES
-          </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#1C1917] tracking-tight font-sans mb-2">
+        {/* Section Header Matching Figma */}
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="text-3xl sm:text-4xl md:text-[44px] font-black text-[#111111] tracking-tight font-sans mb-2">
             Need to <span className="font-serif italic font-normal text-[#C86A28]">Know</span>
           </h2>
           <p className="text-xs sm:text-sm text-stone-600 font-medium font-sans">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { BrandMarquee } from "@/components/layout/BrandMarquee";
 import { Footer } from "@/components/layout/Footer";
@@ -22,29 +22,46 @@ import { VirtualTryOnModal } from "@/components/optical/VirtualTryOnModal";
 import { LensCustomizerModal } from "@/components/optical/LensCustomizerModal";
 
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { CartPage } from "@/components/cart/CartPage";
+import { WishlistDrawer } from "@/components/wishlist/WishlistDrawer";
 import { CheckoutModal } from "@/components/cart/CheckoutModal";
 import { OrderSuccessModal } from "@/components/cart/OrderSuccessModal";
 
 import { SearchModal } from "@/components/pages/SearchModal";
 import { ContactUsPage } from "@/components/pages/ContactUsPage";
 import { AppointmentPage } from "@/components/pages/AppointmentPage";
-import { WishlistPage } from "@/components/pages/WishlistPage";
+import { AboutUsPage } from "@/components/pages/AboutUsPage";
+import { PrivacyPolicyPage } from "@/components/pages/PrivacyPolicyPage";
 import { OrderTrackingModal } from "@/components/pages/OrderTrackingModal";
 
 import { GemsLoyaltyWidget } from "@/components/widgets/GemsLoyaltyWidget";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 
 import { PRODUCTS } from "@/data/products";
+import { getCatalogProducts, filterAndSortProducts } from "@/lib/productsService";
 import { Product, FilterState, SelectedLensConfig, Order } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 export default function HomePage() {
-  const { addCustomLensToCart, addToCartDirect } = useCart();
+  const { addCustomLensToCart, addToCartDirect, closeCart } = useCart();
   const { openTrackingModal } = useAuth();
+  const { openWishlist } = useWishlist();
 
-  const [currentPage, setCurrentPage] = useState<"home" | "shop" | "contact" | "appointment" | "wishlist">("home");
-  const [products] = useState<Product[]>(PRODUCTS);
+  const [currentPage, setCurrentPage] = useState<"home" | "shop" | "contact" | "appointment" | "wishlist" | "about" | "privacy" | "cart">("home");
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+
+  // Background optimistic hydration from Supabase
+  useEffect(() => {
+    getCatalogProducts()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setProducts(data);
+        }
+      })
+      .catch((err) => console.warn("Supabase hydration skipped:", err));
+  }, []);
 
   // Filter State
   const [filterState, setFilterState] = useState<FilterState>({
@@ -90,73 +107,9 @@ export default function HomePage() {
     });
   };
 
-  // Filtered & Sorted Products
+  // Filtered & Sorted Products with high-performance zero-latency memoization
   const filteredProducts = useMemo(() => {
-    let result = [...products];
-
-    // Category Filter
-    if (filterState.category === "sunglasses") {
-      result = result.filter((p) => p.category === "sunglasses");
-    } else if (filterState.category === "eyeglasses") {
-      result = result.filter((p) => p.category === "eyeglasses");
-    } else if (filterState.category === "meta-smart") {
-      result = result.filter((p) => p.category === "meta-smart");
-    } else if (filterState.category === "kids") {
-      result = result.filter((p) => p.category === "kids" || p.gender === "kids");
-    } else if (filterState.category === "new") {
-      result = result.filter((p) => p.isNewArrival);
-    } else if (filterState.category === "sale") {
-      result = result.filter((p) => p.isOnSale || p.originalPrice);
-    }
-
-    // Gender Filter
-    if (filterState.gender && filterState.gender.length > 0) {
-      result = result.filter((p) => {
-        if (filterState.gender.includes("men")) {
-          return p.gender === "men" || p.gender === "unisex";
-        }
-        if (filterState.gender.includes("women")) {
-          return p.gender === "women" || p.gender === "unisex";
-        }
-        if (filterState.gender.includes("kids")) {
-          return p.gender === "kids" || p.category === "kids";
-        }
-        return filterState.gender.includes(p.gender);
-      });
-    }
-
-    // Brands Filter
-    if (filterState.brands.length > 0) {
-      result = result.filter((p) =>
-        filterState.brands.some((b) => p.brand.toLowerCase().includes(b.toLowerCase()))
-      );
-    }
-
-    // Shapes Filter
-    if (filterState.shapes.length > 0) {
-      result = result.filter((p) => filterState.shapes.includes(p.shape));
-    }
-
-    // Rim Types
-    if (filterState.rimTypes.length > 0) {
-      result = result.filter((p) => filterState.rimTypes.includes(p.rimType));
-    }
-
-    // Materials
-    if (filterState.materials.length > 0) {
-      result = result.filter((p) => filterState.materials.includes(p.material));
-    }
-
-    // Sort By
-    if (filterState.sortBy === "price-asc") {
-      result.sort((a, b) => a.price - b.price);
-    } else if (filterState.sortBy === "price-desc") {
-      result.sort((a, b) => b.price - a.price);
-    } else if (filterState.sortBy === "newest") {
-      result.sort((a, b) => (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0));
-    }
-
-    return result;
+    return filterAndSortProducts(products, filterState);
   }, [products, filterState]);
 
   const handleSelectProduct = (product: Product) => {
@@ -208,14 +161,47 @@ export default function HomePage() {
     }
   };
 
-  const handleNavigate = (page: "home" | "shop" | "contact" | "appointment" | "wishlist") => {
+  // Synchronize initial page from URL parameter if present (?page=about, ?page=privacy)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const pageParam = params.get("page");
+      if (pageParam === "about" || pageParam === "about-us") setCurrentPage("about");
+      else if (pageParam === "privacy" || pageParam === "privacy-policy") setCurrentPage("privacy");
+      else if (pageParam === "contact") setCurrentPage("contact");
+      else if (pageParam === "appointment") setCurrentPage("appointment");
+      else if (pageParam === "shop") setCurrentPage("shop");
+      else if (pageParam === "cart") setCurrentPage("cart");
+    }
+  }, []);
+
+  const handleNavigate = (page: "home" | "shop" | "contact" | "appointment" | "wishlist" | "about" | "privacy" | "cart") => {
+    closeCart();
+    if (page === "wishlist") {
+      openWishlist();
+      return;
+    }
     setSelectedProductDetail(null);
     setCurrentPage(page);
+    if (typeof window !== "undefined") {
+      const url = page === "home" ? "/" : `/?page=${page}`;
+      window.history.pushState(null, "", url);
+    }
     if (page === "home") {
       setFilterState((prev) => ({ ...prev, category: "all", brands: [] }));
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const handleOpenCartEvent = () => {
+      handleNavigate("cart");
+    };
+    window.addEventListener("open-cart-page", handleOpenCartEvent);
+    return () => {
+      window.removeEventListener("open-cart-page", handleOpenCartEvent);
+    };
+  }, []);
 
   const handleConfirmLensConfig = (config: SelectedLensConfig) => {
     if (!selectedLensCustomizerProduct) return;
@@ -251,6 +237,7 @@ export default function HomePage() {
             onOpenLensCustomizer={(p) => setSelectedLensCustomizerProduct(p)}
             allProducts={products}
             onSelectProduct={handleSelectProduct}
+            onNavigateToCart={() => handleNavigate("cart")}
           />
         ) : (
           <>
@@ -272,41 +259,96 @@ export default function HomePage() {
                 <JustDroppedSection
                   products={products}
                   onSelectProduct={handleSelectProduct}
-                  onViewAll={() => {
+                  onViewAll={(tab) => {
                     handleResetFilters();
+                    if (tab === "new") {
+                      handleUpdateFilter({ category: "new" });
+                    } else if (tab === "bestsellers") {
+                      handleUpdateFilter({ sortBy: "featured" });
+                    }
                     setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                 />
 
                 <ShopByGender
-                  onSelectGender={handleSelectGender}
+                  onSelectGender={(gender) => {
+                    handleSelectGender(gender);
+                    setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                   activeGender={filterState.gender}
                   activeCategory={filterState.category}
-                  onExploreShop={() => setCurrentPage("shop")}
-                  onSelectCategory={(cat) => handleUpdateFilter({ category: cat })}
+                  onExploreShop={() => {
+                    setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  onSelectCategory={(cat) => {
+                    handleUpdateFilter({ category: cat, brands: [], shapes: [] });
+                    setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                 />
 
                 <ShopByShapeSection
+                  category="sunglasses"
                   onSelectShape={(shape, category) => {
+                    handleResetFilters();
                     handleUpdateFilter({
                       shapes: [shape],
                       category: category || "sunglasses",
                     });
                     setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   activeCategory={filterState.category}
                 />
 
                 <CollectorsEditionSection
+                  products={products}
+                  onSelectProduct={handleSelectProduct}
                   onExploreCollection={() => {
                     handleResetFilters();
                     setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
+                />
+
+                <ShopByShapeSection
+                  category="eyeglasses"
+                  onSelectShape={(shape, category) => {
+                    handleResetFilters();
+                    handleUpdateFilter({
+                      shapes: [shape],
+                      category: category || "eyeglasses",
+                    });
+                    setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  activeCategory={filterState.category}
                 />
 
                 <TrendingSearchesSection
                   products={products}
                   onSelectProduct={handleSelectProduct}
+                  onExploreTrending={(pillId) => {
+                    handleResetFilters();
+                    if (pillId === "ray-ban") {
+                      handleUpdateFilter({ brands: ["Ray-Ban"], category: "sunglasses" });
+                    } else if (pillId === "gucci") {
+                      handleUpdateFilter({ brands: ["Gucci"], category: "sunglasses" });
+                    } else if (pillId === "oakley") {
+                      handleUpdateFilter({ brands: ["Oakley"], category: "sunglasses" });
+                    } else if (pillId === "rimless") {
+                      handleUpdateFilter({ rimTypes: ["rimless"], category: "eyeglasses" });
+                    } else if (pillId === "polarised") {
+                      handleUpdateFilter({ category: "sunglasses" });
+                    } else if (pillId === "wayfarer") {
+                      handleUpdateFilter({ shapes: ["wayfarer"] });
+                    }
+                    setCurrentPage("shop");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                 />
 
                 <BlogReelsSection
@@ -341,16 +383,37 @@ export default function HomePage() {
               <AppointmentPage
                 onNavigateHome={() => handleNavigate("home")}
                 onNavigateShop={() => handleNavigate("shop")}
+                onNavigateContact={() => handleNavigate("contact")}
               />
             )}
 
-            {/* VIEW 6: WISHLIST SAVED FRAMES PAGE */}
-            {currentPage === "wishlist" && (
-              <WishlistPage
-                allProducts={products}
-                onSelectProduct={handleSelectProduct}
-                onNavigateShop={() => handleNavigate("shop")}
+            {/* VIEW 6: ABOUT PRECISION OPTICS PAGE (Figma 106:8153) */}
+            {currentPage === "about" && (
+              <AboutUsPage
                 onNavigateHome={() => handleNavigate("home")}
+                onNavigateShop={() => handleNavigate("shop")}
+                onNavigateContact={() => handleNavigate("contact")}
+              />
+            )}
+
+            {/* VIEW 7: PRIVACY POLICY PAGE (Figma 106:7668) */}
+            {currentPage === "privacy" && (
+              <PrivacyPolicyPage
+                onNavigateHome={() => handleNavigate("home")}
+                onNavigateContact={() => handleNavigate("contact")}
+              />
+            )}
+
+            {/* VIEW 8: DEDICATED CART PAGE (Figma 106:7035) */}
+            {currentPage === "cart" && (
+              <CartPage
+                onNavigateHome={() => handleNavigate("home")}
+                onNavigateShop={() => handleNavigate("shop")}
+                onNavigateContact={() => handleNavigate("contact")}
+                onProceedToCheckout={() => setIsCheckoutOpen(true)}
+                onSelectProduct={handleSelectProduct}
+                onOpenVirtualTryOn={(p) => setSelectedVirtualTryOnProduct(p)}
+                allProducts={products}
               />
             )}
           </>
@@ -360,8 +423,16 @@ export default function HomePage() {
       {/* Main Luxury Footer */}
       <Footer
         onSelectCategory={(cat) => {
+          if (cat === "about") {
+            handleNavigate("about");
+            return;
+          }
+          if (cat === "privacy") {
+            handleNavigate("privacy");
+            return;
+          }
           handleUpdateFilter({ category: cat as any, brands: [] });
-          if (cat !== "about") setCurrentPage("shop");
+          setCurrentPage("shop");
         }}
         onSelectBrand={handleSelectBrandFromHeader}
         onNavigate={handleNavigate}
@@ -374,7 +445,17 @@ export default function HomePage() {
       {/* Slide-over Cart Drawer */}
       <CartDrawer
         onProceedToCheckout={() => setIsCheckoutOpen(true)}
+        onViewCartPage={() => handleNavigate("cart")}
         allProducts={products}
+      />
+
+      {/* Slide-over Wishlist Drawer */}
+      <WishlistDrawer
+        allProducts={products}
+        onSelectProduct={handleSelectProduct}
+        onOpenVirtualTryOn={(p) => setSelectedVirtualTryOnProduct(p)}
+        onNavigateShop={() => handleNavigate("shop")}
+        onNavigateCart={() => handleNavigate("cart")}
       />
 
       {/* Modals */}

@@ -6,7 +6,7 @@ import { Mail, Phone, ChevronUp, Instagram, Facebook, Twitter } from 'lucide-rea
 interface FooterProps {
   onSelectCategory?: (category: string) => void;
   onSelectBrand?: (brandId: string) => void;
-  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist') => void;
+  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart') => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand, onNavigate }) => {
@@ -15,7 +15,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
   };
 
   const accountLinks = [
-    { label: 'Our Policies', action: () => {} },
+    { label: 'Our Policies', action: () => onNavigate && onNavigate('privacy') },
     { label: 'My Account', action: () => {} },
     { label: 'Create an Account', action: () => {} },
     { label: 'Neu Pass Rewards', action: () => {} },
@@ -23,12 +23,12 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
   ];
 
   const aboutLinks = [
-    { label: 'About Us', action: () => onNavigate && onNavigate('contact') },
+    { label: 'About Us', action: () => onNavigate && onNavigate('about') },
     { label: 'Blog', action: () => {} },
     { label: 'Contact Us', action: () => onNavigate && onNavigate('contact') },
-    { label: 'Privacy Notice', action: () => {} },
-    { label: 'Terms & Conditions', action: () => {} },
-    { label: 'Cyber Security Policy', action: () => {} },
+    { label: 'Privacy Notice', action: () => onNavigate && onNavigate('privacy') },
+    { label: 'Terms & Conditions', action: () => onNavigate && onNavigate('privacy') },
+    { label: 'Cyber Security Policy', action: () => onNavigate && onNavigate('privacy') },
   ];
 
   const usefulLinks = [
@@ -36,7 +36,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
     { label: 'Bulk Enquiry', action: () => onNavigate && onNavigate('contact') },
     { label: 'Precision Vision App', action: () => {} },
     { label: 'Hearing Aids', action: () => {} },
-    { label: 'Exercise Your Rights', action: () => {} },
+    { label: 'Exercise Your Rights', action: () => onNavigate && onNavigate('privacy') },
     { label: 'Glossary', action: () => {} },
     { label: 'AI Glasses Manual', action: () => {} },
   ];
@@ -81,8 +81,8 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
   };
 
   return (
-    <footer className="bg-[#2A1E17] text-white pt-12 pb-10 border-t border-[#3D2C22] font-sans relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <footer className="bg-[#2A1E17] text-white pt-14 sm:pt-16 pb-12 sm:pb-14 border-t border-[#3D2C22] font-sans relative">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         
         {/* 6 Column Links Section */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8 text-xs">
@@ -92,7 +92,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
             <h4 className="font-bold text-[13px] text-[#E59B62] tracking-wider uppercase mb-4 font-serif">
               ACCOUNT
             </h4>
-            <ul className="space-y-2.5 text-stone-300 text-[13px]">
+            <ul className="space-y-2.5 text-[#C4B6AA] text-[13px]">
               {accountLinks.map((link, idx) => (
                 <li key={idx}>
                   <button
@@ -111,7 +111,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
             <h4 className="font-bold text-[13px] text-[#E59B62] tracking-wider uppercase mb-4 font-serif">
               ABOUT PRECISION OPTICS
             </h4>
-            <ul className="space-y-2.5 text-stone-300 text-[13px]">
+            <ul className="space-y-2.5 text-[#C4B6AA] text-[13px]">
               {aboutLinks.map((link, idx) => (
                 <li key={idx}>
                   <button
@@ -130,7 +130,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
             <h4 className="font-bold text-[13px] text-[#E59B62] tracking-wider uppercase mb-4 font-serif">
               USEFUL LINKS
             </h4>
-            <ul className="space-y-2.5 text-stone-300 text-[13px]">
+            <ul className="space-y-2.5 text-[#C4B6AA] text-[13px]">
               {usefulLinks.map((link, idx) => (
                 <li key={idx}>
                   <button
@@ -149,7 +149,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
             <h4 className="font-bold text-[13px] text-[#E59B62] tracking-wider uppercase mb-4 font-serif">
               EYEGLASSES
             </h4>
-            <ul className="space-y-2.5 text-stone-300 text-[13px]">
+            <ul className="space-y-2.5 text-[#C4B6AA] text-[13px]">
               {eyeglassesLinks.map((link, idx) => (
                 <li key={idx}>
                   <button
@@ -168,7 +168,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
             <h4 className="font-bold text-[13px] text-[#E59B62] tracking-wider uppercase mb-4 font-serif">
               SUNGLASSES
             </h4>
-            <ul className="space-y-2.5 text-stone-300 text-[13px]">
+            <ul className="space-y-2.5 text-[#C4B6AA] text-[13px]">
               {sunglassesLinks.map((link, idx) => (
                 <li key={idx}>
                   <button
@@ -187,7 +187,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
             <h4 className="font-bold text-[13px] text-[#E59B62] tracking-wider uppercase mb-4 font-serif">
               CONTACT LENSES
             </h4>
-            <ul className="space-y-2.5 text-stone-300 text-[13px]">
+            <ul className="space-y-2.5 text-[#C4B6AA] text-[13px]">
               {contactLensesLinks.map((link, idx) => (
                 <li key={idx}>
                   <button
@@ -217,7 +217,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-5 text-xs text-stone-300">
+            <div className="flex flex-wrap items-center gap-5 text-xs text-[#C4B6AA]">
               <a href="mailto:cs@precisionoptics.com" className="flex items-center gap-1.5 hover:text-white transition-colors">
                 <Mail className="w-4 h-4 text-[#C86A28]" />
                 <span>cs@precisionoptics.com</span>

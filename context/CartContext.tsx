@@ -66,7 +66,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items, isLoaded]);
 
-  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const openCart = useCallback(() => {
+    setIsCartOpen(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("open-cart-page"));
+    }
+  }, []);
   const closeCart = useCallback(() => setIsCartOpen(false), []);
 
   const addToCartDirect = useCallback((product: Product, variant?: ProductVariant) => {
@@ -94,8 +99,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     toast.success("Added to Shopping Bag", {
       description: `${product.name} (${variant?.colorName || "Standard"}) added.`,
+      action: {
+        label: "View Cart",
+        onClick: () => {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("open-cart-page"));
+          }
+        },
+      },
     });
-    setIsCartOpen(true);
   }, []);
 
   const addCustomLensToCart = useCallback(
@@ -118,8 +130,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const lensTitle = config.lensPackage ? config.lensPackage.name : "Custom Rx Lenses";
       toast.success("Custom Lenses Configured", {
         description: `${product.name} fitted with ${lensTitle}.`,
+        action: {
+          label: "View Cart",
+          onClick: () => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("open-cart-page"));
+            }
+          },
+        },
       });
-      setIsCartOpen(true);
     },
     []
   );
