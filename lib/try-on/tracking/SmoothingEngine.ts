@@ -18,10 +18,10 @@ export class SmoothingEngine {
 
   constructor() {
     // High-responsiveness AR parameters:
-    // minCutoff = 2.5 Hz eliminates stationary micro-jitter
-    // beta = 2.0 dynamically increases cutoff to >50 Hz during head motion for zero-lag tracking
-    this.posFilter = new Vector3Filter(2.5, 2.0, 1.0);
-    this.scaleFilter = new OneEuroFilter(1.5, 1.0, 1.0);
+    // minCutoff = 2.0 Hz eliminates stationary micro-jitter
+    // beta = 2.5 dynamically opens cutoff to >60 Hz during rapid motion for zero perceptible lag
+    this.posFilter = new Vector3Filter(2.0, 2.5, 1.0);
+    this.scaleFilter = new OneEuroFilter(2.0, 1.5, 1.0);
   }
 
   /**
@@ -59,6 +59,15 @@ export class SmoothingEngine {
 
     // 1. Filter position (Vector3 OneEuro)
     const filteredPos = this.posFilter.filter(rawPose.position, timestampMs);
+    if (
+      !Number.isFinite(filteredPos.x) ||
+      !Number.isFinite(filteredPos.y) ||
+      !Number.isFinite(filteredPos.z)
+    ) {
+      filteredPos.x = rawPose.position.x;
+      filteredPos.y = rawPose.position.y;
+      filteredPos.z = rawPose.position.z;
+    }
 
     // 2. Filter rotation using adaptive Quaternion SLERP (eliminates Euler fighting & gimbal lock)
     if (rawPose.quaternion) {
@@ -73,17 +82,31 @@ export class SmoothingEngine {
       this.targetQuat.setFromEuler(this.tempEuler);
     }
 
-    // Adaptive SLERP speed: smoothly ramps from 0.40 (still) to 0.95 (rapid motion)
+    // Adaptive SLERP speed: smoothly ramps from 0.45 (still) to 0.98 (rapid motion)
     const angleDiff = this.currentQuat.angleTo(this.targetQuat);
-    const angularSpeed = angleDiff / dt; // rad/s
-    const slerpFactor = Math.min(0.95, Math.max(0.4, 0.4 + angularSpeed * 0.35));
-    this.currentQuat.slerp(this.targetQuat, slerpFactor);
+    const angularSpeed = Number.isFinite(angleDiff) ? angleDiff / dt : 0;
+    const confidenceMultiplier = confidenceState === "LOW_CONFIDENCE" ? 0.75 : 1.0;
+    const baseSlerp = Math.min(0.98, Math.max(0.45, 0.45 + angularSpeed * 0.4));
+    const slerpFactor = Number.isFinite(baseSlerp) ? Math.min(0.98, baseSlerp * confidenceMultiplier) : 0.8;
+
+    if (Number.isFinite(slerpFactor) && slerpFactor > 0) {
+      this.currentQuat.slerp(this.targetQuat, slerpFactor);
+    } else {
+      this.currentQuat.copy(this.targetQuat);
+    }
+
+    if (!Number.isFinite(this.currentQuat.x) || !Number.isFinite(this.currentQuat.w)) {
+      this.currentQuat.copy(this.targetQuat);
+    }
 
     // Derive Euler angles from smoothed quaternion for diagnostics and legacy consumers
     this.tempEuler.setFromQuaternion(this.currentQuat, "YXZ");
 
     // 3. Filter scale
-    const filteredScale = this.scaleFilter.filter(rawPose.scale, timestampMs);
+    let filteredScale = this.scaleFilter.filter(rawPose.scale, timestampMs);
+    if (!Number.isFinite(filteredScale) || filteredScale <= 0.1) {
+      filteredScale = rawPose.scale;
+    }
 
     const result: FacePose = {
       position: filteredPos,

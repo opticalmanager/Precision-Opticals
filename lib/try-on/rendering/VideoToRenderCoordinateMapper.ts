@@ -121,7 +121,59 @@ export class VideoToRenderCoordinateMapper {
     return { offsetX: this.cropOffsetX, offsetY: this.cropOffsetY };
   }
 
+  public getContainerDimensions(): { width: number; height: number } {
+    return { width: this.containerW, height: this.containerH };
+  }
+
+  public getCoverScale(): number {
+    return this.scale;
+  }
+
   public isMirrored(): boolean {
     return this.mirrored;
+  }
+
+  /**
+   * Returns vertical and horizontal pinhole focal lengths in screen pixels
+   */
+  public getFocalLengths(): { fx: number; fy: number } {
+    const tanFovHalf = Math.tan((this.cameraFov * Math.PI) / 360.0);
+    // Vertical focal length in canvas pixels
+    const fy = this.containerH / (2.0 * tanFovHalf);
+    // In standard Three.js PerspectiveCamera with square sensor pixels, fx = fy
+    return { fx: fy, fy };
+  }
+
+  /**
+   * Calculates true Euclidean distance between two normalized points in displayed screen pixels
+   * Eliminates anisotropic stretching between horizontal and vertical axes
+   */
+  public getPixelDistance(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number }
+  ): number {
+    const dxPixel = (p1.x - p2.x) * this.displayedW;
+    const dyPixel = (p1.y - p2.y) * this.displayedH;
+    return Math.sqrt(dxPixel * dxPixel + dyPixel * dyPixel);
+  }
+
+  /**
+   * Calculates true metric camera depth (Z in meters, negative) from detected pupil locations
+   * Uses adult average IPD (63mm = 0.063m) and pinhole camera triangulation
+   */
+  public calculateMetricDepth(
+    rightPupil: { x: number; y: number },
+    leftPupil: { x: number; y: number },
+    ipdMetricMeters = 0.063
+  ): number {
+    const pupilDistPixels = this.getPixelDistance(rightPupil, leftPupil);
+    if (pupilDistPixels <= 1.0) return -0.55;
+
+    const { fy } = this.getFocalLengths();
+    // Z = -(IPD * fy) / pupilDistancePixels
+    const depthMeters = -(ipdMetricMeters * fy) / pupilDistPixels;
+
+    // Clamp to realistic human webcam distance range (-0.28m to -1.30m)
+    return Math.max(-1.3, Math.min(-0.28, depthMeters));
   }
 }

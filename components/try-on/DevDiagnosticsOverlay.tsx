@@ -71,6 +71,12 @@ export const DevDiagnosticsOverlay: React.FC<DevDiagnosticsOverlayProps> = ({
         </div>
 
         <div className="border-t border-white/10 my-1 pt-1 space-y-1">
+          {metrics.metricDepthM !== undefined && (
+            <div className="flex justify-between">
+              <span className="text-stone-400">Metric Depth (Z):</span>
+              <span className="text-[#E59B62] font-semibold">{(metrics.metricDepthM * 100).toFixed(1)} cm</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-stone-400">Pitch (nod):</span>
             <span>{metrics.facePitchDeg.toFixed(1)}°</span>
@@ -87,6 +93,18 @@ export const DevDiagnosticsOverlay: React.FC<DevDiagnosticsOverlayProps> = ({
             <span className="text-stone-400">Scale factor:</span>
             <span>{metrics.appliedScale.toFixed(3)}x</span>
           </div>
+          {metrics.normalizedWidthMm !== undefined && (
+            <div className="flex justify-between text-stone-300">
+              <span className="text-stone-400">Physical Frame:</span>
+              <span>{metrics.normalizedWidthMm.toFixed(0)} mm</span>
+            </div>
+          )}
+          {metrics.rawWidthMm !== undefined && (
+            <div className="flex justify-between text-stone-400 text-[9.5px]">
+              <span>Raw GLB Width:</span>
+              <span>{metrics.rawWidthMm.toFixed(1)} mm</span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-white/10 my-1 pt-1 space-y-1 text-[10px] text-stone-400">

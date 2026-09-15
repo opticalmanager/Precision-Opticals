@@ -15,6 +15,7 @@ export class FaceLandmarkerService {
   private landmarker: FaceLandmarker | null = null;
   private isInitializing = false;
   private initPromise: Promise<FaceLandmarker | null> | null = null;
+  private lastTimestampMs = -1;
 
   public static getInstance(): FaceLandmarkerService {
     if (!FaceLandmarkerService.instance) {
@@ -86,8 +87,15 @@ export class FaceLandmarkerService {
       return null;
     }
 
+    // MediaPipe Tasks Vision strictly requires monotonically increasing timestamps
+    let validTimestamp = Math.round(timestampMs);
+    if (validTimestamp <= this.lastTimestampMs) {
+      validTimestamp = this.lastTimestampMs + 1;
+    }
+    this.lastTimestampMs = validTimestamp;
+
     try {
-      return this.landmarker.detectForVideo(videoElement, timestampMs);
+      return this.landmarker.detectForVideo(videoElement, validTimestamp);
     } catch (err) {
       // Catch occasional dropped frame error during video seek/resize
       return null;

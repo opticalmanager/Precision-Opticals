@@ -119,6 +119,8 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
   // Active try-on configuration
   const currentConfig = resolveProductTryOnConfig(activeProduct);
   const activeCalibration = CalibrationStore.getCalibration(activeProduct.id, currentConfig);
+  const activeCalibrationRef = useRef(activeCalibration);
+  activeCalibrationRef.current = activeCalibration;
 
   // Throttled UI telemetry sync (updates React UI state at 5 Hz to ensure solid 60 FPS WebGL rendering)
   useEffect(() => {
@@ -151,6 +153,15 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
 
       const config = resolveProductTryOnConfig(prod);
       const success = await rendererRef.current.eyewear.loadModel(config.modelUrl);
+
+      if (success) {
+        const inspection = rendererRef.current.eyewear.getInspectionData();
+        if (inspection) {
+          latestDiagnosticsRef.current.rawWidthMm = inspection.rawWidthMm;
+          latestDiagnosticsRef.current.normalizedWidthMm = inspection.normalizedWidthMm;
+          latestDiagnosticsRef.current.autoScaleFactor = inspection.autoScaleFactor;
+        }
+      }
 
       setIsLoadingModel(false);
       TryOnAnalytics.track("vto_frame_switched", {
@@ -197,81 +208,85 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
     }
 
     // 2. Vision Detection Step (executes on active camera frames for smooth 60 FPS tracking)
-    if (video.readyState >= 2) {
-      lastTrackingTimeRef.current = now;
-      trackingCountRef.current++;
+    try {
+      if (video.readyState >= 2) {
+        lastTrackingTimeRef.current = now;
+        trackingCountRef.current++;
 
-      const landmarkerService = FaceLandmarkerService.getInstance();
-      const trackStart = performance.now();
-      const detectionResult = landmarkerService.detect(video, now);
-      const trackLatency = performance.now() - trackStart;
+        const landmarkerService = FaceLandmarkerService.getInstance();
+        const trackStart = performance.now();
+        const detectionResult = landmarkerService.detect(video, now);
+        const trackLatency = performance.now() - trackStart;
 
-      if (detectionResult && detectionResult.faceLandmarks && detectionResult.faceLandmarks.length > 0) {
-        const primaryFace = detectionResult.faceLandmarks[0];
-        const matrixData = detectionResult.facialTransformationMatrixes?.[0];
+        if (detectionResult && detectionResult.faceLandmarks && detectionResult.faceLandmarks.length > 0) {
+          const primaryFace = detectionResult.faceLandmarks[0];
+          const matrixData = detectionResult.facialTransformationMatrixes?.[0];
 
-        // Estimate 3D face pose with quaternion orientation and dynamic depth
-        const rawPose = FacePoseEstimator.estimate(
-          primaryFace,
-          matrixData,
-          renderer.getCoordinateMapper()
-        );
-
-        if (rawPose) {
-          // Assess face tracking quality
-          const quality = FaceQualityAssessor.assess(
+          // Estimate 3D face pose with quaternion orientation and dynamic depth
+          const rawPose = FacePoseEstimator.estimate(
             primaryFace,
-            rawPose.rotation.pitch,
-            rawPose.rotation.yaw,
-            rawPose.rotation.roll
+            matrixData,
+            renderer.getCoordinateMapper()
           );
-          latestQualityRef.current = quality;
 
-          // Apply adaptive smoothing
-          let processedPose: FacePose = rawPose;
-          if (smoothingEnabledRef.current) {
-            processedPose = smoothingRef.current.filter(rawPose, now, quality.state);
+          if (rawPose) {
+            // Assess face tracking quality
+            const quality = FaceQualityAssessor.assess(
+              primaryFace,
+              rawPose.rotation.pitch,
+              rawPose.rotation.yaw,
+              rawPose.rotation.roll
+            );
+            latestQualityRef.current = quality;
+
+            // Apply adaptive smoothing
+            let processedPose: FacePose = rawPose;
+            if (smoothingEnabledRef.current) {
+              processedPose = smoothingRef.current.filter(rawPose, now, quality.state);
+            }
+
+            lostHandlerRef.current.onPoseDetected(processedPose);
+
+            // Apply product frame-specific optical calibration
+            const calibrated = applyCalibration(processedPose, activeCalibrationRef.current);
+
+            // Update Three.js scene transforms using direct Quaternion orientation
+            renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            renderer.eyewear.setOpacity(1.0);
+
+            latestDiagnosticsRef.current.trackingLatencyMs = trackLatency;
+            latestDiagnosticsRef.current.confidence = quality.overallConfidence;
+            latestDiagnosticsRef.current.facePitchDeg = (calibrated.rotation.pitch * 180) / Math.PI;
+            latestDiagnosticsRef.current.faceYawDeg = (calibrated.rotation.yaw * 180) / Math.PI;
+            latestDiagnosticsRef.current.faceRollDeg = (calibrated.rotation.roll * 180) / Math.PI;
+            latestDiagnosticsRef.current.appliedScale = calibrated.scale;
+            latestDiagnosticsRef.current.metricDepthM = Math.abs(calibrated.position.z);
           }
+        } else {
+          // Face tracking momentarily lost
+          lostHandlerRef.current.onPoseLost(now);
+          const opacity = lostHandlerRef.current.getVisibilityOpacity(now);
+          renderer.eyewear.setOpacity(opacity);
 
-          lostHandlerRef.current.onPoseDetected(processedPose);
-
-          // Apply product frame-specific optical calibration
-          const calibrated = applyCalibration(processedPose, activeCalibration);
-
-          // Update Three.js scene transforms using direct Quaternion orientation
-          renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
-          renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
-          renderer.eyewear.setOpacity(1.0);
-
-          latestDiagnosticsRef.current.trackingLatencyMs = trackLatency;
-          latestDiagnosticsRef.current.confidence = quality.overallConfidence;
-          latestDiagnosticsRef.current.facePitchDeg = (calibrated.rotation.pitch * 180) / Math.PI;
-          latestDiagnosticsRef.current.faceYawDeg = (calibrated.rotation.yaw * 180) / Math.PI;
-          latestDiagnosticsRef.current.faceRollDeg = (calibrated.rotation.roll * 180) / Math.PI;
-          latestDiagnosticsRef.current.appliedScale = calibrated.scale;
+          latestQualityRef.current = {
+            overallConfidence: 0,
+            state: "LOST",
+            isCentered: false,
+            isAdequatelyLit: false,
+            isWithinRotationBounds: false,
+            message: "Position your face in the frame",
+          };
         }
-      } else {
-        // Face tracking momentarily lost
-        lostHandlerRef.current.onPoseLost(now);
-        const opacity = lostHandlerRef.current.getVisibilityOpacity(now);
-        renderer.eyewear.setOpacity(opacity);
-
-        latestQualityRef.current = {
-          overallConfidence: 0,
-          state: "LOST",
-          isCentered: false,
-          isAdequatelyLit: false,
-          isWithinRotationBounds: false,
-          message: "Position your face in the frame",
-        };
       }
+    } catch (err) {
+      console.warn("VirtualTryOnModal vision frame error:", err);
+    } finally {
+      // 3. Render Three.js Scene to Canvas (guaranteed execution)
+      renderer.render();
+      animFrameIdRef.current = requestAnimationFrame(runRenderLoop);
     }
-
-    // 3. Render Three.js Scene to Canvas
-    renderer.render();
-
-    animFrameIdRef.current = requestAnimationFrame(runRenderLoop);
-  }, [activeCalibration]);
+  }, []);
 
   /**
    * Start camera and initialize Three.js

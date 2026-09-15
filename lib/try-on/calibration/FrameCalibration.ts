@@ -13,7 +13,7 @@ export const DEFAULT_CALIBRATION: FrameCalibration = {
 
 /**
  * Applies per-product optical calibration offsets to the smoothed face pose.
- * Uses rotation vectors to orient offsets naturally with the user's head orientation.
+ * Uses exact 3D Quaternion orientation to rotate local frame offsets naturally with head orientation.
  */
 export function applyCalibration(
   pose: FacePose,
@@ -26,47 +26,48 @@ export function applyCalibration(
 } {
   const finalScale = pose.scale * (calibration.scaleMultiplier || 1.0);
 
-  // Rotation Euler angles with calibration offsets
-  const pitch = pose.rotation.pitch + (calibration.pitchOffset || 0.0);
-  const yaw = pose.rotation.yaw + (calibration.yawOffset || 0.0);
-  const roll = pose.rotation.roll + (calibration.rollOffset || 0.0);
+  // 1. Compose orientation quaternion with local calibration rotation offsets
+  const baseQuat = pose.quaternion
+    ? new THREE.Quaternion(pose.quaternion.x, pose.quaternion.y, pose.quaternion.z, pose.quaternion.w)
+    : new THREE.Quaternion().setFromEuler(new THREE.Euler(pose.rotation.pitch, pose.rotation.yaw, pose.rotation.roll, "YXZ"));
 
-  // Derive calibrated quaternion
-  const euler = new THREE.Euler(pitch, yaw, roll, "YXZ");
-  const quat = new THREE.Quaternion().setFromEuler(euler);
+  const pOff = calibration.pitchOffset || 0.0;
+  const yOff = calibration.yawOffset || 0.0;
+  const rOff = calibration.rollOffset || 0.0;
 
-  // Transform local frame offsets (horizontal, vertical, depth) along head orientation
-  const vOffset = calibration.verticalOffset || 0.0;
-  const dOffset = calibration.depthOffset || 0.0;
-  const hOffset = calibration.horizontalOffset || 0.0;
+  if (Math.abs(pOff) > 0.0001 || Math.abs(yOff) > 0.0001 || Math.abs(rOff) > 0.0001) {
+    const offsetQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pOff, yOff, rOff, "YXZ"));
+    baseQuat.multiply(offsetQuat);
+  }
 
-  // Approximate rotation of offsets by head angles for realistic adherence
-  // Pitch rotates Y and Z:
-  const cosP = Math.cos(pose.rotation.pitch);
-  const sinP = Math.sin(pose.rotation.pitch);
-  const cosY = Math.cos(pose.rotation.yaw);
-  const sinY = Math.sin(pose.rotation.yaw);
+  // 2. Transform local frame position offsets (horizontal, vertical, depth) rigidly along head orientation
+  const localOffset = new THREE.Vector3(
+    calibration.horizontalOffset || 0.0,
+    calibration.verticalOffset || 0.0,
+    calibration.depthOffset || 0.0
+  );
+  localOffset.applyQuaternion(baseQuat);
 
-  const localY = vOffset * cosP - dOffset * sinP;
-  const localZ = vOffset * sinP + dOffset * cosP;
-  const localX = hOffset * cosY - dOffset * sinY;
+  const finalPos = {
+    x: pose.position.x + localOffset.x,
+    y: pose.position.y + localOffset.y,
+    z: pose.position.z + localOffset.z,
+  };
+
+  const euler = new THREE.Euler().setFromQuaternion(baseQuat, "YXZ");
 
   return {
-    position: {
-      x: pose.position.x + localX,
-      y: pose.position.y + localY,
-      z: pose.position.z + localZ,
-    },
+    position: finalPos,
     rotation: {
-      pitch,
-      yaw,
-      roll,
+      pitch: euler.x,
+      yaw: euler.y,
+      roll: euler.z,
     },
     quaternion: {
-      x: quat.x,
-      y: quat.y,
-      z: quat.z,
-      w: quat.w,
+      x: baseQuat.x,
+      y: baseQuat.y,
+      z: baseQuat.z,
+      w: baseQuat.w,
     },
     scale: finalScale,
   };

@@ -46,6 +46,8 @@ function AdminTryOnCalibratorContent() {
     const cfg = resolveProductTryOnConfig(PRODUCTS[0]);
     return CalibrationStore.getCalibration(PRODUCTS[0].id, cfg);
   });
+  const calibrationRef = useRef(calibration);
+  calibrationRef.current = calibration;
 
   // Hydrate all products from catalog (including newly added DB products)
   useEffect(() => {
@@ -112,34 +114,38 @@ function AdminTryOnCalibratorContent() {
 
     const now = performance.now();
 
-    if (video.readyState >= 2) {
-      const landmarker = FaceLandmarkerService.getInstance();
-      const results = landmarker.detect(video, now);
+    try {
+      if (video.readyState >= 2) {
+        const landmarker = FaceLandmarkerService.getInstance();
+        const results = landmarker.detect(video, now);
 
-      if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
-        const primaryFace = results.faceLandmarks[0];
-        const matrixData = results.facialTransformationMatrixes?.[0];
+        if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
+          const primaryFace = results.faceLandmarks[0];
+          const matrixData = results.facialTransformationMatrixes?.[0];
 
-        const rawPose = FacePoseEstimator.estimate(
-          primaryFace,
-          matrixData,
-          renderer.getCoordinateMapper()
-        );
+          const rawPose = FacePoseEstimator.estimate(
+            primaryFace,
+            matrixData,
+            renderer.getCoordinateMapper()
+          );
 
-        if (rawPose) {
-          // Apply current active calibration
-          const calibrated = applyCalibration(rawPose, calibration);
+          if (rawPose) {
+            // Apply current active calibration
+            const calibrated = applyCalibration(rawPose, calibrationRef.current);
 
-          renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
-          renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
-          renderer.eyewear.setOpacity(1.0);
+            renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            renderer.eyewear.setOpacity(1.0);
+          }
         }
       }
+    } catch (err) {
+      console.warn("Calibrator vision error:", err);
+    } finally {
+      renderer.render();
+      animFrameRef.current = requestAnimationFrame(runCalibratorLoop);
     }
-
-    renderer.render();
-    animFrameRef.current = requestAnimationFrame(runCalibratorLoop);
-  }, [calibration]);
+  }, []);
 
   /**
    * Start Camera & WebGL

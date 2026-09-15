@@ -95,6 +95,10 @@ export interface DiagnosticMetrics {
   videoHeight: number;
   canvasWidth: number;
   canvasHeight: number;
+  metricDepthM?: number;
+  rawWidthMm?: number;
+  normalizedWidthMm?: number;
+  autoScaleFactor?: number;
 }
 
 export type CameraErrorType =

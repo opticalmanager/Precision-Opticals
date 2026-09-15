@@ -39,12 +39,18 @@ function createEyewearModel({
 
   const lensMat = new THREE.MeshPhysicalMaterial({
     color: lensColor,
-    transmission: 0.9,
-    opacity: 0.85,
+    opacity: 0.18,
     transparent: true,
-    roughness: 0.05,
+    roughness: 0.06,
+    metalness: 0.0,
     ior: 1.52,
     reflectivity: 0.5,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
+    transmission: 0,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
   });
 
   const eyeSpacing = 0.033; // ~66mm total eye spacing

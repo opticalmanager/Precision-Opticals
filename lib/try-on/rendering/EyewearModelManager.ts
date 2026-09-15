@@ -86,21 +86,34 @@ export class EyewearModelManager {
 
     this.container.visible = true;
 
-    if (opacity < 0.999) {
-      this.currentModel.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          if (Array.isArray(child.material)) {
-            child.material.forEach((m) => {
-              m.transparent = true;
-              m.opacity = opacity;
-            });
+    this.currentModel.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        const updateMat = (m: THREE.Material) => {
+          if (opacity >= 0.999) {
+            // Restore pristine original material parameters
+            m.transparent = m.userData.origTransparent ?? false;
+            m.opacity = m.userData.origOpacity ?? 1.0;
           } else {
-            child.material.transparent = true;
-            child.material.opacity = opacity;
+            m.transparent = true;
+            m.opacity = (m.userData.origOpacity ?? 1.0) * opacity;
           }
+          m.needsUpdate = true;
+        };
+
+        if (Array.isArray(child.material)) {
+          child.material.forEach(updateMat);
+        } else {
+          updateMat(child.material);
         }
-      });
-    }
+      }
+    });
+  }
+
+  /**
+   * Retrieves inspection metadata for the currently active frame
+   */
+  public getInspectionData(): import("../assets/ModelLoader").ModelInspectionData | null {
+    return this.currentModel?.userData?.inspection ?? null;
   }
 
   public setVisible(visible: boolean): void {

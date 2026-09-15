@@ -13,22 +13,22 @@ export class LightingManager {
   private envTexture: THREE.WebGLRenderTarget | null = null;
 
   constructor(scene: THREE.Scene, renderer?: THREE.WebGLRenderer) {
-    // 1. Neutral, clean ambient fill light (prevents yellow/white cast)
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    // 1. Natural, subtle ambient fill light to maintain deep contrast and true frame tones
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(this.ambientLight);
 
     // 2. Main Key Directional Light (angled from top-front)
-    this.keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    this.keyLight = new THREE.DirectionalLight(0xffffff, 0.75);
     this.keyLight.position.set(0.5, 1.2, 1.0);
     scene.add(this.keyLight);
 
-    // 3. Soft Cool Fill Light (balances frame contrast)
-    this.fillLight = new THREE.DirectionalLight(0xf0f4f8, 0.45);
+    // 3. Soft Cool Fill Light (balances frame contrast without blowing highlights)
+    this.fillLight = new THREE.DirectionalLight(0xf0f4f8, 0.35);
     this.fillLight.position.set(-0.6, 0.5, 0.8);
     scene.add(this.fillLight);
 
     // 4. Subtle Rim Highlight (creates definition along frame temples)
-    this.rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    this.rimLight = new THREE.DirectionalLight(0xffffff, 0.25);
     this.rimLight.position.set(0, -0.8, -0.5);
     scene.add(this.rimLight);
 
@@ -39,10 +39,11 @@ export class LightingManager {
         this.pmremGenerator.compileEquirectangularShader();
 
         const envScene = new THREE.Scene();
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x333333, 1.0);
+        // Calibrated subtle IBL reflections that don't wash out base color
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.45);
         envScene.add(hemiLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.35);
         dirLight.position.set(1, 2, 1);
         envScene.add(dirLight);
 
@@ -60,8 +61,8 @@ export class LightingManager {
   public adaptToBrightness(luminance: number): void {
     // Clamp luminance between 0.2 and 1.0
     const factor = Math.max(0.4, Math.min(1.4, luminance / 128.0));
-    this.ambientLight.intensity = 0.7 * factor;
-    this.keyLight.intensity = 0.85 * factor;
+    this.ambientLight.intensity = 0.4 * factor;
+    this.keyLight.intensity = 0.75 * factor;
   }
 
   public dispose(scene: THREE.Scene): void {

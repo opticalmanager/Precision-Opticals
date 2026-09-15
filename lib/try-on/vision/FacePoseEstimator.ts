@@ -19,10 +19,18 @@ export class FacePoseEstimator {
   private static tempMatrix = new THREE.Matrix4();
   private static tempEuler = new THREE.Euler();
   private static tempQuat = new THREE.Quaternion();
+  private static dummyPos = new THREE.Vector3();
+  private static dummyScale = new THREE.Vector3();
+
+  // Temporary vectors for orthogonal basis fallback
+  private static rightVec = new THREE.Vector3();
+  private static upVec = new THREE.Vector3();
+  private static fwdVec = new THREE.Vector3();
+  private static basisMatrix = new THREE.Matrix4();
 
   /**
    * Estimates FacePose with Quaternion orientation using 4x4 facial transformation matrix
-   * or anatomical landmark trigonometry as a robust fallback.
+   * or anatomical landmark 3D basis vector fallback.
    */
   public static estimate(
     landmarks: LandmarkPoint[],
@@ -40,40 +48,46 @@ export class FacePoseEstimator {
     const rightTemple = landmarks[LANDMARKS.RIGHT_TEMPLE];
     const leftTemple = landmarks[LANDMARKS.LEFT_TEMPLE];
 
-    // Calculate eye distance and face width
+    // 1. Calculate inter-eye distance and intrinsic face scale
     const interEyeDist = calculateInterEyeDistance(rightEye, leftEye);
     const faceWidth = rightTemple && leftTemple ? calculateFaceWidth(rightTemple, leftTemple) : undefined;
     const baseScale = computeBaseScale(interEyeDist, faceWidth);
 
-    // Compute dynamic perspective depth based on face size in viewport
-    const depthZ = customDepthZ ?? computeDynamicDepthZ(interEyeDist, 45);
+    // 2. Calculate true metric depth (meters from camera, negative along Z)
+    const depthZ = customDepthZ ?? coordMapper.calculateMetricDepth(rightEye, leftEye);
 
-    // Map 3D position of the nose bridge (where eyewear bridge rests)
+    // 3. Map 3D position of the nose bridge (where eyewear bridge rests)
     const position = coordMapper.mapNormalizedTo3D(noseSellion.x, noseSellion.y, depthZ);
 
-    let pitch = 0.0;
-    let yaw = 0.0;
-    let roll = 0.0;
     let matrixSuccess = false;
 
-    // 1. Try extracting rigid rotation from MediaPipe transformation matrix
+    // 4. Primary: Extract 3D rigid rotation directly from MediaPipe transformation matrix
     if (matrixData && matrixData.data && matrixData.data.length >= 16) {
       try {
         this.tempMatrix.fromArray(matrixData.data);
-        // Extract Euler angles (YXZ order is natural for head orientation: yaw, pitch, roll)
-        this.tempEuler.setFromRotationMatrix(this.tempMatrix, "YXZ");
+        this.tempMatrix.decompose(this.dummyPos, this.tempQuat, this.dummyScale);
+        this.tempQuat.normalize();
 
         // Validate values are finite numbers
         if (
-          Number.isFinite(this.tempEuler.x) &&
-          Number.isFinite(this.tempEuler.y) &&
-          Number.isFinite(this.tempEuler.z)
+          Number.isFinite(this.tempQuat.x) &&
+          Number.isFinite(this.tempQuat.y) &&
+          Number.isFinite(this.tempQuat.z) &&
+          Number.isFinite(this.tempQuat.w)
         ) {
-          // MediaPipe coordinate space: X right, Y up, Z forward (towards viewer)
-          pitch = -this.tempEuler.x;
-          // Invert yaw and roll when mirrored so turning right rotates right in the mirror view
-          yaw = coordMapper.isMirrored() ? -this.tempEuler.y : this.tempEuler.y;
-          roll = coordMapper.isMirrored() ? this.tempEuler.z : -this.tempEuler.z;
+          // Change of basis: MediaPipe Camera (X right, Y down, Z forward) -> Three.js Camera (X right, Y up, -Z forward)
+          let qx = -this.tempQuat.x;
+          let qy = this.tempQuat.y;
+          let qz = this.tempQuat.z;
+          let qw = -this.tempQuat.w;
+
+          // Mirror reflection: reflect across YZ plane (invert Yaw and Roll angular directions)
+          if (coordMapper.isMirrored()) {
+            qy = -qy;
+            qz = -qz;
+          }
+
+          this.tempQuat.set(qx, qy, qz, qw).normalize();
           matrixSuccess = true;
         }
       } catch {
@@ -81,41 +95,67 @@ export class FacePoseEstimator {
       }
     }
 
-    // 2. Anatomical Landmark Trigonometry (used if matrix is missing or failed)
+    // 5. Secondary: 3D Orthogonal Basis Vector Fallback from facial landmarks
     if (!matrixSuccess) {
-      // Roll: Angle of the eye line relative to horizontal
-      const dx = leftEye.x - rightEye.x;
-      const dy = leftEye.y - rightEye.y;
-      const rawRoll = Math.atan2(dy, dx);
-      roll = coordMapper.isMirrored() ? -rawRoll : rawRoll;
-
-      // Yaw: Asymmetry of nose relative to eye centers
-      const eyeMidX = (rightEye.x + leftEye.x) / 2.0;
-      const noseOffset = noseSellion.x - eyeMidX;
-      const rawYaw = (noseOffset / (interEyeDist || 0.1)) * 1.6;
-      yaw = coordMapper.isMirrored() ? -rawYaw : rawYaw;
-
-      // Pitch: Vertical position of nose sellion relative to eye center and mouth/chin
-      const eyeMidY = (rightEye.y + leftEye.y) / 2.0;
       const chin = landmarks[LANDMARKS.CHIN];
-      if (chin) {
-        const faceHeight = Math.abs(chin.y - eyeMidY);
-        const noseRelative = (noseSellion.y - eyeMidY) / (faceHeight || 0.2);
-        // Standard neutral nose position is ~0.35 of eye-to-chin distance
-        pitch = (noseRelative - 0.35) * 2.2;
+      const forehead = landmarks[LANDMARKS.FOREHEAD_TOP];
+      const noseTip = landmarks[LANDMARKS.NOSE_TIP];
+
+      // Right vector: Vector connecting right eye to left eye
+      const rZ = rightEye.z || 0;
+      const lZ = leftEye.z || 0;
+      this.rightVec.set(leftEye.x - rightEye.x, -(leftEye.y - rightEye.y), -(lZ - rZ)).normalize();
+
+      // Up vector: Vector connecting chin to forehead
+      const fZ = forehead ? forehead.z || 0 : 0;
+      const cZ = chin ? chin.z || 0 : 0;
+      if (forehead && chin) {
+        this.upVec.set(forehead.x - chin.x, -(forehead.y - chin.y), -(fZ - cZ)).normalize();
+      } else {
+        this.upVec.set(0, 1, 0);
+      }
+
+      // Forward vector: Normal to the facial plane (Right cross Up)
+      this.fwdVec.crossVectors(this.rightVec, this.upVec).normalize();
+      // Re-orthogonalize Up vector
+      this.upVec.crossVectors(this.fwdVec, this.rightVec).normalize();
+
+      this.basisMatrix.makeBasis(this.rightVec, this.upVec, this.fwdVec);
+      this.tempQuat.setFromRotationMatrix(this.basisMatrix).normalize();
+
+      if (coordMapper.isMirrored()) {
+        // Pure rotation mirror across YZ plane: invert Yaw and Roll, maintain Pitch
+        this.tempQuat.set(
+          this.tempQuat.x,
+          -this.tempQuat.y,
+          -this.tempQuat.z,
+          this.tempQuat.w
+        ).normalize();
       }
     }
 
-    // 3. Construct unified, normalized Quaternion representation
-    this.tempEuler.set(pitch, yaw, roll, "YXZ");
-    this.tempQuat.setFromEuler(this.tempEuler);
+    // Safety check: ensure all quaternion components are finite numbers
+    if (
+      !Number.isFinite(this.tempQuat.x) ||
+      !Number.isFinite(this.tempQuat.y) ||
+      !Number.isFinite(this.tempQuat.z) ||
+      !Number.isFinite(this.tempQuat.w) ||
+      !Number.isFinite(position.x) ||
+      !Number.isFinite(position.y) ||
+      !Number.isFinite(position.z)
+    ) {
+      return null;
+    }
+
+    // Derive Euler angles from the normalized quaternion for diagnostics
+    this.tempEuler.setFromQuaternion(this.tempQuat, "YXZ");
 
     return {
       position,
       rotation: {
-        pitch,
-        yaw,
-        roll,
+        pitch: this.tempEuler.x,
+        yaw: this.tempEuler.y,
+        roll: this.tempEuler.z,
       },
       quaternion: {
         x: this.tempQuat.x,
