@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       patient_name: body.fullName,
       patient_phone: body.phone,
       patient_email: body.email,
-      service: body.service,
+      service: body.purposeOfVisit || body.service || "Comprehensive Eye Examination",
       store_location: body.storeLocation || "Store 1 - JMD Arcade, Sector 104, Noida",
       appointment_date: body.date,
       time_slot: body.timeSlot,

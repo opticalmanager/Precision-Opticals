@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { formatINR } from "@/utils/formatters";
 import { ImageWithFallback } from "@/components/common/ImageWithFallback";
 import { toast } from "sonner";
+import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
 
 interface WishlistDrawerProps {
   allProducts?: Product[];
@@ -250,7 +251,7 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                          {onOpenVirtualTryOn && (
+                          {onOpenVirtualTryOn && hasTryOnModel(product) && (
                             <button
                               onClick={() => {
                                 closeWishlist();

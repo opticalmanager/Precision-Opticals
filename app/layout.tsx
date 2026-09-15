@@ -25,6 +25,22 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let r of registrations) { r.unregister(); }
+                });
+                if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                    for (let name of names) { caches.delete(name); }
+                  });
+                }
+              }
+            `,
+          }}
+        />
       </head>
       <body suppressHydrationWarning className="bg-[#FAF7F2] text-[#2A1E17] antialiased selection:bg-[#C86A28] selection:text-white min-h-screen">
         <AuthProvider>

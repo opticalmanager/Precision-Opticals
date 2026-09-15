@@ -10,11 +10,15 @@ import { Product, FilterState } from "@/types";
 // In-memory cache for ultra-fast instantaneous responses
 let cachedProducts: Product[] | null = null;
 
+export function invalidateProductsCache(): void {
+  cachedProducts = null;
+}
+
 /**
  * Fetch all active products from Supabase with graceful fallback to local catalogue.
  */
-export async function getCatalogProducts(): Promise<Product[]> {
-  if (cachedProducts && cachedProducts.length > 0) {
+export async function getCatalogProducts(forceRefresh = false): Promise<Product[]> {
+  if (!forceRefresh && cachedProducts && cachedProducts.length > 0) {
     return cachedProducts;
   }
 
@@ -90,6 +94,9 @@ export async function getCatalogProducts(): Promise<Product[]> {
               inStock: v.stock_quantity > 0,
             }))
           : localMatch?.variants,
+        tryOnEnabled: row.try_on_enabled ?? localMatch?.tryOnEnabled ?? false,
+        tryOnModelUrl: row.try_on_model_url || localMatch?.tryOnModelUrl,
+        tryOnConfig: row.try_on_configuration || localMatch?.tryOnConfig,
       };
     });
 

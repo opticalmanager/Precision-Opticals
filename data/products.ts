@@ -21,7 +21,7 @@ export const PRODUCTS: Product[] = [
     rating: 5.0,
     images: ['/images/products/figma_cartier_blue_rimless.png'],
     description: 'Cartier rimless oval sunglasses with precision faceted blue lenses and fluted platinum temples.',
-    specs: { lensWidth: 53, bridgeWidth: 18, templeLength: 140, frameWidth: 138, weight: '18g' }
+    specs: { lensWidth: 53, bridgeWidth: 18, templeLength: 140, frameWidth: 138, weight: '18g' },
   },
   {
     id: 'figma-brown-gradient-rimless',
@@ -43,7 +43,7 @@ export const PRODUCTS: Product[] = [
     rating: 5.0,
     images: ['/images/products/figma_brown_gradient_rimless.png'],
     description: 'Ultra-lightweight gold titanium rimless frame with bevelled brown gradient lenses.',
-    specs: { lensWidth: 54, bridgeWidth: 17, templeLength: 145, frameWidth: 140, weight: '16g' }
+    specs: { lensWidth: 54, bridgeWidth: 17, templeLength: 145, frameWidth: 140, weight: '16g' },
   },
   {
     id: 'figma-fastrack-black-wayfarer',
@@ -65,7 +65,7 @@ export const PRODUCTS: Product[] = [
     rating: 5.0,
     images: ['/images/products/figma_fastrack_black_wayfarer.png'],
     description: 'Bold rectangular silhouette in high-gloss Italian acetate with geometric temples.',
-    specs: { lensWidth: 55, bridgeWidth: 19, templeLength: 145, frameWidth: 142, weight: '24g' }
+    specs: { lensWidth: 55, bridgeWidth: 19, templeLength: 145, frameWidth: 142, weight: '24g' },
   },
   {
     id: 'figma-fastrack-gold-oval',
@@ -87,7 +87,7 @@ export const PRODUCTS: Product[] = [
     rating: 5.0,
     images: ['/images/products/figma_fastrack_gold_oval.png'],
     description: 'Vintage-inspired gold oval wireframe with gradient olive lenses and sculpted tips.',
-    specs: { lensWidth: 51, bridgeWidth: 20, templeLength: 140, frameWidth: 136, weight: '17g' }
+    specs: { lensWidth: 51, bridgeWidth: 20, templeLength: 140, frameWidth: 136, weight: '17g' },
   },
   {
     id: 'figma-cartier-gold-rectangle',
@@ -109,7 +109,7 @@ export const PRODUCTS: Product[] = [
     rating: 5.0,
     images: ['/images/products/figma_cartier_gold_rectangle.png'],
     description: '18k gold-finished rimless rectangle with soft blue tint and signature Cartier screws.',
-    specs: { lensWidth: 53, bridgeWidth: 18, templeLength: 145, frameWidth: 139, weight: '19g' }
+    specs: { lensWidth: 53, bridgeWidth: 18, templeLength: 145, frameWidth: 139, weight: '19g' },
   },
   {
     id: 'gast-astro-as02-53',

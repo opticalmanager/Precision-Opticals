@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
+const isValidUUID = (str?: string | null): boolean => {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
 // GET /api/wishlist?userId=...&sessionId=...
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    const sessionId = searchParams.get("sessionId");
+    const rawUserId = searchParams.get("userId");
+    const rawSessionId = searchParams.get("sessionId");
 
-    if (!userId && !sessionId) {
+    const validUserId = isValidUUID(rawUserId) ? rawUserId : null;
+    const effectiveSessionId = !validUserId ? (rawUserId || rawSessionId) : rawSessionId;
+
+    if (!validUserId && !effectiveSessionId) {
       return NextResponse.json({ wishlistIds: [], items: [] });
     }
 
@@ -17,10 +25,10 @@ export async function GET(req: Request) {
       .select("id, product_id, user_id, session_id, created_at")
       .order("created_at", { ascending: false });
 
-    if (userId) {
-      query = query.eq("user_id", userId);
-    } else if (sessionId) {
-      query = query.eq("session_id", sessionId);
+    if (validUserId) {
+      query = query.eq("user_id", validUserId);
+    } else if (effectiveSessionId) {
+      query = query.eq("session_id", effectiveSessionId);
     }
 
     const { data, error } = await query;
@@ -43,35 +51,47 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { action = "toggle", productId, userId, sessionId, localIds } = body;
+    const { action = "toggle", productId, userId: rawUserId, sessionId: rawSessionId, localIds } = body;
 
-    if (!userId && !sessionId) {
+    const validUserId = isValidUUID(rawUserId) ? rawUserId : null;
+    const effectiveSessionId = !validUserId ? (rawUserId || rawSessionId) : rawSessionId;
+
+    if (!validUserId && !effectiveSessionId) {
       return NextResponse.json({ error: "userId or sessionId is required" }, { status: 400 });
     }
 
     // Action 1: Batch sync local storage wishlist to DB
     if (action === "sync" && Array.isArray(localIds) && localIds.length > 0) {
-      const recordsToInsert = localIds.map((pid: string) => ({
-        user_id: userId || null,
-        session_id: userId ? null : sessionId,
-        product_id: pid,
-      }));
+      // Find what already exists to prevent duplicate inserts
+      let checkQuery = supabase.from("wishlist_items").select("product_id");
+      if (validUserId) checkQuery = checkQuery.eq("user_id", validUserId);
+      else checkQuery = checkQuery.eq("session_id", effectiveSessionId);
 
-      const { error } = await supabase
-        .from("wishlist_items")
-        .upsert(recordsToInsert, {
-          onConflict: userId ? "user_id,product_id" : "session_id,product_id",
-          ignoreDuplicates: true,
-        });
+      const { data: existingRows } = await checkQuery;
+      const existingSet = new Set((existingRows || []).map((r: any) => r.product_id));
 
-      if (error) {
-        console.warn("Wishlist sync warning:", error.message);
+      const newIdsToInsert = localIds.filter((pid: string) => !existingSet.has(pid));
+
+      if (newIdsToInsert.length > 0) {
+        const recordsToInsert = newIdsToInsert.map((pid: string) => ({
+          user_id: validUserId || null,
+          session_id: validUserId ? null : effectiveSessionId,
+          product_id: pid,
+        }));
+
+        const { error: insertErr } = await supabase
+          .from("wishlist_items")
+          .insert(recordsToInsert);
+
+        if (insertErr) {
+          console.warn("Wishlist sync insert warning:", insertErr.message);
+        }
       }
 
-      // Return current refreshed list
+      // Return refreshed wishlist IDs
       let refreshQuery = supabase.from("wishlist_items").select("product_id");
-      if (userId) refreshQuery = refreshQuery.eq("user_id", userId);
-      else refreshQuery = refreshQuery.eq("session_id", sessionId);
+      if (validUserId) refreshQuery = refreshQuery.eq("user_id", validUserId);
+      else refreshQuery = refreshQuery.eq("session_id", effectiveSessionId);
 
       const { data: refreshed } = await refreshQuery;
       const wishlistIds = (refreshed || []).map((r: any) => r.product_id);
@@ -85,16 +105,22 @@ export async function POST(req: Request) {
 
     // Action 2: Add single product
     if (action === "add") {
-      const { error } = await supabase
+      let checkQuery = supabase
         .from("wishlist_items")
-        .insert({
-          user_id: userId || null,
-          session_id: userId ? null : sessionId,
+        .select("id")
+        .eq("product_id", productId);
+
+      if (validUserId) checkQuery = checkQuery.eq("user_id", validUserId);
+      else checkQuery = checkQuery.eq("session_id", effectiveSessionId);
+
+      const { data: existing } = await checkQuery;
+
+      if (!existing || existing.length === 0) {
+        await supabase.from("wishlist_items").insert({
+          user_id: validUserId || null,
+          session_id: validUserId ? null : effectiveSessionId,
           product_id: productId,
         });
-
-      if (error && !error.message.includes("duplicate")) {
-        console.warn("Wishlist add error:", error.message);
       }
 
       return NextResponse.json({ success: true, isWishlisted: true });
@@ -106,8 +132,8 @@ export async function POST(req: Request) {
       .select("id")
       .eq("product_id", productId);
 
-    if (userId) checkQuery = checkQuery.eq("user_id", userId);
-    else checkQuery = checkQuery.eq("session_id", sessionId);
+    if (validUserId) checkQuery = checkQuery.eq("user_id", validUserId);
+    else checkQuery = checkQuery.eq("session_id", effectiveSessionId);
 
     const { data: existing } = await checkQuery;
 
@@ -118,8 +144,8 @@ export async function POST(req: Request) {
         .delete()
         .eq("product_id", productId);
 
-      if (userId) deleteQuery = deleteQuery.eq("user_id", userId);
-      else deleteQuery = deleteQuery.eq("session_id", sessionId);
+      if (validUserId) deleteQuery = deleteQuery.eq("user_id", validUserId);
+      else deleteQuery = deleteQuery.eq("session_id", effectiveSessionId);
 
       await deleteQuery;
       return NextResponse.json({ success: true, isWishlisted: false, action: "removed" });
@@ -128,8 +154,8 @@ export async function POST(req: Request) {
       await supabase
         .from("wishlist_items")
         .insert({
-          user_id: userId || null,
-          session_id: userId ? null : sessionId,
+          user_id: validUserId || null,
+          session_id: validUserId ? null : effectiveSessionId,
           product_id: productId,
         });
 

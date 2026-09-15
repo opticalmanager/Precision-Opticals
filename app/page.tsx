@@ -34,7 +34,6 @@ import { AboutUsPage } from "@/components/pages/AboutUsPage";
 import { PrivacyPolicyPage } from "@/components/pages/PrivacyPolicyPage";
 import { OrderTrackingModal } from "@/components/pages/OrderTrackingModal";
 
-import { GemsLoyaltyWidget } from "@/components/widgets/GemsLoyaltyWidget";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 
 import { PRODUCTS } from "@/data/products";
@@ -439,7 +438,6 @@ export default function HomePage() {
       />
 
       {/* Floating Interactive Concierge Widgets */}
-      <GemsLoyaltyWidget />
       <WhatsAppWidget />
 
       {/* Slide-over Cart Drawer */}
@@ -464,6 +462,8 @@ export default function HomePage() {
           product={selectedVirtualTryOnProduct}
           onClose={() => setSelectedVirtualTryOnProduct(null)}
           onAddToCart={(p) => addToCartDirect(p)}
+          allProducts={products}
+          onOpenLensCustomizer={(p) => setSelectedLensCustomizerProduct(p)}
         />
       )}
 

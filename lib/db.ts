@@ -162,6 +162,9 @@ export async function getProducts(options?: {
         description: row.description || "",
         specs: row.specs || { lensWidth: 52, bridgeWidth: 18, templeLength: 145, frameWidth: 140 },
         variants: mappedVariants,
+        tryOnEnabled: row.try_on_enabled ?? false,
+        tryOnModelUrl: row.try_on_model_url || undefined,
+        tryOnConfig: row.try_on_configuration || undefined,
       };
     });
   } catch (err) {
@@ -227,6 +230,9 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
         image: sortedImages[0] || "",
         inStock: v.stock_quantity > 0,
       })),
+      tryOnEnabled: data.try_on_enabled ?? false,
+      tryOnModelUrl: data.try_on_model_url || undefined,
+      tryOnConfig: data.try_on_configuration || undefined,
     };
   } catch {
     return FALLBACK_PRODUCTS.find((p) => p.id === slug) || null;

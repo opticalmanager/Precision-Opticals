@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { Product } from '@/types';
 import { HomeProductCard } from './HomeProductCard';
@@ -18,6 +18,8 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'new' | 'bestsellers'>('new');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Filter Just Dropped / New Arrivals (Prioritize exact Figma products)
   const justDroppedProducts = useMemo(() => {
@@ -57,16 +59,44 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
 
   const displayedProducts = activeTab === 'new' ? justDroppedProducts : bestSellerProducts;
 
+  const updateScrollState = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 6);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 6);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    // Reset scroll on tab change
+    el.scrollLeft = 0;
+    updateScrollState();
+
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+
+    const timer = setTimeout(updateScrollState, 150);
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+      clearTimeout(timer);
+    };
+  }, [activeTab, displayedProducts.length, updateScrollState]);
+
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-      const scrollAmount = direction === 'left' ? -280 : 280;
+      const scrollAmount = direction === 'left' ? -320 : 320;
       scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
   return (
-    <section className="bg-[#FAF7F2] py-8 sm:py-10 border-b border-[#E8DCCF]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="bg-[#FAF7F2] py-8 sm:py-10 border-b border-[#E8DCCF] select-none">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-4 lg:px-6">
         
         {/* Centered Tab Toggle Matching Figma */}
         <div className="flex justify-center items-center gap-6 mb-7">
@@ -92,30 +122,34 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
           </button>
         </div>
 
-        {/* Product Slider Container with Floating Nav Arrows */}
-        <div className="relative group/carousel">
+        {/* Product Slider Container with Perfectly Centered Nav Arrows & Compact Gutter */}
+        <div className="relative px-3 sm:px-5 lg:px-6">
           {/* Scroll Left Button */}
-          <button
-            onClick={() => scroll('left')}
-            className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 text-stone-700 hover:text-stone-950 flex items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer"
-            aria-label="Previous Products"
-          >
-            <ChevronLeft className="w-6 h-6 stroke-[1.5]" />
-          </button>
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-0 sm:-left-2 lg:-left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[#2A1E17] shadow-lg border border-[#E8DCCF] flex items-center justify-center hover:bg-[#C86A28] hover:text-white hover:border-[#C86A28] transition-all duration-200 focus:outline-none cursor-pointer active:scale-95"
+              aria-label="Previous Products"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
 
           {/* Scroll Right Button */}
-          <button
-            onClick={() => scroll('right')}
-            className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 text-stone-700 hover:text-stone-950 flex items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer"
-            aria-label="Next Products"
-          >
-            <ChevronRight className="w-6 h-6 stroke-[1.5]" />
-          </button>
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-0 sm:-right-2 lg:-right-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[#2A1E17] shadow-lg border border-[#E8DCCF] flex items-center justify-center hover:bg-[#C86A28] hover:text-white hover:border-[#C86A28] transition-all duration-200 focus:outline-none cursor-pointer active:scale-95"
+              aria-label="Next Products"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
 
           {/* Scrollable Track */}
           <div
             ref={scrollContainerRef}
-            className="flex gap-4 sm:gap-5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1 -mx-1"
+            className="flex gap-3.5 sm:gap-4.5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {displayedProducts.map((product) => (

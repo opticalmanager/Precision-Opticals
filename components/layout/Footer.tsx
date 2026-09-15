@@ -229,8 +229,12 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
               </a>
             </div>
 
-            <p className="text-[11px] text-stone-400 font-normal">
-              © {new Date().getFullYear()} Precision Optics Ltd. All Rights Reserved.
+            <p className="text-[11px] text-stone-400 font-normal flex items-center gap-3">
+              <span>© {new Date().getFullYear()} Precision Optics Ltd. All Rights Reserved.</span>
+              <span>•</span>
+              <a href="/admin" className="hover:text-stone-200 transition-colors">
+                Staff Portal
+              </a>
             </p>
           </div>
 

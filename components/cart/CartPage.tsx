@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import {
   ShoppingBag,
@@ -13,6 +13,7 @@ import {
   Plus,
   X,
   ChevronRight,
+  ChevronLeft,
   Tag,
   CheckCircle2,
 } from "lucide-react";
@@ -61,24 +62,61 @@ export const CartPage: React.FC<CartPageProps> = ({
     return available.length >= 4 ? available.slice(0, 6) : allProducts.slice(0, 6);
   }, [allProducts, items]);
 
+  // Horizontal scroll state for "You May Also Like"
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 10);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener("resize", checkScroll);
+    return () => window.removeEventListener("resize", checkScroll);
+  }, [checkScroll, recommendedProducts]);
+
+  const handleScroll = (direction: "left" | "right") => {
+    if (!scrollRef.current) return;
+    const distance = scrollRef.current.clientWidth * 0.75;
+    scrollRef.current.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <main className="w-full bg-[#FAF7F2] pb-24 text-[#2A1E17]">
-      {/* 1. HERO BANNER (LUNA AND ROSE DESIGNER EYEWEAR) */}
-      <section className="w-full bg-[#F6EBE5] border-b border-[#EBE6DF] overflow-hidden">
-        <div className="max-w-[1180px] mx-auto relative w-full h-[180px] sm:h-[220px] md:h-[260px]">
+      {/* 1. HERO BANNER (CONCISE LUNA & ROSE BANNER WITH SEAMLESS COLOR BLENDING) */}
+      <section className="w-full relative overflow-hidden bg-[#FAF7F2]">
+        <div className="max-w-[1140px] mx-auto relative w-full h-[145px] sm:h-[175px] md:h-[195px] lg:h-[210px]">
           <Image
-            src="/images/cart-hero-banner.jpg"
+            src="/images/cart-hero-banner.png"
             alt="Luna and Rose Designer Eyewear New Collection"
             fill
             priority
-            sizes="(max-width: 1180px) 100vw, 1180px"
+            sizes="(max-width: 1140px) 100vw, 1140px"
             className="object-cover object-center"
           />
+          {/* Subtle bottom fade into the #FAF7F2 canvas */}
+          <div className="absolute inset-x-0 bottom-0 h-10 sm:h-14 bg-gradient-to-t from-[#FAF7F2] via-[#FAF7F2]/50 to-transparent pointer-events-none" />
+          {/* Side soft feathering */}
+          <div className="absolute inset-y-0 left-0 w-6 sm:w-12 bg-gradient-to-r from-[#FAF7F2]/60 to-transparent pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-6 sm:w-12 bg-gradient-to-l from-[#FAF7F2]/30 to-transparent pointer-events-none" />
         </div>
       </section>
 
-      {/* 2. MAIN CART CONTENT CONTAINER (CONSTRAINED TO MAX-W-[1180px]) */}
-      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+      {/* 2. MAIN CART CONTENT CONTAINER (CONSTRAINED TO MAX-W-[1140px]) */}
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 pt-4 sm:pt-6 relative">
+        {/* Ambient top-right soft blush glow replicating Figma signature blending */}
+        <div
+          aria-hidden="true"
+          className="absolute right-0 top-0 w-[420px] h-[340px] pointer-events-none opacity-40 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#F4D9D2]/70 via-[#F7E6E1]/30 to-transparent blur-3xl -z-0"
+        />
         {/* Breadcrumbs */}
         <nav
           aria-label="Breadcrumb"
@@ -375,7 +413,7 @@ export const CartPage: React.FC<CartPageProps> = ({
               </div>
 
               {/* 2. NEED HELP? CARD MATCHING FIGMA */}
-              <div className="bg-gradient-to-br from-[#F8EDE3] via-[#FDF5EE] to-[#F5E2D2] border border-[#EBE6DF] rounded-2xl p-6 relative overflow-hidden shadow-xs min-h-[160px] flex items-center justify-between">
+              <div className="bg-gradient-to-br from-[#FBF3EC] via-[#F8EAE0] to-[#F4E0D2] border border-[#EBE6DF] rounded-[20px] p-6 relative overflow-hidden shadow-xs min-h-[160px] flex items-center justify-between">
                 <div className="relative z-10 max-w-[210px]">
                   <h3 className="font-serif font-bold text-xl sm:text-2xl text-[#2A1E17]">
                     Need Help?
@@ -385,7 +423,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                   </p>
                   <button
                     onClick={onNavigateContact}
-                    className="mt-3.5 inline-flex items-center gap-2 bg-[#2A1E17] hover:bg-[#3D312A] text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    className="mt-3.5 inline-flex items-center gap-2 bg-[#211712] hover:bg-[#C86A28] text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <span>Contact Us</span>
                     <Headphones className="w-3.5 h-3.5" />
@@ -393,15 +431,17 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </div>
 
                 {/* Optical glasses graphic on the right */}
-                <div className="absolute right-0 top-0 bottom-0 w-[150px] sm:w-[170px] pointer-events-none flex items-center justify-end">
+                <div className="absolute right-0 top-0 bottom-0 w-[140px] sm:w-[160px] pointer-events-none flex items-center justify-end">
                   <div className="relative w-full h-full">
                     <Image
                       src="/images/cart-need-help-glasses.jpg"
                       alt="Precision Optics Support"
                       fill
-                      sizes="170px"
+                      sizes="160px"
                       className="object-contain object-right"
                     />
+                    {/* Left soft blend to merge background colors */}
+                    <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#F8EAE0] to-transparent pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -410,22 +450,54 @@ export const CartPage: React.FC<CartPageProps> = ({
         )}
 
         {/* 3. YOU MAY ALSO LIKE SECTION MATCHING FIGMA */}
-        <section className="mt-16 sm:mt-20 pt-10 border-t border-[#EBE6DF]">
-          <div className="mb-6">
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#2A1E17]">
-              You May Also Like
-            </h2>
-            <div className="w-12 h-0.5 bg-[#C86A28] mt-2 rounded-full" />
+        <section className="mt-14 sm:mt-18 pt-8 sm:pt-10 border-t border-[#EBE6DF]">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#2A1E17]">
+                You May Also Like
+              </h2>
+              <div className="w-12 h-0.5 bg-[#C86A28] mt-2 rounded-full" />
+            </div>
+
+            {/* Navigation arrows displayed strictly only when scrollable */}
+            <div className="flex items-center gap-2">
+              {canScrollLeft && (
+                <button
+                  onClick={() => handleScroll("left")}
+                  aria-label="Previous products"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-[#EBE6DF] hover:border-[#C86A28] text-stone-700 hover:text-[#C86A28] flex items-center justify-center transition-all shadow-xs cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
+              {canScrollRight && (
+                <button
+                  onClick={() => handleScroll("right")}
+                  aria-label="Next products"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-[#EBE6DF] hover:border-[#C86A28] text-stone-700 hover:text-[#C86A28] flex items-center justify-center transition-all shadow-xs cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-            {recommendedProducts.slice(0, 4).map((product) => (
-              <ProductCard
+          <div
+            ref={scrollRef}
+            onScroll={checkScroll}
+            className="flex items-stretch gap-4 sm:gap-6 overflow-x-auto scrollbar-none pb-4 snap-x snap-mandatory"
+          >
+            {recommendedProducts.map((product) => (
+              <div
                 key={product.id}
-                product={product}
-                onSelectProduct={onSelectProduct}
-                onOpenVirtualTryOn={onOpenVirtualTryOn}
-              />
+                className="w-[240px] sm:w-[260px] md:w-[270px] shrink-0 snap-start"
+              >
+                <ProductCard
+                  product={product}
+                  onSelectProduct={onSelectProduct}
+                  onOpenVirtualTryOn={onOpenVirtualTryOn}
+                />
+              </div>
             ))}
           </div>
         </section>

@@ -1,0 +1,148 @@
+import React from "react";
+import { TrendingUp, TrendingDown, MoreVertical, IndianRupee, ShoppingBag, Users, Package } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+
+interface KpiData {
+  totalRevenue: number;
+  totalOrders: number;
+  totalCustomers: number;
+  avgOrderValue: number;
+  revenueGrowth?: string;
+  ordersGrowth?: string;
+  customersGrowth?: string;
+  aovGrowth?: string;
+}
+
+interface KpiCardsRowProps {
+  data: KpiData;
+  timeRange: string;
+  onTimeRangeChange: (val: string) => void;
+}
+
+export const KpiCardsRow: React.FC<KpiCardsRowProps> = ({
+  data,
+  timeRange,
+  onTimeRangeChange,
+}) => {
+  const cards = [
+    {
+      id: "revenue",
+      title: "TOTAL REVENUE",
+      value: formatCurrency(data.totalRevenue || 0),
+      growth: data.revenueGrowth || "+14.8%",
+      isPositive: true,
+      icon: IndianRupee,
+    },
+    {
+      id: "orders",
+      title: "TOTAL ORDERS",
+      value: (data.totalOrders || 0).toLocaleString(),
+      growth: data.ordersGrowth || "+9.2%",
+      isPositive: true,
+      icon: ShoppingBag,
+    },
+    {
+      id: "aov",
+      title: "AVG. ORDER VALUE",
+      value: formatCurrency(data.avgOrderValue || 0),
+      growth: data.aovGrowth || "+3.1%",
+      isPositive: true,
+      icon: Package,
+    },
+    {
+      id: "customers",
+      title: "CUSTOMERS",
+      value: (data.totalCustomers || 0).toLocaleString(),
+      growth: data.customersGrowth || "+6.4%",
+      isPositive: true,
+      icon: Users,
+    },
+  ];
+
+  return (
+    <div className="space-y-3">
+      {/* Time Range Selector Strip */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight text-[#2A1E17]">
+            Operations Overview
+          </h2>
+          <p className="text-xs text-stone-500">
+            Real-time optical retail performance and laboratory assembly status
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1 bg-[#FAF3EB] p-1 rounded-lg border border-[#E8DCCF] text-xs">
+          {[
+            { id: "today", label: "Today" },
+            { id: "7d", label: "Last 7 days" },
+            { id: "30d", label: "Last 30 days" },
+            { id: "month", label: "This month" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onTimeRangeChange(t.id)}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer text-xs ${
+                timeRange === t.id
+                  ? "bg-white text-[#2A1E17] shadow-2xs font-semibold"
+                  : "text-stone-500 hover:text-[#2A1E17]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Compact KPI Grid (Reference 2 style) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.id}
+              className="bg-white border border-[#E8DCCF] rounded-xl p-4 shadow-2xs hover:shadow-xs transition-shadow"
+            >
+              <div className="flex items-center justify-between text-stone-400 mb-2">
+                <span className="text-[11px] font-bold tracking-wider text-stone-500 uppercase flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5 text-[#C86A28]" />
+                  {card.title}
+                </span>
+                <button
+                  type="button"
+                  aria-label="More options"
+                  className="text-stone-400 hover:text-stone-600 p-0.5 rounded cursor-pointer"
+                >
+                  <MoreVertical className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="text-xl sm:text-2xl font-bold text-[#2A1E17] tracking-tight mb-2">
+                {card.value}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span
+                  className={`inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[11px] ${
+                    card.isPositive
+                      ? "text-emerald-700 bg-emerald-50"
+                      : "text-rose-700 bg-rose-50"
+                  }`}
+                >
+                  {card.isPositive ? (
+                    <TrendingUp className="w-3 h-3" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3" />
+                  )}
+                  {card.growth}
+                </span>
+                <span className="text-[11px] text-stone-400">vs last period</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

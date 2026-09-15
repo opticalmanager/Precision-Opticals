@@ -33,7 +33,8 @@ export const appointmentSchema = z.object({
     .min(10, "Please enter a valid 10-digit mobile number")
     .regex(/^[0-9+\s-]{10,15}$/, "Invalid phone format"),
   email: z.string().email("Please enter a valid email address"),
-  service: z.string().min(1, "Please select an optical service"),
+  service: z.string().optional().default("Comprehensive Eye Examination"),
+  purposeOfVisit: z.string().optional().default("Comprehensive Eye Examination"),
   type: z.enum(["in-store", "home"]).default("in-store"),
   storeLocation: z.string().min(1, "Please select a boutique clinic location"),
   address: z.string().optional(),

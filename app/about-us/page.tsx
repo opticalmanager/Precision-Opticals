@@ -9,7 +9,6 @@ import { AboutUsPage } from "@/components/pages/AboutUsPage";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { WishlistDrawer } from "@/components/wishlist/WishlistDrawer";
 import { SearchModal } from "@/components/pages/SearchModal";
-import { GemsLoyaltyWidget } from "@/components/widgets/GemsLoyaltyWidget";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 import { PRODUCTS } from "@/data/products";
 
@@ -68,7 +67,6 @@ export default function StandaloneAboutUsPage() {
       />
 
       {/* Floating Interactive Concierge Widgets */}
-      <GemsLoyaltyWidget />
       <WhatsAppWidget />
 
       {/* Cart and Wishlist Drawers */}

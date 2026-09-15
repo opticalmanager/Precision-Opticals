@@ -9,7 +9,6 @@ import { CartPage } from "@/components/cart/CartPage";
 import { CheckoutModal } from "@/components/cart/CheckoutModal";
 import { WishlistDrawer } from "@/components/wishlist/WishlistDrawer";
 import { SearchModal } from "@/components/pages/SearchModal";
-import { GemsLoyaltyWidget } from "@/components/widgets/GemsLoyaltyWidget";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 import { PRODUCTS } from "@/data/products";
 import { Product, Order } from "@/types";
@@ -74,7 +73,6 @@ export default function StandaloneCartPage() {
       />
 
       {/* Floating Interactive Concierge Widgets */}
-      <GemsLoyaltyWidget />
       <WhatsAppWidget />
 
       {/* Wishlist Drawer */}

@@ -72,7 +72,12 @@ export interface Product {
   description: string;
   specs: ProductSpecs;
   variants?: ProductVariant[];
+  tryOnEnabled?: boolean;
+  tryOnModelUrl?: string;
+  tryOnConfig?: import('./tryOn').TryOnConfiguration;
 }
+
+export * from './tryOn';
 
 export interface FilterState {
   category: string;

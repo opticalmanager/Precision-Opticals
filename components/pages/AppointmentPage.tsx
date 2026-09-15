@@ -9,19 +9,16 @@ import {
   MapPin,
   CheckCircle2,
   ArrowRight,
-  Glasses,
-  ChevronRight,
-  User,
   Phone,
   Mail,
-  SlidersHorizontal,
-  Eye,
-  Shield,
+  ShieldCheck,
+  ChevronDown,
+  Sparkles,
+  Award,
 } from "lucide-react";
 import { appointmentSchema, type AppointmentFormValues } from "@/lib/validations";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 interface AppointmentPageProps {
   onNavigateHome: () => void;
@@ -29,48 +26,57 @@ interface AppointmentPageProps {
   onNavigateContact?: () => void;
 }
 
-const APPOINTMENT_SERVICES = [
-  "12-Step Zero-Error Eye Test (Complimentary)",
-  "Progressive Lens Digital 3D Fitting & Centeration",
-  "Contact Lens Diagnostic Exam & Free Trial",
-  "Computer Vision Syndrome & Dry Eye Screening",
-  "Pediatric Eye Exam & Myopia Control Consultation",
-  "VIP Eyewear Wardrobe & Face-Shape Styling",
+const STORE_LOCATIONS = [
+  "123, MG Road, Near City Center, Sector 18, Noida",
+  "JMD Arcade, Sector 104, Noida",
+  "Amarpali Crystals Homes, Sector 76, Noida",
+  "Spectrum Metro Mall, Phase-1, Sector 75, Noida",
+  "Mahagun Mart, Gaur City 2, Greater Noida",
+  "Golf Course Road Flagship, DLF Phase 5, Gurugram",
+  "Indiranagar 100ft Luxury Boutique, Bengaluru",
 ];
 
-const STORES = [
-  "Store 1 - JMD Arcade, Sector 104, Noida",
-  "Store 2 - Amarpali Crystals Homes, Sector 76, Noida",
-  "Store 3 - Spectrum Metro Mall, Phase-1, Sector 75, Noida",
-  "Store 4 - Mahagun Mart, Gaur City 2, Greater Noida",
-  "Store 5 - Golf Course Road Boutique, DLF Phase 5, Gurugram",
-  "Store 6 - Indiranagar 100ft Luxury Flagship, Bengaluru",
+const PURPOSE_OPTIONS = [
+  "Comprehensive Eye Examination",
+  "Personalized Eyewear & Frame Consultation",
+  "Progressive Lens Digital 3D Fitting",
+  "Contact Lens Diagnostic Exam & Trial",
+  "Frame Adjustment & Precision Repair",
+  "Computer Vision & Blue-Cut Consultation",
 ];
 
-const TIME_SLOTS = [
-  "10:00 AM - 11:30 AM",
-  "11:30 AM - 01:00 PM",
-  "02:00 PM - 03:30 PM",
-  "03:30 PM - 05:00 PM",
-  "05:00 PM - 06:30 PM",
-  "06:30 PM - 08:00 PM",
+const TIME_SLOT_OPTIONS = [
+  "10:00 AM - 11:00 AM",
+  "11:00 AM - 12:00 PM",
+  "12:00 PM - 01:00 PM",
+  "02:00 PM - 03:00 PM",
+  "03:00 PM - 04:00 PM",
+  "04:00 PM - 05:00 PM",
+  "05:00 PM - 06:00 PM",
+  "06:00 PM - 07:00 PM",
+  "07:00 PM - 08:00 PM",
 ];
 
-const WHY_CHOOSE_US = [
+const WHY_BOOK_BENEFITS = [
   {
-    icon: Eye,
-    title: "12-Step Zero-Error Protocol",
-    description: "Industry-leading clinical eye examination with auto-refractometry and digital centeration.",
+    icon: Sparkles,
+    title: "Personalized Consultation",
+    description: "Get expert advice tailored to your needs",
   },
   {
-    icon: Glasses,
-    title: "100+ Luxury Frames for Trial",
-    description: "Try designer frames from Cartier, Tom Ford, Lindberg, and more during your visit.",
+    icon: Clock,
+    title: "Save Time",
+    description: "Skip the wait and get priority service",
   },
   {
-    icon: Shield,
-    title: "100% Free Consultation",
-    description: "No purchase obligation. Expert guidance from senior optometrists at zero cost.",
+    icon: ShieldCheck,
+    title: "Better Experience",
+    description: "One-on-one attention for perfect solutions",
+  },
+  {
+    icon: Award,
+    title: "Expert Guidance",
+    description: "Professional advice for eye health & style",
   },
 ];
 
@@ -82,13 +88,12 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [bookingId, setBookingId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState("11:30 AM - 01:00 PM");
 
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -96,18 +101,17 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
       fullName: "",
       phone: "",
       email: "",
-      service: "12-Step Zero-Error Eye Test (Complimentary)",
+      service: "Comprehensive Eye Examination",
+      purposeOfVisit: "Comprehensive Eye Examination",
       type: "in-store",
-      storeLocation: "Store 1 - JMD Arcade, Sector 104, Noida",
-      address: "",
-      pincode: "",
+      storeLocation: STORE_LOCATIONS[0],
       date: "",
-      timeSlot: "11:30 AM - 01:00 PM",
+      timeSlot: TIME_SLOT_OPTIONS[1],
       notes: "",
     },
   });
 
-  // Compute minimum date (today)
+  // Minimum date: today
   const minDate = useMemo(() => {
     const d = new Date();
     return d.toISOString().split("T")[0];
@@ -121,15 +125,20 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, id: newBookingId }),
+        body: JSON.stringify({
+          ...data,
+          id: newBookingId,
+          service: data.purposeOfVisit || data.service,
+        }),
       });
 
       const result = await res.json();
+      const confirmedId = result.bookingId || newBookingId;
 
-      setBookingId(result.bookingId || newBookingId);
+      setBookingId(confirmedId);
       setSubmitted(true);
       toast.success("Appointment Reserved!", {
-        description: `Reference: ${result.bookingId || newBookingId}. Our coordinator will confirm shortly.`,
+        description: `Booking ID: ${confirmedId}. Our eyewear specialist will confirm shortly.`,
       });
     } catch {
       setBookingId(newBookingId);
@@ -139,346 +148,352 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
     }
   };
 
-  const handleTimeSlotSelect = (slot: string) => {
-    setSelectedTimeSlot(slot);
-    setValue("timeSlot", slot);
+  const handleReset = () => {
+    reset();
+    setSubmitted(false);
+    setBookingId("");
   };
 
   return (
-    <div className="bg-[#FAF7F2] min-h-screen text-[#2A1E17] font-sans animate-in fade-in duration-200">
+    <div className="bg-[#FAF7F2] min-h-screen text-[#2A1E17] font-sans antialiased">
       {/* ============================================================ */}
-      {/* SECTION 1: DARK HERO BANNER (from Figma image 1)            */}
+      {/* 1. HERO BANNER SECTION (Concise & Crisp, No Duplicate Text)   */}
       {/* ============================================================ */}
-      <section className="relative w-full bg-[#1C1917] overflow-hidden">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
-            {/* Left Text Content */}
-            <div className="py-8 sm:py-12 lg:py-16 max-w-lg relative z-10">
-              {/* Breadcrumb */}
-              <nav className="flex items-center gap-2 text-xs text-stone-400 mb-4">
-                <button
-                  onClick={onNavigateHome}
-                  className="hover:text-white transition-colors cursor-pointer"
-                >
-                  Home
-                </button>
-                <ChevronRight className="w-3 h-3 text-stone-600" />
-                <span className="text-stone-300">Appointment</span>
-              </nav>
+      <section className="w-full bg-[#0B0C0E] border-b border-[#2A1E17]/40 select-none">
+        <div className="max-w-[1200px] mx-auto relative overflow-hidden">
+          <img
+            src="/images/appointment/appointment_hero_v2.png"
+            alt="Book an Appointment - Personalized eyewear consultation with our experts"
+            className="w-full h-auto max-h-[220px] sm:max-h-[250px] md:max-h-[270px] object-cover object-center"
+          />
 
-              {/* Main Heading */}
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-bold text-white leading-tight tracking-tight">
-                Book an{" "}
-                <span className="text-[#C86A28]">Appointment</span>
-              </h1>
-
-              {/* Subtitle */}
-              <p className="mt-3 text-sm sm:text-base text-stone-400 font-sans leading-relaxed max-w-md">
-                Personalized eyewear consultation with our experts.
-              </p>
-            </div>
-
-            {/* Right Hero Image */}
-            <div className="hidden md:block relative w-[360px] lg:w-[440px] xl:w-[500px] h-[220px] lg:h-[260px] shrink-0">
-              <img
-                src="/images/appointment-hero-banner.png"
-                alt="Luxury eyewear on display"
-                className="absolute inset-0 w-full h-full object-cover object-center"
-              />
-              {/* Gradient blend into dark bg */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#1C1917] via-[#1C1917]/40 to-transparent" />
-            </div>
+          {/* Single Clean Interactive Breadcrumb Overlay */}
+          <div className="absolute top-4 sm:top-5 md:top-6 left-5 sm:left-8 md:left-12 lg:left-14 z-20 flex items-center gap-1.5 text-[11px] sm:text-xs text-stone-400 font-sans font-medium">
+            <button
+              onClick={onNavigateHome}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              Home
+            </button>
+            <span className="text-stone-500">&gt;</span>
+            <span className="text-stone-200 font-semibold">Appointment</span>
           </div>
         </div>
       </section>
 
       {/* ============================================================ */}
-      {/* SECTION 2: MAIN FORM + SIDE INFO                            */}
+      {/* 2. SECTION INTRO TITLE (Concise Spacing)                     */}
       {/* ============================================================ */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+      <section className="pt-8 sm:pt-10 pb-3 px-4 sm:px-6 lg:px-8 text-center max-w-2xl mx-auto">
+        <span className="text-[10px] sm:text-[11px] font-sans font-bold tracking-[2.5px] text-[#C86A28] uppercase block mb-1">
+          YOUR VISION, OUR PRIORITY
+        </span>
+        <h1 className="font-serif text-2xl sm:text-3xl md:text-[34px] font-normal text-[#2A1E17] tracking-tight leading-tight">
+          Book Your Visit
+        </h1>
+
+        {/* 3-segment orange divider */}
+        <div className="flex items-center justify-center gap-1.5 my-2.5">
+          <span className="w-3.5 h-[2px] bg-[#C86A28]/40 rounded-full" />
+          <span className="w-6 h-[2px] bg-[#C86A28] rounded-full" />
+          <span className="w-3.5 h-[2px] bg-[#C86A28]/40 rounded-full" />
+        </div>
+
+        <p className="text-xs sm:text-[13px] text-[#6B5E55] leading-relaxed max-w-lg mx-auto font-sans font-normal">
+          Schedule an appointment with our eyewear specialists for personalized guidance and perfect vision solutions.
+        </p>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 3. MAIN FORM & SIDEBAR SECTION (Contained Width, No Stretch)  */}
+      {/* ============================================================ */}
+      <section className="max-w-[1080px] mx-auto px-4 sm:px-6 py-5 sm:py-8">
         {submitted ? (
-          /* ---- SUCCESS STATE ---- */
-          <div className="max-w-xl mx-auto bg-white border border-[#E8DCCF] p-8 sm:p-10 shadow-lg text-center space-y-5">
-            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
-              <CheckCircle2 className="w-10 h-10" />
+          /* Success Card State */
+          <div className="max-w-lg mx-auto bg-white rounded-[24px] border border-[#EBE6DF] p-6 sm:p-10 shadow-sm text-center space-y-5">
+            <div className="w-14 h-14 bg-[#FAF3EB] text-[#C86A28] rounded-2xl flex items-center justify-center mx-auto border border-[#E8DCCF]">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold uppercase text-stone-900">
-              Appointment Reserved!
-            </h2>
-            <p className="text-sm text-stone-600 leading-relaxed max-w-md mx-auto">
-              Your clinical eye examination has been scheduled under reference:{" "}
-              <strong className="font-mono text-[#C85A1B]">{bookingId}</strong>.
-              Our senior clinic coordinator will call to confirm your appointment.
-            </p>
-            <div className="flex items-center justify-center gap-3 text-xs text-stone-500 pt-2">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#C85A1B]" />
-                {watch("date") || "Selected Date"}
+
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-sans font-bold uppercase tracking-widest text-[#C86A28]">
+                RESERVATION CONFIRMED
               </span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-[#C85A1B]" />
-                {watch("timeSlot") || "Selected Slot"}
-              </span>
+              <h2 className="font-serif text-2xl font-bold text-[#2A1E17]">
+                Appointment Booked!
+              </h2>
+              <p className="text-xs text-[#6B5E55] leading-relaxed max-w-md mx-auto">
+                Thank you, <strong className="text-[#2A1E17]">{watch("fullName")}</strong>. Your consultation has been scheduled under reference number:
+              </p>
+              <div className="inline-block bg-[#FAF3EB] border border-[#E8DCCF] px-3.5 py-1.5 rounded-lg mt-1 font-mono font-bold text-[#C86A28] text-base">
+                {bookingId}
+              </div>
             </div>
-            <div className="pt-4 flex gap-3 justify-center flex-wrap">
-              <Button onClick={onNavigateShop} variant="primary" className="py-3 px-6 h-auto">
-                Explore Eyewear Catalog
+
+            <div className="bg-[#FAF8F5] rounded-xl p-4 border border-[#EBE6DF] text-xs text-left space-y-1.5 text-[#4A3E37]">
+              <div className="flex justify-between items-center py-1 border-b border-[#EBE6DF]/60">
+                <span className="text-[#8C7D73]">Location:</span>
+                <span className="font-semibold text-right max-w-[220px] truncate">{watch("storeLocation")}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[#EBE6DF]/60">
+                <span className="text-[#8C7D73]">Date:</span>
+                <span className="font-semibold">{watch("date")}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[#EBE6DF]/60">
+                <span className="text-[#8C7D73]">Time Slot:</span>
+                <span className="font-semibold">{watch("timeSlot")}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[#8C7D73]">Purpose:</span>
+                <span className="font-semibold text-right">{watch("purposeOfVisit")}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+              <Button
+                onClick={onNavigateShop}
+                className="bg-[#211712] hover:bg-[#C86A28] text-white py-3 px-5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Browse Eyewear
               </Button>
-              <Button onClick={() => setSubmitted(false)} variant="outline" className="py-3 px-6 h-auto">
+              <Button
+                onClick={handleReset}
+                variant="outline"
+                className="border-[#E2D8CC] text-[#2A1E17] hover:bg-[#FAF3EB] py-3 px-5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+              >
                 Book Another
               </Button>
             </div>
           </div>
         ) : (
-          /* ---- FORM STATE ---- */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-            {/* Left Column: Form (Span 7) */}
-            <div className="lg:col-span-7 bg-white border border-[#E8DCCF] p-5 sm:p-7 shadow-xs space-y-6">
-              {/* Form Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-[#E8DCCF]">
-                <div>
-                  <h2 className="font-serif text-lg sm:text-xl font-bold text-[#1C1917] uppercase tracking-tight">
-                    Schedule Your Visit
-                  </h2>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    Fill in your details to book a complimentary eye examination
-                  </p>
+          /* Form + Sidebar Grid */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-7 items-start">
+            
+            {/* ======================================================= */}
+            {/* LEFT COLUMN: APPOINTMENT FORM (Span 7)                 */}
+            {/* ======================================================= */}
+            <div className="lg:col-span-7 bg-white rounded-[20px] sm:rounded-[26px] p-5 sm:p-7 shadow-xs border border-[#EBE6DF]">
+              
+              {/* Form Card Header */}
+              <div className="flex items-center gap-3 mb-5 pb-3 border-b border-[#FAF3EB]">
+                <div className="w-9 h-9 rounded-xl bg-[#FAF3EB] text-[#C86A28] border border-[#E8DCCF]/60 flex items-center justify-center shrink-0">
+                  <Calendar className="w-4 h-4" />
                 </div>
-                <span className="hidden sm:inline-block text-[10px] font-bold text-[#C85A1B] bg-orange-50 border border-orange-200/80 px-2.5 py-1 uppercase tracking-wider">
-                  Complimentary
-                </span>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-[#2A1E17] tracking-tight">
+                  Appointment Details
+                </h2>
               </div>
 
-              <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5 text-xs font-sans">
-                {/* Personal Details */}
-                <div>
-                  <h3 className="text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-[#C85A1B]" />
-                    Personal Details
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">Full Name *</label>
-                      <Input
-                        {...register("fullName")}
-                        placeholder="e.g. Dr. Rohan Sharma"
-                        className={errors.fullName ? "border-rose-500 bg-rose-50/20" : ""}
-                      />
-                      {errors.fullName && (
-                        <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
-                          {errors.fullName.message}
-                        </span>
-                      )}
-                    </div>
+              <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-3.5">
+                
+                {/* Row 1: Full Name & Phone Number */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                      FULL NAME
+                    </label>
+                    <input
+                      {...register("fullName")}
+                      placeholder="Enter your full name"
+                      className={`h-10 sm:h-[42px] w-full rounded-lg border ${
+                        errors.fullName ? "border-rose-500 bg-rose-50/20" : "border-[#E2D8CC]"
+                      } bg-[#FAF8F5]/60 px-3.5 text-xs text-[#2A1E17] placeholder:text-[#A8988B] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs`}
+                    />
+                    {errors.fullName && (
+                      <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
+                        {errors.fullName.message}
+                      </span>
+                    )}
+                  </div>
 
-                    <div>
-                      <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">Mobile Phone *</label>
-                      <Input
-                        {...register("phone")}
-                        placeholder="e.g. 9810012345"
-                        className={errors.phone ? "border-rose-500 bg-rose-50/20" : ""}
-                      />
-                      {errors.phone && (
-                        <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
-                          {errors.phone.message}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">Email Address *</label>
-                      <Input
-                        type="email"
-                        {...register("email")}
-                        placeholder="patient@example.com"
-                        className={errors.email ? "border-rose-500 bg-rose-50/20" : ""}
-                      />
-                      {errors.email && (
-                        <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
-                          {errors.email.message}
-                        </span>
-                      )}
-                    </div>
+                  <div>
+                    <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                      PHONE NUMBER
+                    </label>
+                    <input
+                      {...register("phone")}
+                      placeholder="Enter your phone number"
+                      className={`h-10 sm:h-[42px] w-full rounded-lg border ${
+                        errors.phone ? "border-rose-500 bg-rose-50/20" : "border-[#E2D8CC]"
+                      } bg-[#FAF8F5]/60 px-3.5 text-xs text-[#2A1E17] placeholder:text-[#A8988B] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs`}
+                    />
+                    {errors.phone && (
+                      <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
+                        {errors.phone.message}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Service & Location */}
+                {/* Row 2: Email Address */}
                 <div>
-                  <h3 className="text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-[#C85A1B]" />
-                    Service & Location
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">Clinical Service *</label>
-                      <select
-                        {...register("service")}
-                        className="w-full bg-[#FAF7F2] border border-[#D5C2B1] p-2.5 text-xs focus:outline-none focus:border-[#C85A1B] cursor-pointer transition-colors"
-                      >
-                        {APPOINTMENT_SERVICES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#C85A1B]" />
-                          Select Precision Boutique *
-                        </span>
-                      </label>
-                      <select
-                        {...register("storeLocation")}
-                        className="w-full bg-[#FAF7F2] border border-[#D5C2B1] p-2.5 text-xs focus:outline-none focus:border-[#C85A1B] cursor-pointer transition-colors"
-                      >
-                        {STORES.map((st) => (
-                          <option key={st} value={st}>{st}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                    EMAIL ADDRESS
+                  </label>
+                  <input
+                    type="email"
+                    {...register("email")}
+                    placeholder="Enter your email address"
+                    className={`h-10 sm:h-[42px] w-full rounded-lg border ${
+                      errors.email ? "border-rose-500 bg-rose-50/20" : "border-[#E2D8CC]"
+                    } bg-[#FAF8F5]/60 px-3.5 text-xs text-[#2A1E17] placeholder:text-[#A8988B] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs`}
+                  />
+                  {errors.email && (
+                    <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
+                      {errors.email.message}
+                    </span>
+                  )}
                 </div>
 
-                {/* Date & Time */}
-                <div>
-                  <h3 className="text-[11px] font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-[#C85A1B]" />
-                    Date & Time
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">Preferred Date *</label>
-                      <Input
+                {/* Row 3: Preferred Date & Preferred Time */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                      PREFERRED DATE
+                    </label>
+                    <div className="relative">
+                      <input
                         type="date"
                         {...register("date")}
                         min={minDate}
-                        className={errors.date ? "border-rose-500 bg-rose-50/20" : ""}
+                        className={`h-10 sm:h-[42px] w-full rounded-lg border ${
+                          errors.date ? "border-rose-500 bg-rose-50/20" : "border-[#E2D8CC]"
+                        } bg-[#FAF8F5]/60 px-3.5 pr-10 text-xs text-[#2A1E17] placeholder:text-[#A8988B] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs cursor-pointer`}
                       />
-                      {errors.date && (
-                        <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
-                          {errors.date.message}
-                        </span>
-                      )}
+                      <Calendar className="w-4 h-4 text-[#A8988B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
+                    {errors.date && (
+                      <span className="text-[10px] text-rose-600 font-semibold mt-1 block">
+                        {errors.date.message}
+                      </span>
+                    )}
+                  </div>
 
-                    <div>
-                      <label className="block font-bold uppercase text-stone-700 mb-2 text-[11px]">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-[#C85A1B]" />
-                          Select Time Slot *
-                        </span>
-                      </label>
-                      {/* Hidden select for form validation */}
+                  <div>
+                    <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                      PREFERRED TIME
+                    </label>
+                    <div className="relative">
                       <select
                         {...register("timeSlot")}
-                        className="sr-only"
-                        tabIndex={-1}
-                        value={selectedTimeSlot}
-                        onChange={() => {}}
+                        className="h-10 sm:h-[42px] w-full appearance-none rounded-lg border border-[#E2D8CC] bg-[#FAF8F5]/60 px-3.5 pr-10 text-xs text-[#2A1E17] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs cursor-pointer"
                       >
-                        {TIME_SLOTS.map((t) => (
-                          <option key={t} value={t}>{t}</option>
+                        {TIME_SLOT_OPTIONS.map((slot) => (
+                          <option key={slot} value={slot}>
+                            {slot}
+                          </option>
                         ))}
                       </select>
-
-                      {/* Visual Time Slot Pill Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {TIME_SLOTS.map((slot) => (
-                          <button
-                            key={slot}
-                            type="button"
-                            onClick={() => handleTimeSlotSelect(slot)}
-                            className={`py-2.5 px-3 text-[11px] font-bold text-center border transition-all cursor-pointer ${
-                              selectedTimeSlot === slot
-                                ? "bg-[#2A1E17] text-white border-[#2A1E17] shadow-sm"
-                                : "bg-[#FAF7F2] text-stone-700 border-[#E8DCCF] hover:border-[#C85A1B] hover:text-[#C85A1B]"
-                            }`}
-                          >
-                            {slot}
-                          </button>
-                        ))}
-                      </div>
+                      <Clock className="w-4 h-4 text-[#A8988B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                 </div>
 
-                {/* Additional Notes */}
+                {/* Row 4: Select Store Location */}
                 <div>
-                  <label className="block font-bold uppercase text-stone-700 mb-1 text-[11px]">
-                    Additional Notes (Optional)
+                  <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                    SELECT STORE LOCATION
+                  </label>
+                  <div className="relative">
+                    <select
+                      {...register("storeLocation")}
+                      className="h-10 sm:h-[42px] w-full appearance-none rounded-lg border border-[#E2D8CC] bg-[#FAF8F5]/60 px-3.5 pr-10 text-xs text-[#2A1E17] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs cursor-pointer"
+                    >
+                      {STORE_LOCATIONS.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-[#A8988B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Row 5: Purpose of Visit */}
+                <div>
+                  <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                    PURPOSE OF VISIT
+                  </label>
+                  <div className="relative">
+                    <select
+                      {...register("purposeOfVisit")}
+                      className="h-10 sm:h-[42px] w-full appearance-none rounded-lg border border-[#E2D8CC] bg-[#FAF8F5]/60 px-3.5 pr-10 text-xs text-[#2A1E17] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs cursor-pointer"
+                    >
+                      {PURPOSE_OPTIONS.map((purp) => (
+                        <option key={purp} value={purp}>
+                          {purp}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-[#A8988B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Row 6: Additional Message (Optional) */}
+                <div>
+                  <label className="text-[10.5px] font-bold tracking-wider text-[#2A1E17] uppercase mb-1 block font-sans">
+                    ADDITIONAL MESSAGE (OPTIONAL)
                   </label>
                   <textarea
                     {...register("notes")}
-                    placeholder="Any specific requirements, previous prescriptions, or concerns..."
-                    rows={3}
-                    className="w-full bg-[#FAF7F2] border border-[#D5C2B1] px-3 py-2.5 text-xs font-sans text-[#2A1E17] placeholder:text-stone-400 focus:outline-none focus:border-[#C85A1B] focus:ring-1 focus:ring-[#C85A1B] transition-colors resize-none"
+                    rows={2.5}
+                    placeholder="Tell us more about your requirements"
+                    className="w-full rounded-lg border border-[#E2D8CC] bg-[#FAF8F5]/60 p-3 text-xs text-[#2A1E17] placeholder:text-[#A8988B] focus:border-[#C86A28] focus:bg-white focus:outline-none transition-all shadow-xs resize-none"
                   />
                 </div>
 
                 {/* Submit Button */}
-                <div className="pt-2">
-                  <Button
+                <div className="pt-1">
+                  <button
                     type="submit"
-                    variant="primary"
                     disabled={isSubmitting}
-                    className="w-full py-4 text-xs tracking-widest shadow-lg h-auto"
+                    className="w-full h-11 sm:h-[46px] bg-[#211712] hover:bg-[#C86A28] text-white rounded-lg font-sans font-bold text-xs tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 active:scale-[0.99] disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Processing...
                       </span>
                     ) : (
                       <>
-                        <span>Confirm Appointment</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <span>Book Appointment</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </>
                     )}
-                  </Button>
-                  <p className="text-[10px] text-stone-500 text-center mt-2">
-                    By booking, you agree to receive appointment confirmation via SMS and email.
-                  </p>
+                  </button>
+
+                  {/* Trust Footer */}
+                  <div className="flex items-center justify-center gap-1.5 mt-2.5 text-[11px] text-[#7A6E65]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#C86A28] shrink-0" />
+                    <span>Your information is secure and confidential.</span>
+                  </div>
                 </div>
+
               </form>
             </div>
 
-            {/* Right Column: Info Sidebar (Span 5) */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* Store Image Card */}
-              <div className="bg-white border border-[#E8DCCF] overflow-hidden shadow-xs">
-                <img
-                  src="/images/store_1_precision_optics_1785155972710.jpg"
-                  alt="Precision Optics Boutique"
-                  className="w-full h-48 sm:h-52 object-cover"
-                />
-                <div className="p-5 sm:p-6 space-y-3">
-                  <span className="text-[10px] font-bold text-[#C85A1B] uppercase tracking-widest font-serif">
-                    Our Promise
-                  </span>
-                  <h3 className="font-serif font-bold text-base sm:text-lg uppercase text-[#1C1917] leading-tight">
-                    12-Step Zero-Error Clinical Protocol
-                  </h3>
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    Our master opticians employ auto-refractometry, pupil distance digital centeration, dry eye tear film evaluation, and 3D progressive corridor alignment.
-                  </p>
-                </div>
-              </div>
-
-              {/* Why Choose Us */}
-              <div className="bg-white border border-[#E8DCCF] p-5 sm:p-6 shadow-xs space-y-4">
-                <h3 className="font-serif text-sm font-bold uppercase text-[#1C1917] tracking-wider">
-                  Why Choose Precision Optics
+            {/* ======================================================= */}
+            {/* RIGHT COLUMN: SIDEBAR (Span 5)                         */}
+            {/* ======================================================= */}
+            <div className="lg:col-span-5 space-y-5">
+              
+              {/* Card 1: Why Book an Appointment? */}
+              <div className="bg-white rounded-[20px] sm:rounded-[26px] p-5 sm:p-6 shadow-xs border border-[#EBE6DF]">
+                <h3 className="font-serif text-base sm:text-lg font-bold text-[#2A1E17] text-center mb-4 tracking-tight">
+                  Why Book an Appointment?
                 </h3>
-                <div className="space-y-3">
-                  {WHY_CHOOSE_US.map((item, idx) => (
+
+                <div className="space-y-3.5">
+                  {WHY_BOOK_BENEFITS.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-[#FAF7F2] border border-[#E8DCCF] flex items-center justify-center shrink-0">
-                        <item.icon className="w-4 h-4 text-[#C85A1B]" />
+                      <div className="w-8 h-8 rounded-full bg-[#FAF3EB] text-[#C86A28] border border-[#E8DCCF]/60 flex items-center justify-center shrink-0 mt-0.5">
+                        <item.icon className="w-3.5 h-3.5 text-[#C86A28]" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-stone-900">{item.title}</h4>
-                        <p className="text-[11px] text-stone-500 leading-relaxed mt-0.5">
+                        <h4 className="text-xs font-bold text-[#2A1E17] leading-tight">
+                          {item.title}
+                        </h4>
+                        <p className="text-[11px] text-[#6B5E55] leading-relaxed mt-0.5 font-sans">
                           {item.description}
                         </p>
                       </div>
@@ -487,75 +502,106 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({
                 </div>
               </div>
 
-              {/* Contact Info Card */}
-              <div className="bg-[#2A1E17] text-white p-5 sm:p-6 shadow-xs space-y-3">
-                <h3 className="font-serif text-sm font-bold uppercase tracking-wider">
-                  Need Help Scheduling?
-                </h3>
-                <p className="text-[11px] text-stone-300 leading-relaxed">
-                  Our concierge team is available to help you find the perfect time and location.
-                </p>
-                <div className="space-y-2 pt-1">
-                  <a
-                    href="tel:+919810012345"
-                    className="flex items-center gap-2 text-xs text-stone-200 hover:text-[#C86A28] transition-colors"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-[#C86A28]" />
-                    +91 98100 12345
-                  </a>
-                  <a
-                    href="mailto:appointments@precisionoptics.in"
-                    className="flex items-center gap-2 text-xs text-stone-200 hover:text-[#C86A28] transition-colors"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-[#C86A28]" />
-                    appointments@precisionoptics.in
-                  </a>
-                </div>
+              {/* Card 2: Walk-ins are also Welcome! Graphic Card */}
+              <div
+                onClick={() => {
+                  if (onNavigateContact) onNavigateContact();
+                }}
+                className="relative rounded-[20px] sm:rounded-[26px] overflow-hidden shadow-xs border border-[#EBE6DF] cursor-pointer group transition-all duration-300 hover:shadow-sm"
+              >
+                <img
+                  src="/images/appointment/appointment_walkins.png"
+                  alt="Walk-ins are also Welcome! Visit our store at your convenience. Find Our Store"
+                  className="w-full h-auto object-cover group-hover:scale-[1.01] transition-transform duration-500 ease-out"
+                />
               </div>
+
             </div>
+
           </div>
         )}
       </section>
 
       {/* ============================================================ */}
-      {/* SECTION 3: WALK-INS WELCOME BANNER (from Figma image 2)     */}
+      {/* 4. BOTTOM STORE CONTACT INFO BAR (Compact Proportions)       */}
       {/* ============================================================ */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pb-14">
-        <div className="relative bg-[#F0E6DA] overflow-hidden rounded-2xl">
-          <div className="flex items-center">
-            {/* Left Content */}
-            <div className="flex-1 py-10 sm:py-14 lg:py-16 pl-8 sm:pl-12 lg:pl-16 pr-4 relative z-10">
-              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#2A1E17] leading-tight">
-                Walk-ins are also{" "}
-                <br className="hidden sm:block" />
-                Welcome!
-              </h2>
-              <p className="mt-3 text-sm sm:text-base text-stone-600 max-w-sm leading-relaxed">
-                Visit our store at your convenience.
-              </p>
-              <button
-                onClick={() => {
-                  if (onNavigateContact) {
-                    onNavigateContact();
-                  }
-                }}
-                className="mt-6 bg-[#2A1E17] hover:bg-[#C85A1B] text-white font-serif text-sm font-bold px-6 py-3 inline-flex items-center gap-2.5 transition-colors cursor-pointer shadow-md rounded-lg"
-              >
-                <span>Find Our Store</span>
-                <MapPin className="w-4 h-4" />
-              </button>
+      <section className="max-w-[1080px] mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#EBE6DF] shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:divide-x lg:divide-[#EBE6DF]/70">
+            
+            {/* Column 1: Visit Our Store */}
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#FAF3EB] text-[#C86A28] border border-[#E8DCCF]/60 flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4 text-[#C86A28]" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-[#2A1E17]">
+                  Visit Our Store
+                </h4>
+                <p className="text-[11px] text-[#6B5E55] leading-relaxed">
+                  123, MG Road, Near City Center,<br />
+                  Sector 18, Noida,<br />
+                  Uttar Pradesh - 201301
+                </p>
+              </div>
             </div>
 
-            {/* Right Image */}
-            <div className="hidden sm:block relative w-[280px] md:w-[360px] lg:w-[440px] h-[280px] sm:h-[300px] lg:h-[340px] shrink-0">
-              <img
-                src="/images/appointment-walkins-banner.png"
-                alt="Walk-ins welcome - eyewear on display"
-                className="absolute inset-0 w-full h-full object-cover object-left"
-              />
-              {/* Gradient blend into beige bg */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#F0E6DA] via-transparent to-transparent w-1/3" />
+            {/* Column 2: Call Us */}
+            <div className="flex items-start gap-3 lg:pl-5">
+              <div className="w-9 h-9 rounded-full bg-[#FAF3EB] text-[#C86A28] border border-[#E8DCCF]/60 flex items-center justify-center shrink-0">
+                <Phone className="w-4 h-4 text-[#C86A28]" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-[#2A1E17]">
+                  Call Us
+                </h4>
+                <p className="text-[11px] text-[#6B5E55] leading-relaxed">
+                  <a href="tel:+919876543210" className="hover:text-[#C86A28] transition-colors block">
+                    +91 98765 43210
+                  </a>
+                  <a href="tel:+911204567890" className="hover:text-[#C86A28] transition-colors block">
+                    +91 120 4567890
+                  </a>
+                </p>
+              </div>
             </div>
+
+            {/* Column 3: Store Timings */}
+            <div className="flex items-start gap-3 lg:pl-5">
+              <div className="w-9 h-9 rounded-full bg-[#FAF3EB] text-[#C86A28] border border-[#E8DCCF]/60 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4 text-[#C86A28]" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-[#2A1E17]">
+                  Store Timings
+                </h4>
+                <p className="text-[11px] text-[#6B5E55] leading-relaxed">
+                  Mon - Sat: 10:00 AM - 8:00 PM<br />
+                  Sunday: 11:00 AM - 7:00 PM
+                </p>
+              </div>
+            </div>
+
+            {/* Column 4: Email Us */}
+            <div className="flex items-start gap-3 lg:pl-5">
+              <div className="w-9 h-9 rounded-full bg-[#FAF3EB] text-[#C86A28] border border-[#E8DCCF]/60 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 text-[#C86A28]" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-[#2A1E17]">
+                  Email Us
+                </h4>
+                <p className="text-[11px] text-[#6B5E55] leading-relaxed">
+                  <a href="mailto:hello@precisionoptics.in" className="hover:text-[#C86A28] transition-colors block truncate max-w-[170px]">
+                    hello@precisionoptics.in
+                  </a>
+                  <a href="mailto:support@precisionoptics.in" className="hover:text-[#C86A28] transition-colors block truncate max-w-[170px]">
+                    support@precisionoptics.in
+                  </a>
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

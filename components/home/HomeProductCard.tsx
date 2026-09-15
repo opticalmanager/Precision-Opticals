@@ -100,7 +100,7 @@ export const HomeProductCard = memo(function HomeProductCard({
         <div className="pt-0.5 space-y-0.5">
           <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="font-sans font-bold text-[16px] text-[#111827]">
-              ₹ {product.price.toLocaleString("en-IN")}
+              ₹ {(product.price || 0).toLocaleString("en-IN")}
             </span>
             <span className="font-sans font-normal text-[11px] text-[#6B7280]">
               including lenses
@@ -109,7 +109,7 @@ export const HomeProductCard = memo(function HomeProductCard({
 
           <div className="flex items-center gap-1.5 text-[11px] font-sans">
             <span className="text-[#9CA3AF] line-through">
-              ₹ {originalPriceDisplay.toLocaleString("en-IN")}
+              ₹ {(originalPriceDisplay || 0).toLocaleString("en-IN")}
             </span>
             <span className="text-[#0284C7] font-bold text-[11px]">
               ({discountPercent}% OFF)

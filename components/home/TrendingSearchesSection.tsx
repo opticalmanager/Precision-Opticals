@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ArrowUpRight, Heart } from 'lucide-react';
 import { Product } from '@/types';
 import { HomeProductCard } from './HomeProductCard';
@@ -24,6 +24,8 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
 }) => {
   const [selectedPillId, setSelectedPillId] = useState<string>('ray-ban');
   const carouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const searchPills: SearchPill[] = [
     {
@@ -92,6 +94,33 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
     return result;
   }, [products, selectedPillId]);
 
+  const updateScrollState = useCallback(() => {
+    if (carouselRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+      setCanScrollLeft(scrollLeft > 6);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 6);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    el.scrollLeft = 0;
+    updateScrollState();
+
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+
+    const timer = setTimeout(updateScrollState, 150);
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState);
+      window.removeEventListener('resize', updateScrollState);
+      clearTimeout(timer);
+    };
+  }, [selectedPillId, activeProducts.length, updateScrollState]);
+
   const handleScroll = (direction: 'left' | 'right') => {
     if (carouselRef.current) {
       const scrollAmount = direction === 'left' ? -320 : 320;
@@ -101,7 +130,7 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
 
   return (
     <section className="bg-[#FAF7F2] py-12 sm:py-16 relative overflow-hidden border-t border-b border-[#35271E]/20 select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-4 lg:px-6 relative z-10">
         
         {/* Section Header Matching Figma */}
         <div className="text-center mb-6 sm:mb-8">
@@ -174,31 +203,34 @@ export const TrendingSearchesSection: React.FC<TrendingSearchesSectionProps> = (
           </div>
         </div>
 
-        {/* Carousel Container with Side Navigation Buttons */}
-        <div className="relative group/carousel">
-          
+        {/* Carousel Container with Perfectly Centered Nav Arrows & Compact Gutter */}
+        <div className="relative px-3 sm:px-5 lg:px-6">
           {/* Left Scroll Arrow Button */}
-          <button
-            onClick={() => handleScroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 sm:-translate-x-5 z-30 w-10 h-10 rounded-full bg-white text-[#2A1E17] shadow-xl border border-[#E8DCCF] flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 hover:bg-[#C86A28] hover:text-white transition-all duration-200 focus:outline-none cursor-pointer"
-            aria-label="Scroll Left"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+          {canScrollLeft && (
+            <button
+              onClick={() => handleScroll('left')}
+              className="absolute left-0 sm:-left-2 lg:-left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[#2A1E17] shadow-lg border border-[#E8DCCF] flex items-center justify-center hover:bg-[#C86A28] hover:text-white hover:border-[#C86A28] transition-all duration-200 focus:outline-none cursor-pointer active:scale-95"
+              aria-label="Scroll Left"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
 
           {/* Right Scroll Arrow Button */}
-          <button
-            onClick={() => handleScroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 sm:translate-x-5 z-30 w-10 h-10 rounded-full bg-white text-[#2A1E17] shadow-xl border border-[#E8DCCF] flex items-center justify-center opacity-85 group-hover/carousel:opacity-100 hover:bg-[#C86A28] hover:text-white transition-all duration-200 focus:outline-none cursor-pointer"
-            aria-label="Scroll Right"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          {canScrollRight && (
+            <button
+              onClick={() => handleScroll('right')}
+              className="absolute right-0 sm:-right-2 lg:-right-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[#2A1E17] shadow-lg border border-[#E8DCCF] flex items-center justify-center hover:bg-[#C86A28] hover:text-white hover:border-[#C86A28] transition-all duration-200 focus:outline-none cursor-pointer active:scale-95"
+              aria-label="Scroll Right"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
 
           {/* Scrollable Track */}
           <div
             ref={carouselRef}
-            className="flex gap-4 sm:gap-5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1 -mx-1"
+            className="flex gap-3.5 sm:gap-4.5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {activeProducts.map((product) => (

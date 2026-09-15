@@ -15,7 +15,8 @@ import {
   Plus,
   Minus,
   MessageCircle,
-  Share2
+  Share2,
+  Camera
 } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { useWishlist } from "@/context/WishlistContext";
@@ -24,6 +25,7 @@ import { useToast } from "@/context/ToastContext";
 import { formatINR } from "@/utils/formatters";
 import { ImageWithFallback } from "../common/ImageWithFallback";
 import { ProductCard } from "../shop/ProductCard";
+import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
 
 interface ProductDetailPageProps {
   product: Product;
@@ -414,6 +416,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             >
               ADD TO CART
             </button>
+
+            {/* 3D Virtual Try-On - Exclusively for products with .glb models */}
+            {hasTryOnModel(product) && (
+              <button
+                onClick={() => onOpenVirtualTryOn(product)}
+                className="w-full bg-[#FAF7F2] hover:bg-[#F4EBE1] border-2 border-[#C86A28] text-[#2A1E17] py-3.5 px-6 font-sans font-semibold text-[12px] sm:text-[13px] uppercase tracking-[0.14em] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
+              >
+                <Camera className="w-4 h-4 text-[#C86A28]" />
+                <span>3D VIRTUAL TRY-ON (LIVE MIRROR)</span>
+              </button>
+            )}
 
             {/* Secondary Action: ADD PRESCRIPTION LENSES */}
             <button

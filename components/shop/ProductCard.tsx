@@ -4,6 +4,7 @@ import React, { memo, useState, useEffect } from "react";
 import { Heart, Star, Tag, Zap, Camera } from "lucide-react";
 import { Product } from "@/types";
 import { useWishlist } from "@/context/WishlistContext";
+import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
 
 interface ProductCardProps {
   product: Product;
@@ -51,7 +52,7 @@ export const ProductCard = memo(function ProductCard({
     >
       {/* Top Floating Actions: Wishlist Heart & Virtual Try-On */}
       <div className="absolute top-3.5 right-3.5 z-20 flex items-center gap-1.5">
-        {onOpenVirtualTryOn && (
+        {onOpenVirtualTryOn && hasTryOnModel(product) && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -107,10 +108,17 @@ export const ProductCard = memo(function ProductCard({
             <div className="h-4" />
           )}
 
-          {/* Subtitle / Model Title */}
-          <p className="font-sans font-normal text-[11px] leading-[15px] text-[#4B5563] line-clamp-2 mt-1">
-            {product.subtitle || product.name}
-          </p>
+          {/* Product Name */}
+          <h3 className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-1 mt-0.5" title={product.name}>
+            {product.name}
+          </h3>
+
+          {/* Subtitle / Model Title if distinct from name */}
+          {product.subtitle && product.subtitle.trim().toLowerCase() !== product.name.trim().toLowerCase() ? (
+            <p className="font-sans font-normal text-[11px] leading-[15px] text-[#6B7280] line-clamp-1 mt-0.5">
+              {product.subtitle}
+            </p>
+          ) : null}
         </div>
 
         {/* Size & Rating Row */}
@@ -127,7 +135,7 @@ export const ProductCard = memo(function ProductCard({
         <div className="pt-0.5 space-y-0.5">
           <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="font-sans font-bold text-[16px] text-[#111827]">
-              ₹ {product.price.toLocaleString("en-IN")}
+              ₹ {(product.price || 0).toLocaleString("en-IN")}
             </span>
             <span className="font-sans font-normal text-[11px] text-[#6B7280]">
               including lenses
@@ -136,7 +144,7 @@ export const ProductCard = memo(function ProductCard({
 
           <div className="flex items-center gap-1.5 text-[11px] font-sans">
             <span className="text-[#9CA3AF] line-through">
-              ₹ {originalPriceDisplay.toLocaleString("en-IN")}
+              ₹ {(originalPriceDisplay || 0).toLocaleString("en-IN")}
             </span>
             <span className="text-[#0284C7] font-bold text-[11px]">
               ({discountPercent}% OFF)
