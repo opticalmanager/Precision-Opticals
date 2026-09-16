@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
       conditions.push(`pv.stock_quantity <= 5 AND pv.stock_quantity > 0`);
     } else if (filter === "out") {
       conditions.push(`pv.stock_quantity = 0`);
+    } else if (filter === "demo") {
+      conditions.push(`p.specs->>'is_demo' = 'true'`);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -37,6 +39,7 @@ export async function GET(req: NextRequest) {
         p.name as product_name,
         p.slug as product_slug,
         p.base_price,
+        p.specs,
         b.name as brand_name,
         c.name as category_name,
         COALESCE((
@@ -57,11 +60,13 @@ export async function GET(req: NextRequest) {
     // Stock stats
     const statsRes = await query(`
       SELECT 
-        COUNT(id) as total_skus,
-        COALESCE(SUM(stock_quantity), 0) as total_units,
-        COUNT(CASE WHEN stock_quantity <= 5 AND stock_quantity > 0 THEN 1 END) as low_stock_count,
-        COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out_of_stock_count
-      FROM public.product_variants;
+        COUNT(pv.id) as total_skus,
+        COALESCE(SUM(pv.stock_quantity), 0) as total_units,
+        COUNT(CASE WHEN pv.stock_quantity <= 5 AND pv.stock_quantity > 0 THEN 1 END) as low_stock_count,
+        COUNT(CASE WHEN pv.stock_quantity = 0 THEN 1 END) as out_of_stock_count,
+        COUNT(CASE WHEN p.specs->>'is_demo' = 'true' THEN 1 END) as demo_count
+      FROM public.product_variants pv
+      JOIN public.products p ON p.id = pv.product_id;
     `);
 
     return NextResponse.json({
@@ -72,6 +77,7 @@ export async function GET(req: NextRequest) {
         totalUnits: parseInt(statsRes.rows[0]?.total_units || "0", 10),
         lowStockCount: parseInt(statsRes.rows[0]?.low_stock_count || "0", 10),
         outOfStockCount: parseInt(statsRes.rows[0]?.out_of_stock_count || "0", 10),
+        demoCount: parseInt(statsRes.rows[0]?.demo_count || "0", 10),
       },
     });
   } catch (error: any) {

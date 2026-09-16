@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { PRODUCTS } from "@/data/products";
+import { AKONI_DEMO_PRODUCTS } from "@/data/akoniDemoDataset";
 import { Product, FilterState } from "@/types";
 
 /**
@@ -13,6 +14,50 @@ let cachedProducts: Product[] | null = null;
 export function invalidateProductsCache(): void {
   cachedProducts = null;
 }
+
+const mappedAkoniDemoProducts: Product[] = (AKONI_DEMO_PRODUCTS || []).map((item) => ({
+  id: item.slug,
+  brand: item.brand || "Akoni",
+  name: item.title,
+  subtitle: "Swiss Precision Eyewear",
+  price: item.price,
+  originalPrice: item.originalPrice,
+  category: (item.categorySlug || "sunglasses") as "sunglasses" | "eyeglasses",
+  gender: (item.gender || "unisex") as any,
+  shape: (item.shape || "rectangle") as any,
+  rimType: (item.rimType || "full-rim") as any,
+  material: (item.material || "titanium") as any,
+  color: item.color || "Obsidian Black / Gold",
+  colorHex: item.colorHex || "#1A1A1A",
+  lensProperties: ["anti-reflective", "uv-protection", "blue-light-filter"],
+  isNewArrival: true,
+  isBestSeller: false,
+  isOnSale: false,
+  isLimitedEdition: false,
+  rating: 4.9,
+  reviewCount: 18,
+  images: item.images && item.images.length > 0 ? item.images : ["/images/products/figma_cartier_blue_rimless.png"],
+  description: item.description || "",
+  specs: {
+    lensWidth: item.specs?.lensWidth || 52,
+    bridgeWidth: item.specs?.bridgeWidth || 19,
+    templeLength: item.specs?.templeLength || 145,
+    frameWidth: 140,
+    weight: item.specs?.weight || "24g",
+  },
+  variants: [
+    {
+      id: item.sku || `AKN-${item.slug}`,
+      colorName: item.color || "Obsidian Black / Gold",
+      colorHex: item.colorHex || "#1A1A1A",
+      image: item.images?.[0] || "/images/products/figma_cartier_blue_rimless.png",
+      inStock: (item.stockQuantity || 12) > 0,
+    },
+  ],
+  tryOnEnabled: false,
+}));
+
+export const ALL_FALLBACK_PRODUCTS: Product[] = [...PRODUCTS, ...mappedAkoniDemoProducts];
 
 /**
  * Fetch all active products from Supabase with graceful fallback to local catalogue.
@@ -38,16 +83,18 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
 
     if (error || !data || data.length === 0) {
       // Fallback to rich static dataset
-      cachedProducts = PRODUCTS;
-      return PRODUCTS;
+      cachedProducts = ALL_FALLBACK_PRODUCTS;
+      return ALL_FALLBACK_PRODUCTS;
     }
 
     // Map database rows to frontend Product interface
     const mapped: Product[] = data.map((row: any) => {
       const localMatch = PRODUCTS.find((p) => p.id === row.slug);
       const rawImages = (row.product_images || [])
-        .map((img: any) => img.url || img.image_url)
-        .filter(Boolean);
+        .slice()
+        .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || (a.display_order || 0) - (b.display_order || 0))
+        .map((img: any) => (img.url || img.image_url)?.trim())
+        .filter((url: string | undefined): url is string => Boolean(url && (url.startsWith("/") || url.startsWith("http"))));
 
       const resolvedImages = rawImages.length > 0 
         ? rawImages 
@@ -86,13 +133,21 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
           weight: "20g",
         },
         variants: row.product_variants && row.product_variants.length > 0
-          ? row.product_variants.map((v: any) => ({
-              id: v.id,
-              colorName: v.color_name,
-              colorHex: v.color_hex,
-              image: v.sku || resolvedImages[0],
-              inStock: v.stock_quantity > 0,
-            }))
+          ? row.product_variants.map((v: any) => {
+              const variantImgObj = (row.product_images || []).find((img: any) => img.variant_id === v.id);
+              const rawVarUrl = variantImgObj?.url || variantImgObj?.image_url;
+              const validVarImg = (rawVarUrl && (rawVarUrl.startsWith("/") || rawVarUrl.startsWith("http")))
+                ? rawVarUrl.trim()
+                : resolvedImages[0];
+
+              return {
+                id: v.id,
+                colorName: v.color_name,
+                colorHex: v.color_hex,
+                image: validVarImg,
+                inStock: v.stock_quantity > 0,
+              };
+            })
           : localMatch?.variants,
         tryOnEnabled: row.try_on_enabled ?? localMatch?.tryOnEnabled ?? false,
         tryOnModelUrl: row.try_on_model_url || localMatch?.tryOnModelUrl,
@@ -102,7 +157,7 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
 
     // Ensure all static PRODUCTS are included if not present in DB
     const existingSlugs = new Set(mapped.map((p) => p.id));
-    for (const localProd of PRODUCTS) {
+    for (const localProd of ALL_FALLBACK_PRODUCTS) {
       if (!existingSlugs.has(localProd.id)) {
         mapped.push(localProd);
       }
@@ -129,8 +184,8 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
     return mapped;
   } catch (err) {
     console.warn("Supabase fetch fallback to local catalogue:", err);
-    cachedProducts = PRODUCTS;
-    return PRODUCTS;
+    cachedProducts = ALL_FALLBACK_PRODUCTS;
+    return ALL_FALLBACK_PRODUCTS;
   }
 }
 

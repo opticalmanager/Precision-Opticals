@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Heart,
   Glasses,
@@ -54,6 +54,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
 
+  // Reset indices when product changes
+  useEffect(() => {
+    setActiveImgIdx(0);
+    setSelectedVariantIdx(0);
+  }, [product.id, product.name]);
+
   // Accordions state
   const [openAccordions, setOpenAccordions] = useState<{ [key: string]: boolean }>({
     about: false,
@@ -72,27 +78,36 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       ? product.variants[selectedVariantIdx]
       : undefined;
 
-  // Images list: ensure at least 4 views for smooth Figma carousel dots
+  const isValidImageUrl = (url?: string): boolean => {
+    if (!url || typeof url !== "string") return false;
+    const trimmed = url.trim();
+    return trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://");
+  };
+
+  // Images list: collect all valid image URLs from product and variants
   const imagesToDisplay = useMemo(() => {
-    let list: string[] = [];
-    if (selectedVariant?.image) {
-      list.push(selectedVariant.image);
+    const list: string[] = [];
+
+    // 1. Add selected variant image if valid
+    if (selectedVariant?.image && isValidImageUrl(selectedVariant.image)) {
+      list.push(selectedVariant.image.trim());
     }
+
+    // 2. Add all valid product.images
     if (product.images && product.images.length > 0) {
       product.images.forEach((img) => {
-        if (!list.includes(img)) list.push(img);
+        if (isValidImageUrl(img)) {
+          const trimmed = img.trim();
+          if (!list.includes(trimmed)) list.push(trimmed);
+        }
       });
     }
+
+    // 3. Fallback if no images found
     if (list.length === 0) {
       list.push("/images/products/figma_cartier_blue_rimless.png");
     }
-    if (list.length === 1) {
-      list = [list[0], list[0], list[0], list[0]];
-    } else if (list.length === 2) {
-      list = [list[0], list[1], list[0], list[1]];
-    } else if (list.length === 3) {
-      list = [list[0], list[1], list[2], list[0]];
-    }
+
     return list;
   }, [product, selectedVariant]);
 
@@ -219,13 +234,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       <section className="max-w-[1180px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Left Column: Gallery & Accordions (Span 7) */}
-          <div className="lg:col-span-7 flex flex-col space-y-6">
+          <div className="lg:col-span-7 flex flex-col space-y-4">
             {/* White Rounded Main Image Card */}
-            <div className="bg-white rounded-[16px] border border-[#E8DCCF] w-full min-h-[440px] sm:min-h-[480px] lg:h-[510px] relative flex items-center justify-center p-4 sm:p-6 shadow-2xs group overflow-hidden">
+            <div className="bg-white rounded-[16px] border border-[#E8DCCF] w-full min-h-[420px] sm:min-h-[460px] lg:h-[490px] relative flex items-center justify-center p-4 sm:p-6 shadow-2xs group overflow-hidden select-none scrollbar-none isolate">
               {/* Floating Wishlist Heart Button */}
               <button
                 onClick={() => toggleWishlist(product.id, product.name)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-[#E8DCCF] text-[#2A1E17] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer hover:scale-105 z-10"
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-[#E8DCCF] text-[#2A1E17] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer hover:scale-105 z-20"
                 aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
               >
                 <Heart
@@ -235,9 +250,45 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 />
               </button>
 
-              {/* Eyewear Image with Bold Luxury Scale */}
-              <div className="w-full h-full flex items-center justify-center">
+              {/* Floating Left Carousel Navigation Arrow */}
+              {imagesToDisplay.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevImage();
+                  }}
+                  className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/85 hover:bg-white border border-[#E8DCCF] text-[#2A1E17] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer hover:scale-105 z-20 opacity-80 group-hover:opacity-100"
+                  aria-label="Previous view angle"
+                >
+                  <ChevronLeft className="w-4 h-4 text-[#2A1E17]" />
+                </button>
+              )}
+
+              {/* Floating Right Carousel Navigation Arrow */}
+              {imagesToDisplay.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextImage();
+                  }}
+                  className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/85 hover:bg-white border border-[#E8DCCF] text-[#2A1E17] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer hover:scale-105 z-20 opacity-80 group-hover:opacity-100"
+                  aria-label="Next view angle"
+                >
+                  <ChevronRight className="w-4 h-4 text-[#2A1E17]" />
+                </button>
+              )}
+
+              {/* Angle Counter Badge */}
+              {imagesToDisplay.length > 1 && (
+                <div className="absolute bottom-4 left-4 z-20 px-2.5 py-0.5 rounded-full bg-[#2A1E17]/75 backdrop-blur-xs text-white text-[11px] font-sans font-medium tracking-wider select-none">
+                  {activeImgIdx + 1} / {imagesToDisplay.length}
+                </div>
+              )}
+
+              {/* Eyewear Image with Bold Luxury Scale & Zoom */}
+              <div className="w-full h-full flex items-center justify-center relative overflow-hidden select-none scrollbar-none">
                 <ImageWithFallback
+                  key={currentImage}
                   src={currentImage}
                   alt={`${product.brand} - ${product.name}`}
                   className="w-[88%] sm:w-[92%] h-auto max-h-[85%] object-contain transform transition-transform duration-500 group-hover:scale-105 select-none"
@@ -246,39 +297,66 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Pagination Controls: Chevrons & Dots */}
-            <div className="flex items-center justify-center gap-6 py-1 select-none">
-              <button
-                onClick={handlePrevImage}
-                className="p-2 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
-                aria-label="Previous view"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-2.5">
-                {imagesToDisplay.map((_, idx) => (
+            {/* Thumbnail Gallery Strip */}
+            {imagesToDisplay.length > 1 && (
+              <div className="flex items-center justify-center gap-2 overflow-x-auto py-1 px-2 scrollbar-none no-scrollbar">
+                {imagesToDisplay.map((img, idx) => (
                   <button
-                    key={idx}
+                    key={`${img}-${idx}`}
                     onClick={() => setActiveImgIdx(idx)}
-                    className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-lg border-2 bg-white p-1 transition-all cursor-pointer shrink-0 flex items-center justify-center overflow-hidden ${
                       activeImgIdx === idx
-                        ? "bg-[#2A1E17] scale-110"
-                        : "border border-stone-400 bg-transparent hover:border-stone-700"
+                        ? "border-[#C86A28] ring-2 ring-[#C86A28]/20 shadow-xs"
+                        : "border-[#E8DCCF] hover:border-stone-400 opacity-70 hover:opacity-100"
                     }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
+                    aria-label={`View angle ${idx + 1}`}
+                  >
+                    <ImageWithFallback
+                      src={img}
+                      alt={`${product.name} angle ${idx + 1}`}
+                      className="w-full h-full object-contain"
+                      fallbackSrc="/images/products/figma_cartier_blue_rimless.png"
+                    />
+                  </button>
                 ))}
               </div>
+            )}
 
-              <button
-                onClick={handleNextImage}
-                className="p-2 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
-                aria-label="Next view"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Pagination Controls: Chevrons & Dots */}
+            {imagesToDisplay.length > 1 && (
+              <div className="flex items-center justify-center gap-6 py-0.5 select-none">
+                <button
+                  onClick={handlePrevImage}
+                  className="p-1.5 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
+                  aria-label="Previous view"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {imagesToDisplay.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImgIdx(idx)}
+                      className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                        activeImgIdx === idx
+                          ? "bg-[#2A1E17] scale-110"
+                          : "border border-stone-400 bg-transparent hover:border-stone-700"
+                      }`}
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleNextImage}
+                  className="p-1.5 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
+                  aria-label="Next view"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Information Accordions */}
             <div className="border-t border-[#E8DCCF] divide-y divide-[#E8DCCF] pt-2">

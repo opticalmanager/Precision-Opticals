@@ -37,7 +37,7 @@ import { OrderTrackingModal } from "@/components/pages/OrderTrackingModal";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 
 import { PRODUCTS } from "@/data/products";
-import { getCatalogProducts, filterAndSortProducts } from "@/lib/productsService";
+import { getCatalogProducts, filterAndSortProducts, ALL_FALLBACK_PRODUCTS } from "@/lib/productsService";
 import { Product, FilterState, SelectedLensConfig, Order } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -49,7 +49,7 @@ export default function HomePage() {
   const { openWishlist } = useWishlist();
 
   const [currentPage, setCurrentPage] = useState<"home" | "shop" | "contact" | "appointment" | "wishlist" | "about" | "privacy" | "cart">("home");
-  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(ALL_FALLBACK_PRODUCTS);
 
   // Background optimistic hydration from Supabase
   useEffect(() => {
