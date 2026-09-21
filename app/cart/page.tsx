@@ -25,8 +25,18 @@ export default function StandaloneCartPage() {
       router.push("/");
     } else if (page === "cart") {
       window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (page === "shop") {
+      router.push("/shop");
+    } else if (page === "contact") {
+      router.push("/contact");
+    } else if (page === "appointment") {
+      router.push("/appointment");
+    } else if (page === "about") {
+      router.push("/about-us");
+    } else if (page === "privacy") {
+      router.push("/privacy-policy");
     } else {
-      router.push(`/?page=${page}`);
+      router.push(`/${page}`);
     }
   };
 
@@ -36,23 +46,23 @@ export default function StandaloneCartPage() {
         {/* Main Luxury Header */}
         <Header
           onOpenSearch={() => setIsSearchOpen(true)}
-          onSelectCategory={(cat) => router.push(`/?page=shop&category=${cat}`)}
-          onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)}
+          onSelectCategory={(cat) => router.push(`/shop?category=${cat}`)}
+          onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
           activeCategory="cart"
           currentPage="cart"
           onNavigate={handleNavigate}
         />
 
         {/* Luxury Brand Marquee Bar */}
-        <BrandMarquee onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)} />
+        <BrandMarquee onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)} />
 
-        {/* Dedicated Luxury Cart Page (Figma Node 106:7035) */}
+        {/* Dedicated Luxury Cart Page */}
         <CartPage
           onNavigateHome={() => router.push("/")}
-          onNavigateShop={() => router.push("/?page=shop")}
-          onNavigateContact={() => router.push("/?page=contact")}
-          onProceedToCheckout={() => setIsCheckoutOpen(true)}
-          onSelectProduct={(product) => router.push(`/?page=shop&productId=${product.id}`)}
+          onNavigateShop={() => router.push("/shop")}
+          onNavigateContact={() => router.push("/contact")}
+          onProceedToCheckout={() => router.push("/checkout")}
+          onSelectProduct={(product) => router.push(`/product/${product.id}`)}
           allProducts={products}
         />
       </div>
@@ -60,15 +70,12 @@ export default function StandaloneCartPage() {
       {/* Main Luxury Footer */}
       <Footer
         onSelectCategory={(cat) => {
-          if (cat === "about") {
-            router.push("/about-us");
-          } else if (cat === "privacy") {
-            router.push("/privacy-policy");
-          } else {
-            router.push(`/?page=shop&category=${cat}`);
-          }
+          if (cat === "about") router.push("/about-us");
+          else if (cat === "privacy") router.push("/privacy-policy");
+          else if (cat === "contact") router.push("/contact");
+          else router.push(`/shop?category=${cat}`);
         }}
-        onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)}
+        onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
         onNavigate={handleNavigate}
       />
 
@@ -78,8 +85,9 @@ export default function StandaloneCartPage() {
       {/* Wishlist Drawer */}
       <WishlistDrawer
         allProducts={products}
-        onSelectProduct={(product) => router.push(`/?page=shop&productId=${product.id}`)}
-        onNavigateShop={() => router.push("/?page=shop")}
+        onSelectProduct={(product) => router.push(`/product/${product.id}`)}
+        onNavigateShop={() => router.push("/shop")}
+        onNavigateCart={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       />
 
       {/* Checkout Modal */}
@@ -96,8 +104,8 @@ export default function StandaloneCartPage() {
         <SearchModal
           products={products}
           onClose={() => setIsSearchOpen(false)}
-          onSelectProduct={(product) => router.push(`/?page=shop&productId=${product.id}`)}
-          onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)}
+          onSelectProduct={(product) => router.push(`/product/${product.id}`)}
+          onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
         />
       )}
     </div>

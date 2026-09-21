@@ -1,19 +1,22 @@
 "use client";
 
 import React, { memo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Heart, Star, Tag, Zap } from "lucide-react";
 import { Product } from "@/types";
 import { useWishlist } from "@/context/WishlistContext";
 
 interface HomeProductCardProps {
   product: Product;
-  onSelectProduct: (product: Product) => void;
+  onSelectProduct?: (product: Product) => void;
 }
 
 export const HomeProductCard = memo(function HomeProductCard({
   product,
   onSelectProduct,
 }: HomeProductCardProps) {
+  const router = useRouter();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const wishlisted = isWishlisted(product.id);
 
@@ -34,9 +37,17 @@ export const HomeProductCard = memo(function HomeProductCard({
     setImgSrc(product.images?.[0] || fallbackImg);
   }, [product.images]);
 
+  const handleCardClick = () => {
+    if (onSelectProduct) {
+      onSelectProduct(product);
+    } else {
+      router.push(`/product/${product.id}`);
+    }
+  };
+
   return (
     <div
-      onClick={() => onSelectProduct(product)}
+      onClick={handleCardClick}
       className="w-[232px] sm:w-[244px] shrink-0 min-h-[390px] bg-white border border-[#EBE6DF] rounded-[16px] p-4 flex flex-col justify-between relative group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 select-none"
     >
       {/* Wishlist Heart Button */}
@@ -58,7 +69,10 @@ export const HomeProductCard = memo(function HomeProductCard({
       </button>
 
       {/* Product Image Area - Fixed Aspect Ratio and Size */}
-      <div className="w-full h-36 sm:h-40 shrink-0 flex items-center justify-center p-2 relative overflow-hidden mb-2 bg-transparent">
+      <Link
+        href={`/product/${product.id}`}
+        className="w-full h-36 sm:h-40 shrink-0 flex items-center justify-center p-2 relative overflow-hidden mb-2 bg-transparent block"
+      >
         <img
           src={imgSrc}
           alt={product.name}
@@ -66,7 +80,7 @@ export const HomeProductCard = memo(function HomeProductCard({
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
           loading="lazy"
         />
-      </div>
+      </Link>
 
       {/* Product Information */}
       <div className="flex-1 flex flex-col justify-between space-y-2">
@@ -81,9 +95,11 @@ export const HomeProductCard = memo(function HomeProductCard({
           )}
 
           {/* Subtitle / Model description */}
-          <p className="font-sans font-normal text-[11px] leading-[15px] text-[#4B5563] line-clamp-2 mt-1">
-            {product.subtitle || product.name}
-          </p>
+          <Link href={`/product/${product.id}`} className="block">
+            <p className="font-sans font-normal text-[11px] leading-[15px] text-[#4B5563] line-clamp-2 mt-1 hover:text-[#C86A28] transition-colors">
+              {product.subtitle || product.name}
+            </p>
+          </Link>
         </div>
 
         {/* Size and Rating row */}
@@ -119,7 +135,7 @@ export const HomeProductCard = memo(function HomeProductCard({
 
         {/* Sale Tag Bar */}
         <div className="border-t border-[#F3F4F6] pt-2 mt-1.5 flex items-center gap-1.5 text-[11px] text-[#1F2937] font-sans">
-          {product.id === "figma-cartier-gold-rectangle" || product.brand?.toLowerCase() === "cartier" ? (
+          {product.isOnSale || product.brand?.toLowerCase() === "cartier" ? (
             <>
               <Tag className="w-3.5 h-3.5 text-[#D97706] shrink-0" />
               <span className="font-bold text-[#111827]">2 Offers Available</span>

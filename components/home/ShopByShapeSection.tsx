@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { FrameShape } from '@/types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useDraggableRow } from '@/hooks/useDraggableRow';
 
 interface ShapeItem {
   id: string;
@@ -22,9 +23,14 @@ export const ShopByShapeSection: React.FC<ShopByShapeSectionProps> = ({
   onSelectShape,
   category = 'sunglasses',
 }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const {
+    containerRef,
+    canScrollLeft,
+    canScrollRight,
+    scrollByWholeRow,
+    dragHandlers,
+    updateScrollState,
+  } = useDraggableRow({ defaultCardWidth: 160 });
   const isSunglasses = category === 'sunglasses';
 
   const sunglassesShapes: ShapeItem[] = [
@@ -49,38 +55,12 @@ export const ShopByShapeSection: React.FC<ShopByShapeSectionProps> = ({
 
   const shapes = isSunglasses ? sunglassesShapes : eyeglassesShapes;
 
-  const updateScrollState = useCallback(() => {
-    if (scrollRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      setCanScrollLeft(scrollLeft > 4);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4);
-    }
-  }, []);
-
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    updateScrollState();
-    el.addEventListener('scroll', updateScrollState, { passive: true });
-    window.addEventListener('resize', updateScrollState);
-
-    // Initial check after paint
-    const timer = setTimeout(updateScrollState, 150);
-
-    return () => {
-      el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
-      clearTimeout(timer);
-    };
-  }, [category, updateScrollState]);
-
-  const handleScroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const scrollAmount = direction === 'left' ? -280 : 280;
-      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = 0;
+      updateScrollState();
     }
-  };
+  }, [category, updateScrollState]);
 
   return (
     <section className="bg-white py-8 sm:py-10 border-y border-[#E8DCCF]/50 select-none">
@@ -96,7 +76,7 @@ export const ShopByShapeSection: React.FC<ShopByShapeSectionProps> = ({
           {(canScrollLeft || canScrollRight) && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleScroll('left')}
+                onClick={() => scrollByWholeRow('left')}
                 disabled={!canScrollLeft}
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#E8DCCF] flex items-center justify-center transition-all duration-200 ${
                   canScrollLeft
@@ -108,7 +88,7 @@ export const ShopByShapeSection: React.FC<ShopByShapeSectionProps> = ({
                 <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
-                onClick={() => handleScroll('right')}
+                onClick={() => scrollByWholeRow('right')}
                 disabled={!canScrollRight}
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#E8DCCF] flex items-center justify-center transition-all duration-200 ${
                   canScrollRight
@@ -125,10 +105,11 @@ export const ShopByShapeSection: React.FC<ShopByShapeSectionProps> = ({
 
         {/* Scrollable Container */}
         <div className="relative">
-          {/* Horizontal Track of Shape Circles */}
+          {/* Horizontal Track of Shape Circles with Mouse Drag */}
           <div
-            ref={scrollRef}
-            className="flex items-center justify-start lg:justify-between gap-4 sm:gap-6 overflow-x-auto scrollbar-none py-2 px-1 scroll-smooth"
+            ref={containerRef}
+            {...dragHandlers}
+            className="flex items-center justify-start lg:justify-between gap-4 sm:gap-6 overflow-x-auto scrollbar-none py-2 px-1 scroll-smooth cursor-grab active:cursor-grabbing select-none"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {shapes.map((shape) => (

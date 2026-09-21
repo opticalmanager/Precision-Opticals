@@ -1,6 +1,8 @@
 "use client";
 
 import React, { memo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Heart, Star, Tag, Zap, Camera } from "lucide-react";
 import { Product } from "@/types";
 import { useWishlist } from "@/context/WishlistContext";
@@ -8,7 +10,7 @@ import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
 
 interface ProductCardProps {
   product: Product;
-  onSelectProduct: (product: Product) => void;
+  onSelectProduct?: (product: Product) => void;
   onOpenVirtualTryOn?: (product: Product) => void;
   onToggleWishlist?: (productId: string) => void;
   isWishlisted?: boolean;
@@ -21,6 +23,7 @@ export const ProductCard = memo(function ProductCard({
   onToggleWishlist,
   isWishlisted: propIsWishlisted,
 }: ProductCardProps) {
+  const router = useRouter();
   const { isWishlisted: contextIsWishlisted, toggleWishlist } = useWishlist();
   const isWishlisted = propIsWishlisted !== undefined ? propIsWishlisted : contextIsWishlisted(product.id);
   const handleToggle = onToggleWishlist || ((id: string) => toggleWishlist(id, product.name));
@@ -45,9 +48,17 @@ export const ProductCard = memo(function ProductCard({
   // Offers vs Sale badge logic matching Figma
   const hasMultipleOffers = product.id.includes("cartier-gold") || product.brand?.toLowerCase() === "cartier";
 
+  const handleCardClick = () => {
+    if (onSelectProduct) {
+      onSelectProduct(product);
+    } else {
+      router.push(`/product/${product.id}`);
+    }
+  };
+
   return (
     <div
-      onClick={() => onSelectProduct(product)}
+      onClick={handleCardClick}
       className="w-full min-h-[390px] bg-white border border-[#EBE6DF] rounded-[16px] p-4 flex flex-col justify-between relative group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 select-none"
     >
       {/* Top Floating Actions: Wishlist Heart & Virtual Try-On */}
@@ -86,7 +97,10 @@ export const ProductCard = memo(function ProductCard({
       </div>
 
       {/* Main Eyewear Image Display - Fixed Aspect Ratio and Size */}
-      <div className="w-full h-36 sm:h-40 shrink-0 flex items-center justify-center p-2 relative overflow-hidden mb-2 bg-transparent">
+      <Link
+        href={`/product/${product.id}`}
+        className="w-full h-36 sm:h-40 shrink-0 flex items-center justify-center p-2 relative overflow-hidden mb-2 bg-transparent block"
+      >
         <img
           src={imgSrc}
           alt={product.name}
@@ -94,7 +108,7 @@ export const ProductCard = memo(function ProductCard({
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
           loading="lazy"
         />
-      </div>
+      </Link>
 
       {/* Product Details Section */}
       <div className="flex-1 flex flex-col justify-between space-y-2">
@@ -109,9 +123,11 @@ export const ProductCard = memo(function ProductCard({
           )}
 
           {/* Product Name */}
-          <h3 className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-1 mt-0.5" title={product.name}>
-            {product.name}
-          </h3>
+          <Link href={`/product/${product.id}`} className="block">
+            <h3 className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-1 mt-0.5 hover:text-[#C86A28] transition-colors" title={product.name}>
+              {product.name}
+            </h3>
+          </Link>
 
           {/* Subtitle / Model Title if distinct from name */}
           {product.subtitle && product.subtitle.trim().toLowerCase() !== product.name.trim().toLowerCase() ? (

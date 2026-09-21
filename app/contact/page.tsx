@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { BrandMarquee } from "@/components/layout/BrandMarquee";
 import { Footer } from "@/components/layout/Footer";
-import { AboutUsPage } from "@/components/pages/AboutUsPage";
+import { ContactUsPage } from "@/components/pages/ContactUsPage";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { WishlistDrawer } from "@/components/wishlist/WishlistDrawer";
 import { SearchModal } from "@/components/pages/SearchModal";
 import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 import { PRODUCTS } from "@/data/products";
 
-export default function StandaloneAboutUsPage() {
+export default function StandaloneContactPage() {
   const router = useRouter();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [products] = useState(PRODUCTS);
@@ -20,7 +20,7 @@ export default function StandaloneAboutUsPage() {
   const handleNavigate = (page: string) => {
     if (page === "home") {
       router.push("/");
-    } else if (page === "about") {
+    } else if (page === "contact") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (page === "shop") {
       router.push("/shop");
@@ -28,8 +28,8 @@ export default function StandaloneAboutUsPage() {
       router.push("/cart");
     } else if (page === "appointment") {
       router.push("/appointment");
-    } else if (page === "contact") {
-      router.push("/contact");
+    } else if (page === "about") {
+      router.push("/about-us");
     } else if (page === "privacy") {
       router.push("/privacy-policy");
     } else {
@@ -45,43 +45,34 @@ export default function StandaloneAboutUsPage() {
           onOpenSearch={() => setIsSearchOpen(true)}
           onSelectCategory={(cat) => router.push(`/shop?category=${cat}`)}
           onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
-          activeCategory="about"
-          currentPage="about"
+          activeCategory="contact"
+          currentPage="contact"
           onNavigate={handleNavigate}
         />
 
         {/* Luxury Brand Marquee Bar */}
         <BrandMarquee onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)} />
 
-        {/* About Us Page Content */}
-        <AboutUsPage
-          onNavigateHome={() => router.push("/")}
-          onNavigateShop={() => router.push("/shop")}
-          onNavigateContact={() => router.push("/contact")}
-        />
+        {/* Contact Us Page Content */}
+        <ContactUsPage onNavigateHome={() => router.push("/")} />
       </div>
 
       {/* Main Luxury Footer */}
       <Footer
         onSelectCategory={(cat) => {
-          if (cat === "about") {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          } else if (cat === "privacy") {
-            router.push("/privacy-policy");
-          } else if (cat === "contact") {
-            router.push("/contact");
-          } else {
-            router.push(`/shop?category=${cat}`);
-          }
+          if (cat === "about") router.push("/about-us");
+          else if (cat === "privacy") router.push("/privacy-policy");
+          else if (cat === "contact") window.scrollTo({ top: 0, behavior: "smooth" });
+          else router.push(`/shop?category=${cat}`);
         }}
         onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
         onNavigate={handleNavigate}
       />
 
-      {/* Floating Interactive Concierge Widgets */}
+      {/* Floating Concierge */}
       <WhatsAppWidget />
 
-      {/* Cart and Wishlist Drawers */}
+      {/* Slide-over Drawers */}
       <CartDrawer
         onProceedToCheckout={() => router.push("/checkout")}
         allProducts={products}
@@ -93,6 +84,7 @@ export default function StandaloneAboutUsPage() {
         onNavigateCart={() => router.push("/cart")}
       />
 
+      {/* Search Modal */}
       {isSearchOpen && (
         <SearchModal
           products={products}

@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 import { PRODUCTS } from "@/data/products";
-import { AKONI_DEMO_PRODUCTS } from "@/data/akoniDemoDataset";
 import { Product, FilterState } from "@/types";
 
 /**
@@ -15,49 +14,7 @@ export function invalidateProductsCache(): void {
   cachedProducts = null;
 }
 
-const mappedAkoniDemoProducts: Product[] = (AKONI_DEMO_PRODUCTS || []).map((item) => ({
-  id: item.slug,
-  brand: item.brand || "Akoni",
-  name: item.title,
-  subtitle: "Swiss Precision Eyewear",
-  price: item.price,
-  originalPrice: item.originalPrice,
-  category: (item.categorySlug || "sunglasses") as "sunglasses" | "eyeglasses",
-  gender: (item.gender || "unisex") as any,
-  shape: (item.shape || "rectangle") as any,
-  rimType: (item.rimType || "full-rim") as any,
-  material: (item.material || "titanium") as any,
-  color: item.color || "Obsidian Black / Gold",
-  colorHex: item.colorHex || "#1A1A1A",
-  lensProperties: ["anti-reflective", "uv-protection", "blue-light-filter"],
-  isNewArrival: true,
-  isBestSeller: false,
-  isOnSale: false,
-  isLimitedEdition: false,
-  rating: 4.9,
-  reviewCount: 18,
-  images: item.images && item.images.length > 0 ? item.images : ["/images/products/figma_cartier_blue_rimless.png"],
-  description: item.description || "",
-  specs: {
-    lensWidth: item.specs?.lensWidth || 52,
-    bridgeWidth: item.specs?.bridgeWidth || 19,
-    templeLength: item.specs?.templeLength || 145,
-    frameWidth: 140,
-    weight: item.specs?.weight || "24g",
-  },
-  variants: [
-    {
-      id: item.sku || `AKN-${item.slug}`,
-      colorName: item.color || "Obsidian Black / Gold",
-      colorHex: item.colorHex || "#1A1A1A",
-      image: item.images?.[0] || "/images/products/figma_cartier_blue_rimless.png",
-      inStock: (item.stockQuantity || 12) > 0,
-    },
-  ],
-  tryOnEnabled: false,
-}));
-
-export const ALL_FALLBACK_PRODUCTS: Product[] = [...PRODUCTS, ...mappedAkoniDemoProducts];
+export const ALL_FALLBACK_PRODUCTS: Product[] = PRODUCTS;
 
 /**
  * Fetch all active products from Supabase with graceful fallback to local catalogue.
@@ -100,7 +57,7 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
         ? rawImages 
         : (localMatch?.images && localMatch.images.length > 0 
             ? localMatch.images 
-            : ["/images/products/figma_cartier_blue_rimless.png"]);
+            : []);
 
       return {
         id: row.slug || row.id,
@@ -162,23 +119,6 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
         mapped.push(localProd);
       }
     }
-
-    // Sort to prioritize Figma reference products first, matching the design exactly
-    const figmaOrder = [
-      'figma-cartier-blue-rimless',
-      'figma-brown-gradient-rimless',
-      'figma-fastrack-black-wayfarer',
-      'figma-fastrack-gold-oval',
-      'figma-cartier-gold-rectangle',
-    ];
-    mapped.sort((a, b) => {
-      const idxA = figmaOrder.indexOf(a.id);
-      const idxB = figmaOrder.indexOf(b.id);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return 0;
-    });
 
     cachedProducts = mapped;
     return mapped;

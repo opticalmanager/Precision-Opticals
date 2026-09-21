@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Trash2, ShoppingBag, ShieldCheck, Tag, ArrowRight, CheckCircle2, Plus, Sparkles, Check, ChevronRight } from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import { useCart } from '../../context/CartContext';
@@ -6,7 +7,7 @@ import { formatINR } from '../../utils/formatters';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 
 interface CartDrawerProps {
-  onProceedToCheckout: () => void;
+  onProceedToCheckout?: () => void;
   onViewCartPage?: () => void;
   allProducts?: Product[];
 }
@@ -16,6 +17,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onViewCartPage,
   allProducts = []
 }) => {
+  const router = useRouter();
   const {
     items,
     isCartOpen,
@@ -304,7 +306,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <button
               onClick={() => {
                 closeCart();
-                onProceedToCheckout();
+                if (onProceedToCheckout) {
+                  onProceedToCheckout();
+                } else {
+                  router.push("/checkout");
+                }
               }}
               className="w-full bg-[#C85A1B] hover:bg-[#a84a12] text-white py-4 rounded-xl font-serif font-bold text-xs sm:text-sm uppercase tracking-widest transition-colors shadow-lg flex items-center justify-center gap-2 cursor-pointer"
             >

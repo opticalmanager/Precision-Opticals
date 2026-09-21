@@ -24,8 +24,16 @@ export default function StandalonePrivacyPolicyPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (page === "about") {
       router.push("/about-us");
+    } else if (page === "shop") {
+      router.push("/shop");
+    } else if (page === "cart") {
+      router.push("/cart");
+    } else if (page === "appointment") {
+      router.push("/appointment");
+    } else if (page === "contact") {
+      router.push("/contact");
     } else {
-      router.push(`/?page=${page}`);
+      router.push(`/${page}`);
     }
   };
 
@@ -35,20 +43,20 @@ export default function StandalonePrivacyPolicyPage() {
         {/* Main Luxury Header */}
         <Header
           onOpenSearch={() => setIsSearchOpen(true)}
-          onSelectCategory={(cat) => router.push(`/?page=shop&category=${cat}`)}
-          onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)}
+          onSelectCategory={(cat) => router.push(`/shop?category=${cat}`)}
+          onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
           activeCategory="privacy"
           currentPage="privacy"
           onNavigate={handleNavigate}
         />
 
         {/* Luxury Brand Marquee Bar */}
-        <BrandMarquee onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)} />
+        <BrandMarquee onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)} />
 
-        {/* Privacy Policy Content (Figma Node 106:7668) */}
+        {/* Privacy Policy Content */}
         <PrivacyPolicyPage
           onNavigateHome={() => router.push("/")}
-          onNavigateContact={() => router.push("/?page=contact")}
+          onNavigateContact={() => router.push("/contact")}
         />
       </div>
 
@@ -59,11 +67,13 @@ export default function StandalonePrivacyPolicyPage() {
             window.scrollTo({ top: 0, behavior: "smooth" });
           } else if (cat === "about") {
             router.push("/about-us");
+          } else if (cat === "contact") {
+            router.push("/contact");
           } else {
-            router.push(`/?page=shop&category=${cat}`);
+            router.push(`/shop?category=${cat}`);
           }
         }}
-        onSelectBrand={(brand) => router.push(`/?page=shop&brand=${brand}`)}
+        onSelectBrand={(brand) => router.push(`/shop?brand=${brand}`)}
         onNavigate={handleNavigate}
       />
 
@@ -72,17 +82,22 @@ export default function StandalonePrivacyPolicyPage() {
 
       {/* Cart and Wishlist Drawers */}
       <CartDrawer
-        onProceedToCheckout={() => router.push("/?page=shop")}
+        onProceedToCheckout={() => router.push("/checkout")}
         allProducts={products}
       />
-      <WishlistDrawer />
+      <WishlistDrawer
+        allProducts={products}
+        onSelectProduct={(p) => router.push(`/product/${p.id}`)}
+        onNavigateShop={() => router.push("/shop")}
+        onNavigateCart={() => router.push("/cart")}
+      />
 
       {isSearchOpen && (
         <SearchModal
           products={products}
           onClose={() => setIsSearchOpen(false)}
-          onSelectProduct={() => router.push("/?page=shop")}
-          onSelectBrand={(b) => router.push(`/?page=shop&brand=${b}`)}
+          onSelectProduct={(p) => router.push(`/product/${p.id}`)}
+          onSelectBrand={(b) => router.push(`/shop?brand=${b}`)}
         />
       )}
     </div>

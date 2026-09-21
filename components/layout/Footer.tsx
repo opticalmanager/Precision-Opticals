@@ -1,6 +1,8 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Mail, Phone, ChevronUp, Instagram, Facebook, Twitter } from 'lucide-react';
 
 interface FooterProps {
@@ -10,12 +12,14 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand, onNavigate }) => {
+  const router = useRouter();
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const accountLinks = [
-    { label: 'Our Policies', action: () => onNavigate && onNavigate('privacy') },
+    { label: 'Our Policies', action: () => router.push('/privacy-policy') },
     { label: 'My Account', action: () => {} },
     { label: 'Create an Account', action: () => {} },
     { label: 'Neu Pass Rewards', action: () => {} },
@@ -23,20 +27,20 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
   ];
 
   const aboutLinks = [
-    { label: 'About Us', action: () => onNavigate && onNavigate('about') },
+    { label: 'About Us', action: () => router.push('/about-us') },
     { label: 'Blog', action: () => {} },
-    { label: 'Contact Us', action: () => onNavigate && onNavigate('contact') },
-    { label: 'Privacy Notice', action: () => onNavigate && onNavigate('privacy') },
-    { label: 'Terms & Conditions', action: () => onNavigate && onNavigate('privacy') },
-    { label: 'Cyber Security Policy', action: () => onNavigate && onNavigate('privacy') },
+    { label: 'Contact Us', action: () => router.push('/contact') },
+    { label: 'Privacy Notice', action: () => router.push('/privacy-policy') },
+    { label: 'Terms & Conditions', action: () => router.push('/privacy-policy') },
+    { label: 'Cyber Security Policy', action: () => router.push('/privacy-policy') },
   ];
 
   const usefulLinks = [
-    { label: 'Store Locations', action: () => onNavigate && onNavigate('contact') },
-    { label: 'Bulk Enquiry', action: () => onNavigate && onNavigate('contact') },
+    { label: 'Store Locations', action: () => router.push('/contact') },
+    { label: 'Bulk Enquiry', action: () => router.push('/contact') },
     { label: 'Precision Vision App', action: () => {} },
     { label: 'Hearing Aids', action: () => {} },
-    { label: 'Exercise Your Rights', action: () => onNavigate && onNavigate('privacy') },
+    { label: 'Exercise Your Rights', action: () => router.push('/privacy-policy') },
     { label: 'Glossary', action: () => {} },
     { label: 'AI Glasses Manual', action: () => {} },
   ];
@@ -71,10 +75,12 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onSelectBrand,
   }
 
   const handleLinkClick = (item: LinkItem) => {
-    if (item.category && onSelectCategory) {
-      onSelectCategory(item.category);
-    } else if (item.brand && onSelectBrand) {
-      onSelectBrand(item.brand);
+    if (item.category) {
+      if (onSelectCategory) onSelectCategory(item.category);
+      router.push(`/shop?category=${item.category}`);
+    } else if (item.brand) {
+      if (onSelectBrand) onSelectBrand(item.brand);
+      router.push(`/shop?brand=${item.brand}`);
     } else if (item.action) {
       item.action();
     }

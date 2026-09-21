@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Slide {
@@ -19,16 +20,16 @@ interface Slide {
 
 const HERO_SLIDES: Slide[] = [
   {
-    id: "new-arrival-aurora",
-    brand: "NEW ARRIVAL",
-    title: "AURORA EYEWEAR",
-    subtitle: "TITANIUM COLLECTION • PRECISION OPTICS LUXURY EYEWEAR",
-    buttonText: "SHOP COLLECTION",
-    imageUrl: "/images/figma_hero_banner.png",
-    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/figma_hero_banner.png",
-    linkUrl: "/shop?category=sunglasses",
-    categoryFilter: "sunglasses",
-    accentColor: "#C86A28",
+    id: "theo-eyewear",
+    brand: "LUNA & ROSE",
+    title: "DESIGNED TO STAND OUT",
+    subtitle: "AVANT-GARDE HANDCRAFTED FRAMES • ARTISANAL PINK ROSE TINTS",
+    buttonText: "DISCOVER COLLECTION",
+    imageUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471793256-Gemini_Generated_Image_6qgagl6qgagl6qga-clean.png",
+    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471793256-Gemini_Generated_Image_6qgagl6qgagl6qga-clean.png",
+    linkUrl: "/shop",
+    brandFilter: "theo",
+    accentColor: "#E83E00",
   },
   {
     id: "see-beyond",
@@ -36,35 +37,11 @@ const HERO_SLIDES: Slide[] = [
     title: "SEE BEYOND.",
     subtitle: "TIMELESS STYLE • EVERYDAY CONFIDENCE • PREMIUM SUNGLASSES FOR EVERY YOU",
     buttonText: "SHOP NOW",
-    imageUrl: "/images/banner_see_beyond_1785153512408.jpg",
-    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/banner_see_beyond_1785153512408.jpg",
-    linkUrl: "/shop?category=sunglasses",
+    imageUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471880641-Gemini_Generated_Image_e6jrlde6jrlde6jr-clean.png",
+    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471880641-Gemini_Generated_Image_e6jrlde6jrlde6jr-clean.png",
+    linkUrl: "/shop",
     categoryFilter: "sunglasses",
     accentColor: "#D4AF37",
-  },
-  {
-    id: "eyewear-every-you",
-    brand: "EXCLUSIVE AURA",
-    title: "EYEWEAR FOR EVERY YOU",
-    subtitle: "STYLE THAT SPEAKS • VISION THAT LASTS • UV PROTECTION & LIGHTWEIGHT COMFORT",
-    buttonText: "EXPLORE COLLECTION",
-    imageUrl: "/images/banner_every_you_1785153527777.jpg",
-    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/banner_every_you_1785153527777.jpg",
-    linkUrl: "/shop?category=sunglasses",
-    categoryFilter: "sunglasses",
-    accentColor: "#C86A28",
-  },
-  {
-    id: "theo-eyewear",
-    brand: "LUNA & ROSE",
-    title: "DESIGNED TO STAND OUT",
-    subtitle: "AVANT-GARDE HANDCRAFTED FRAMES • ARTISANAL PINK ROSE TINTS",
-    buttonText: "DISCOVER COLLECTION",
-    imageUrl: "/images/banner_theo_eyewear_1785153543549.jpg",
-    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/banner_theo_eyewear_1785153543549.jpg",
-    linkUrl: "/shop?brand=theo",
-    brandFilter: "theo",
-    accentColor: "#E83E00",
   },
   {
     id: "aurora-polarized",
@@ -72,9 +49,33 @@ const HERO_SLIDES: Slide[] = [
     title: "UNCOMPROMISING VISION",
     subtitle: "POLARIZED SERIA • JAPANESE POLARIZED OPTICAL CLARITY",
     buttonText: "EXPLORE POLARIZED",
-    imageUrl: "/images/banner_vision_redefined_1785153555788.jpg",
-    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/banner_vision_redefined_1785153555788.jpg",
-    linkUrl: "/shop?category=sunglasses",
+    imageUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471542560-Gemini_Generated_Image_ye1wnmye1wnmye1w-clean.png",
+    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471542560-Gemini_Generated_Image_ye1wnmye1wnmye1w-clean.png",
+    linkUrl: "/shop",
+    categoryFilter: "sunglasses",
+    accentColor: "#C86A28",
+  },
+  {
+    id: "new-arrival-aurora",
+    brand: "NEW ARRIVAL",
+    title: "AURORA EYEWEAR",
+    subtitle: "TITANIUM COLLECTION • PRECISION OPTICS LUXURY EYEWEAR",
+    buttonText: "SHOP COLLECTION",
+    imageUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789469221574-WhatsApp_Image_2026-09-15_at_10.38.57_AM.jpeg",
+    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789469221574-WhatsApp_Image_2026-09-15_at_10.38.57_AM.jpeg",
+    linkUrl: "/shop",
+    categoryFilter: "sunglasses",
+    accentColor: "#C86A28",
+  },
+  {
+    id: "eyewear-every-you",
+    brand: "EXCLUSIVE AURA",
+    title: "EYEWEAR FOR EVERY YOU",
+    subtitle: "STYLE THAT SPEAKS • VISION THAT LASTS • UV PROTECTION & LIGHTWEIGHT COMFORT",
+    buttonText: "EXPLORE COLLECTION",
+    imageUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471671927-Gemini_Generated_Image_5f6m7b5f6m7b5f6m-clean__1_.png",
+    cdnUrl: "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471671927-Gemini_Generated_Image_5f6m7b5f6m7b5f6m-clean__1_.png",
+    linkUrl: "/shop",
     categoryFilter: "sunglasses",
     accentColor: "#C86A28",
   },
@@ -86,6 +87,7 @@ interface HeroSliderProps {
 }
 
 export const HeroSlider: React.FC<HeroSliderProps> = ({ onSelectSlideCategory }) => {
+  const router = useRouter();
   const [slides, setSlides] = useState<Slide[]>(HERO_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -114,8 +116,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onSelectSlideCategory })
               title: s.title || s.buttonText || "",
               subtitle: s.subtitle || "",
               buttonText: s.buttonText || "SHOP NOW",
-              imageUrl: s.imageUrl || "/images/figma_hero_banner.png",
-              cdnUrl: s.cdnUrl || s.imageUrl || "/images/figma_hero_banner.png",
+              imageUrl: s.imageUrl || s.cdnUrl || "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471793256-Gemini_Generated_Image_6qgagl6qgagl6qga-clean.png",
+              cdnUrl: s.cdnUrl || s.imageUrl || "https://pub-4770ee76ded14c04b1a8924c300214b5.r2.dev/banners/1789471793256-Gemini_Generated_Image_6qgagl6qgagl6qga-clean.png",
               linkUrl: s.linkUrl || "",
               categoryFilter: s.categoryFilter,
               brandFilter: s.brandFilter,
@@ -180,12 +182,16 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ onSelectSlideCategory })
       if (slide.linkUrl.startsWith("http://") || slide.linkUrl.startsWith("https://")) {
         window.open(slide.linkUrl, "_blank");
       } else {
-        window.location.href = slide.linkUrl;
+        router.push(slide.linkUrl);
       }
     } else if (slide.categoryFilter || slide.brandFilter) {
       onSelectSlideCategory(slide.categoryFilter, slide.brandFilter);
+      const params = new URLSearchParams();
+      if (slide.categoryFilter) params.set("category", slide.categoryFilter);
+      if (slide.brandFilter) params.set("brand", slide.brandFilter);
+      router.push(`/shop?${params.toString()}`);
     } else {
-      window.location.href = "/shop";
+      router.push("/shop");
     }
   };
 

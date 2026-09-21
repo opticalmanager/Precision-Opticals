@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { Product } from '@/types';
 import { HomeProductCard } from './HomeProductCard';
+import { useDraggableRow } from '@/hooks/useDraggableRow';
 
 interface JustDroppedSectionProps {
   products: Product[];
@@ -17,82 +18,35 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
   onViewAll,
 }) => {
   const [activeTab, setActiveTab] = useState<'new' | 'bestsellers'>('new');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const {
+    containerRef,
+    canScrollLeft,
+    canScrollRight,
+    scrollByWholeRow,
+    dragHandlers,
+    updateScrollState,
+  } = useDraggableRow();
 
-  // Filter Just Dropped / New Arrivals (Prioritize exact Figma products)
+  // Filter Just Dropped / New Arrivals
   const justDroppedProducts = useMemo(() => {
-    const figmaIds = [
-      'figma-cartier-blue-rimless',
-      'figma-brown-gradient-rimless',
-      'figma-fastrack-black-wayfarer',
-      'figma-fastrack-gold-oval',
-      'figma-cartier-gold-rectangle',
-    ];
-
-    const matched = figmaIds
-      .map((id) => products.find((p) => p.id === id))
-      .filter((p): p is Product => p !== undefined);
-
-    const otherNewArrivals = products.filter((p) => !figmaIds.includes(p.id) && p.isNewArrival);
-    return [...matched, ...otherNewArrivals];
+    const list = products.filter((p) => p.isNewArrival);
+    return list.length > 0 ? list : products;
   }, [products]);
 
   // Filter Best Sellers
   const bestSellerProducts = useMemo(() => {
-    const figmaIds = [
-      'figma-cartier-gold-rectangle',
-      'figma-fastrack-black-wayfarer',
-      'figma-cartier-blue-rimless',
-      'figma-fastrack-gold-oval',
-      'figma-brown-gradient-rimless',
-    ];
-
-    const matched = figmaIds
-      .map((id) => products.find((p) => p.id === id))
-      .filter((p): p is Product => p !== undefined);
-
-    const otherBestSellers = products.filter((p) => !figmaIds.includes(p.id) && p.isBestSeller);
-    return [...matched, ...otherBestSellers];
+    const list = products.filter((p) => p.isBestSeller);
+    return list.length > 0 ? list : products.slice().reverse();
   }, [products]);
 
   const displayedProducts = activeTab === 'new' ? justDroppedProducts : bestSellerProducts;
 
-  const updateScrollState = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 6);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 6);
-    }
-  }, []);
-
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    // Reset scroll on tab change
-    el.scrollLeft = 0;
-    updateScrollState();
-
-    el.addEventListener('scroll', updateScrollState, { passive: true });
-    window.addEventListener('resize', updateScrollState);
-
-    const timer = setTimeout(updateScrollState, 150);
-
-    return () => {
-      el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
-      clearTimeout(timer);
-    };
-  }, [activeTab, displayedProducts.length, updateScrollState]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = direction === 'left' ? -320 : 320;
-      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = 0;
+      updateScrollState();
     }
-  };
+  }, [activeTab, updateScrollState]);
 
   return (
     <section className="bg-[#FAF7F2] py-8 sm:py-10 border-b border-[#E8DCCF] select-none">
@@ -127,7 +81,7 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
           {/* Scroll Left Button */}
           {canScrollLeft && (
             <button
-              onClick={() => scroll('left')}
+              onClick={() => scrollByWholeRow('left')}
               className="absolute left-0 sm:-left-2 lg:-left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[#2A1E17] shadow-lg border border-[#E8DCCF] flex items-center justify-center hover:bg-[#C86A28] hover:text-white hover:border-[#C86A28] transition-all duration-200 focus:outline-none cursor-pointer active:scale-95"
               aria-label="Previous Products"
             >
@@ -138,7 +92,7 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
           {/* Scroll Right Button */}
           {canScrollRight && (
             <button
-              onClick={() => scroll('right')}
+              onClick={() => scrollByWholeRow('right')}
               className="absolute right-0 sm:-right-2 lg:-right-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[#2A1E17] shadow-lg border border-[#E8DCCF] flex items-center justify-center hover:bg-[#C86A28] hover:text-white hover:border-[#C86A28] transition-all duration-200 focus:outline-none cursor-pointer active:scale-95"
               aria-label="Next Products"
             >
@@ -146,10 +100,11 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
             </button>
           )}
 
-          {/* Scrollable Track */}
+          {/* Scrollable Track with Mouse Drag-to-Scroll */}
           <div
-            ref={scrollContainerRef}
-            className="flex gap-3.5 sm:gap-4.5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1"
+            ref={containerRef}
+            {...dragHandlers}
+            className="flex gap-3.5 sm:gap-4.5 overflow-x-auto scrollbar-none scroll-smooth pb-4 pt-1 px-1 cursor-grab active:cursor-grabbing select-none"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {displayedProducts.map((product) => (

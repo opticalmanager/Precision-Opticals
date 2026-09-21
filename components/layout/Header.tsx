@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ChevronRight, Glasses, Calendar, Phone, Check, Sparkles } from 'lucide-react';
 import { LUXURY_BRANDS } from '@/data/brands';
 import { useCart } from '@/context/CartContext';
@@ -25,10 +27,35 @@ export const Header: React.FC<HeaderProps> = ({
   currentPage = 'home',
   onNavigate
 }) => {
+  const router = useRouter();
   const { cartCount, openCart, closeCart } = useCart();
   const { wishlistCount, openWishlist } = useWishlist();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
+  const leaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleMenuEnter = (menuKey: string) => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    setHoveredMenu(menuKey);
+  };
+
+  const handleMenuLeave = () => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+    }
+    leaveTimeoutRef.current = setTimeout(() => {
+      setHoveredMenu(null);
+    }, 220);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
+    };
+  }, []);
 
   const handleNavClick = (category?: string, page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart' = 'shop') => {
     if (page === 'wishlist') {
@@ -38,45 +65,55 @@ export const Header: React.FC<HeaderProps> = ({
 
     if (page === 'cart') {
       closeCart();
-      if (onNavigate) {
-        onNavigate('cart');
-      } else if (typeof window !== 'undefined') {
-        window.location.href = '/cart';
-      }
+      if (onNavigate) onNavigate('cart');
+      router.push('/cart');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (page === 'contact' || page === 'appointment' || page === 'about' || page === 'privacy') {
-      if (onNavigate) {
-        onNavigate(page);
-      }
+    if (page === 'contact') {
+      if (onNavigate) onNavigate('contact');
+      router.push('/contact');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (category === 'about') {
-      if (onNavigate) {
-        onNavigate('about');
-      }
+    if (page === 'appointment') {
+      if (onNavigate) onNavigate('appointment');
+      router.push('/appointment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'about' || category === 'about') {
+      if (onNavigate) onNavigate('about');
+      router.push('/about-us');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'privacy') {
+      if (onNavigate) onNavigate('privacy');
+      router.push('/privacy-policy');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (page === 'home') {
-      if (onNavigate) {
-        onNavigate('home');
-      }
+      if (onNavigate) onNavigate('home');
+      router.push('/');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (onNavigate) {
-      onNavigate('shop');
-    }
-    if (category) {
+    if (onNavigate) onNavigate('shop');
+    if (category && category !== 'all') {
       onSelectCategory(category);
+      router.push(`/shop?category=${category}`);
+    } else {
+      router.push('/shop');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -119,7 +156,8 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center Brand Logo */}
         <div className="shrink-0 flex justify-center text-center py-0.5">
-          <button
+          <Link
+            href="/"
             onClick={() => handleNavClick('all', 'home')}
             className="inline-flex items-center justify-center group focus:outline-none cursor-pointer"
             aria-label="Precision Optics Home"
@@ -130,7 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
               alt="Precision Optics"
               className="h-8 sm:h-10 md:h-11 w-auto object-contain transition-transform group-hover:scale-105"
             />
-          </button>
+          </Link>
         </div>
 
         {/* Right Top Actions */}
@@ -195,8 +233,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 1. NEW ARRIVALS */}
             <li
               className="py-2.5 group"
-              onMouseEnter={() => setHoveredMenu('new-arrivals')}
-              onMouseLeave={() => setHoveredMenu(null)}
+              onMouseEnter={() => handleMenuEnter('new-arrivals')}
+              onMouseLeave={handleMenuLeave}
             >
               <button
                 onClick={() => handleNavClick('new', 'shop')}
@@ -210,7 +248,11 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Megamenu dropdown */}
               {hoveredMenu === 'new-arrivals' && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-xl p-5 grid grid-cols-3 gap-6 text-left normal-case tracking-normal z-50 rounded-b-md text-xs mt-0.5">
+                <div
+                  onMouseEnter={() => handleMenuEnter('new-arrivals')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-xl p-5 grid grid-cols-3 gap-6 text-left normal-case tracking-normal z-50 rounded-b-md text-xs before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
                   <div>
                     <h4 className="font-serif font-bold text-[11px] tracking-widest uppercase text-stone-900 mb-2 border-b border-stone-200 pb-1">
                       SHOP NEW
@@ -243,8 +285,10 @@ export const Header: React.FC<HeaderProps> = ({
                         <li key={brand}>
                           <button
                             onClick={() => {
-                              onSelectBrand(brand.toLowerCase().replace(/\s+/g, '-'));
+                              const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                              onSelectBrand(bSlug);
                               if (onNavigate) onNavigate('shop');
+                              router.push(`/shop?brand=${bSlug}`);
                               setHoveredMenu(null);
                             }}
                             className="hover:text-orange-600 transition-colors cursor-pointer"
@@ -296,8 +340,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 3. EYEGLASSES */}
             <li
               className="py-2.5 group"
-              onMouseEnter={() => setHoveredMenu('eyewear')}
-              onMouseLeave={() => setHoveredMenu(null)}
+              onMouseEnter={() => handleMenuEnter('eyewear')}
+              onMouseLeave={handleMenuLeave}
             >
               <button
                 onClick={() => handleNavClick('eyeglasses', 'shop')}
@@ -311,7 +355,11 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* EYEGLASSES Megamenu Dropdown */}
               {hoveredMenu === 'eyewear' && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                <div
+                  onMouseEnter={() => handleMenuEnter('eyewear')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
                   {/* MEN Eyeglasses Column */}
                   <div className="space-y-3">
                     <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
@@ -499,8 +547,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 4. SUNGLASSES */}
             <li
               className="py-2.5 group"
-              onMouseEnter={() => setHoveredMenu('sunglasses')}
-              onMouseLeave={() => setHoveredMenu(null)}
+              onMouseEnter={() => handleMenuEnter('sunglasses')}
+              onMouseLeave={handleMenuLeave}
             >
               <button
                 onClick={() => handleNavClick('sunglasses', 'shop')}
@@ -514,7 +562,11 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* SUNGLASSES Megamenu Dropdown */}
               {hoveredMenu === 'sunglasses' && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                <div
+                  onMouseEnter={() => handleMenuEnter('sunglasses')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
                   {/* MEN Sunglasses Column */}
                   <div className="space-y-3">
                     <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
@@ -704,8 +756,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 5. CONTACTS */}
             <li
               className="py-2.5 group"
-              onMouseEnter={() => setHoveredMenu('contacts')}
-              onMouseLeave={() => setHoveredMenu(null)}
+              onMouseEnter={() => handleMenuEnter('contacts')}
+              onMouseLeave={handleMenuLeave}
             >
               <button
                 onClick={() => handleNavClick('contact-lenses', 'shop')}
@@ -719,7 +771,11 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* CONTACTS Megamenu Dropdown */}
               {hoveredMenu === 'contacts' && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                <div
+                  onMouseEnter={() => handleMenuEnter('contacts')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
                   {/* CLEAR Contacts Column */}
                   <div className="space-y-3">
                     <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
@@ -903,8 +959,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 6. LUXURY BRANDS */}
             <li
               className="py-2.5 group"
-              onMouseEnter={() => setHoveredMenu('brands')}
-              onMouseLeave={() => setHoveredMenu(null)}
+              onMouseEnter={() => handleMenuEnter('brands')}
+              onMouseLeave={handleMenuLeave}
             >
               <button
                 onClick={() => handleNavClick('all', 'shop')}
@@ -915,7 +971,11 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {hoveredMenu === 'brands' && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[880px] max-w-[calc(100vw-2rem)] bg-white border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-12 gap-6 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 mt-0.5">
+                <div
+                  onMouseEnter={() => handleMenuEnter('brands')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[880px] max-w-[calc(100vw-2rem)] bg-white border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-12 gap-6 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
                   {/* Left Brand List */}
                   <div className="col-span-4 pr-2 border-r border-stone-200">
                     <h4 className="font-serif font-black text-xs tracking-widest uppercase text-[#C86A28] mb-3 pb-1 border-b border-stone-200">
@@ -940,6 +1000,7 @@ export const Header: React.FC<HeaderProps> = ({
                             onClick={() => {
                               onSelectBrand(brand.id);
                               if (onNavigate) onNavigate('shop');
+                              router.push(`/shop?brand=${brand.id}`);
                               setHoveredMenu(null);
                             }}
                             className="w-full text-left font-bold text-stone-800 hover:text-[#C86A28] hover:translate-x-1 transition-all py-0.5 flex items-center justify-between group cursor-pointer"
@@ -1160,8 +1221,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   key={b}
                   onClick={() => {
-                    onSelectBrand(b.toLowerCase().replace(/\s+/g, '-'));
+                    const bSlug = b.toLowerCase().replace(/\s+/g, '-');
+                    onSelectBrand(bSlug);
                     if (onNavigate) onNavigate('shop');
+                    router.push(`/shop?brand=${bSlug}`);
                     setMobileMenuOpen(false);
                   }}
                   className="bg-[#FFFDF9] p-1.5 rounded-sm text-stone-800 text-left border border-[#E8DCCF] font-serif cursor-pointer"
