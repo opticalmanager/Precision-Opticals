@@ -44,8 +44,19 @@ function ShopPageContent() {
     const minPrice = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : 0;
     const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : 200000;
 
+    const filterParam = searchParams.get("filter");
+    const onlyNewArrivals =
+      filterParam === "new_arrivals" ||
+      filterParam === "new" ||
+      cat === "new" ||
+      cat === "new-arrivals";
+    const onlySale =
+      filterParam === "sale" ||
+      cat === "sale";
+    const discountParam = searchParams.get("discount") ? Number(searchParams.get("discount")) : undefined;
+
     return {
-      category: cat as any,
+      category: (cat === "new" || cat === "new-arrivals" || cat === "sale") ? "all" : (cat as any),
       brands: brandParam ? brandParam.split(",").filter(Boolean) : [],
       gender: genderParam ? (genderParam.split(",").filter(Boolean) as GenderCategory[]) : [],
       shapes: shapeParam ? (shapeParam.split(",").filter(Boolean) as FrameShape[]) : [],
@@ -56,6 +67,9 @@ function ShopPageContent() {
       priceRange: [minPrice, maxPrice],
       searchQuery: search,
       sortBy: sort,
+      onlyNewArrivals,
+      onlySale: onlySale || Boolean(discountParam),
+      minDiscount: discountParam,
     };
   }, [searchParams]);
 
@@ -115,6 +129,15 @@ function ShopPageContent() {
       params.set("minPrice", newFilters.priceRange[0].toString());
       params.set("maxPrice", newFilters.priceRange[1].toString());
     }
+    if (newFilters.onlyNewArrivals) {
+      params.set("filter", "new_arrivals");
+    }
+    if (newFilters.onlySale) {
+      params.set("filter", "sale");
+    }
+    if (newFilters.minDiscount) {
+      params.set("discount", newFilters.minDiscount.toString());
+    }
 
     const queryString = params.toString();
     const newUrl = queryString ? `/shop?${queryString}` : "/shop";
@@ -145,6 +168,9 @@ function ShopPageContent() {
       priceRange: [0, 200000],
       searchQuery: "",
       sortBy: "featured",
+      onlyNewArrivals: false,
+      onlySale: false,
+      minDiscount: undefined,
     };
     setFilterState(resetState);
     syncFiltersToUrl(resetState);

@@ -143,11 +143,35 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     (filterState.brands?.length || 0) +
     (filterState.rimTypes?.length || 0) +
     (filterState.materials?.length || 0) +
-    (filterState.category && filterState.category !== "all" ? 1 : 0);
+    (filterState.category && filterState.category !== "all" ? 1 : 0) +
+    (filterState.onlyNewArrivals ? 1 : 0) +
+    (filterState.onlySale ? 1 : 0) +
+    (filterState.minDiscount ? 1 : 0);
 
   // Active filter pill chips list
   const activePills = useMemo(() => {
     const pills: { label: string; onRemove: () => void }[] = [];
+
+    if (filterState.onlyNewArrivals) {
+      pills.push({
+        label: "New Arrivals",
+        onRemove: () => onUpdateFilter({ onlyNewArrivals: false }),
+      });
+    }
+
+    if (filterState.onlySale && !filterState.minDiscount) {
+      pills.push({
+        label: "Sale / Special Offers",
+        onRemove: () => onUpdateFilter({ onlySale: false }),
+      });
+    }
+
+    if (filterState.minDiscount) {
+      pills.push({
+        label: `Min ${filterState.minDiscount}% Off`,
+        onRemove: () => onUpdateFilter({ minDiscount: undefined, onlySale: false }),
+      });
+    }
 
     if (filterState.category && filterState.category !== "all") {
       pills.push({

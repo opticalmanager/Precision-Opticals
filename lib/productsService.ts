@@ -112,14 +112,6 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
       };
     });
 
-    // Ensure all static PRODUCTS are included if not present in DB
-    const existingSlugs = new Set(mapped.map((p) => p.id));
-    for (const localProd of ALL_FALLBACK_PRODUCTS) {
-      if (!existingSlugs.has(localProd.id)) {
-        mapped.push(localProd);
-      }
-    }
-
     cachedProducts = mapped;
     return mapped;
   } catch (err) {
@@ -158,6 +150,25 @@ export function filterAndSortProducts(
     } else {
       result = result.filter((p) => p.category.toLowerCase() === cat);
     }
+  }
+
+  // 1b. Strict New Arrivals Flag
+  if (filterState.onlyNewArrivals) {
+    result = result.filter((p) => p.isNewArrival);
+  }
+
+  // 1c. Strict Sale / Discount Filter
+  if (filterState.onlySale) {
+    result = result.filter((p) => p.isOnSale || (p.originalPrice && p.originalPrice > p.price));
+  }
+
+  if (filterState.minDiscount && filterState.minDiscount > 0) {
+    result = result.filter((p) => {
+      const discount = (p.originalPrice && p.originalPrice > p.price)
+        ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100)
+        : (p.isOnSale ? 15 : 0);
+      return discount >= (filterState.minDiscount || 0);
+    });
   }
 
   // 2. Gender Filter

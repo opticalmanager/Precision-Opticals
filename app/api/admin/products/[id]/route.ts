@@ -105,6 +105,9 @@ export async function PUT(
     const tryOnModelUrl = body.tryOnModelUrl !== undefined ? body.tryOnModelUrl : null;
     const tryOnConfiguration = body.tryOnConfiguration ? (typeof body.tryOnConfiguration === "string" ? body.tryOnConfiguration : JSON.stringify(body.tryOnConfiguration)) : null;
 
+    const isNewArrival = body.isNewArrival !== undefined ? Boolean(body.isNewArrival) : null;
+    const isBestSeller = body.isBestSeller !== undefined ? Boolean(body.isBestSeller) : null;
+
     // Update product
     const updateRes = await query(
       `UPDATE public.products
@@ -124,7 +127,7 @@ export async function PUT(
       [
         name, subtitle, basePrice, originalPrice, gender, shape, rimType, material,
         color, colorHex, brandId, categoryId, lensProperties, JSON.stringify(specs),
-        description, isActive, body.isNewArrival, body.isBestSeller,
+        description, isActive, isNewArrival, isBestSeller,
         tryOnEnabled, tryOnModelUrl, tryOnConfiguration, id
       ]
     );

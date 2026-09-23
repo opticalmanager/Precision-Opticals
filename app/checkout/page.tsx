@@ -63,13 +63,36 @@ function CheckoutContent() {
 
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [publicSettings, setPublicSettings] = useState<any>(null);
 
-  // If user logs in while on login step, advance to address
+  // Fetch live storefront settings (shipping thresholds, enabled payment methods)
   useEffect(() => {
-    if (isLoggedIn && currentStep === "login") {
-      setCurrentStep("address");
+    fetch("/api/settings/public")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setPublicSettings(data);
+        }
+      })
+      .catch((e) => console.warn("Failed to load public settings:", e));
+  }, []);
+
+  const shippingThreshold = Number(publicSettings?.shipping?.freeShippingThreshold || 5000);
+  const standardFee = Number(publicSettings?.shipping?.standardShippingFee || 250);
+  const shippingFee = rawSubtotal >= shippingThreshold ? 0 : standardFee;
+  const totalPayable = grandTotal + shippingFee;
+
+  // If user logs in while on login step, advance to address and load saved address
+  useEffect(() => {
+    if (isLoggedIn) {
+      if (currentStep === "login") {
+        setCurrentStep("address");
+      }
+      if (user.savedAddresses && user.savedAddresses.length > 0) {
+        setShippingAddress(user.savedAddresses[0]);
+      }
     }
-  }, [isLoggedIn, currentStep]);
+  }, [isLoggedIn, user, currentStep]);
 
   // Check which steps are reachable
   const canNavigateTo = (step: CheckoutStep): boolean => {
@@ -131,7 +154,7 @@ function CheckoutContent() {
       discount: discountAmount,
       couponApplied: appliedCoupon || undefined,
       cleaningKitAdded: includeCleaningKit,
-      totalAmount: grandTotal,
+      totalAmount: totalPayable,
       status: "confirmed",
       estimatedDeliveryDate: getEstimatedDeliveryDate(4),
     };
@@ -140,7 +163,11 @@ function CheckoutContent() {
       await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newOrder),
+        body: JSON.stringify({
+          ...newOrder,
+          shippingFee,
+          totalAmount: totalPayable,
+        }),
       });
 
       saveOrder(newOrder);
@@ -235,6 +262,7 @@ function CheckoutContent() {
                   shippingAddress={shippingAddress}
                   onPaymentSubmit={handlePaymentSubmit}
                   isSubmitting={isSubmittingOrder}
+                  paymentsConfig={publicSettings?.payments}
                 />
               )}
             </div>
@@ -270,10 +298,10 @@ function CheckoutContent() {
               <CheckoutBillDetails
                 subtotal={rawSubtotal}
                 discount={discountAmount}
-                shippingFee={0}
-                totalPayable={grandTotal}
+                shippingFee={shippingFee}
+                totalPayable={totalPayable}
                 showCtaButton={currentStep === "payment"}
-                ctaText={`${formatCurrency(grandTotal)} • Pay Now`}
+                ctaText={`${formatCurrency(totalPayable)} • Pay Now`}
                 onCtaClick={() => handlePaymentSubmit("upi")}
                 isSubmitting={isSubmittingOrder}
               />

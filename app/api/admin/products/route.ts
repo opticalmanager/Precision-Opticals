@@ -208,12 +208,22 @@ export async function POST(req: NextRequest) {
         try_on_enabled, try_on_model_url, try_on_configuration
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       ON CONFLICT (slug) DO UPDATE
-      SET name = EXCLUDED.name, base_price = EXCLUDED.base_price, try_on_enabled = EXCLUDED.try_on_enabled, try_on_model_url = EXCLUDED.try_on_model_url, updated_at = NOW()
+      SET name = EXCLUDED.name,
+          base_price = EXCLUDED.base_price,
+          original_price = EXCLUDED.original_price,
+          subtitle = EXCLUDED.subtitle,
+          description = EXCLUDED.description,
+          is_active = EXCLUDED.is_active,
+          is_new_arrival = EXCLUDED.is_new_arrival,
+          is_best_seller = EXCLUDED.is_best_seller,
+          try_on_enabled = EXCLUDED.try_on_enabled,
+          try_on_model_url = EXCLUDED.try_on_model_url,
+          updated_at = NOW()
       RETURNING id, slug, name;`,
       [
         slug, name, subtitle, brandId, categoryId, gender, shape, rimType,
         material, color, colorHex, basePrice, originalPrice, lensProperties,
-        JSON.stringify(specs), description, isActive, body.isNewArrival || false, body.isBestSeller || false,
+        JSON.stringify(specs), description, isActive, Boolean(body.isNewArrival), Boolean(body.isBestSeller),
         tryOnEnabled, tryOnModelUrl, tryOnConfiguration
       ]
     );

@@ -59,3 +59,96 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const id = body.id;
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Category ID is required" }, { status: 400 });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (body.name !== undefined) {
+      updates.push(`name = $${idx++}`);
+      values.push(body.name.trim());
+    }
+    if (body.description !== undefined) {
+      updates.push(`description = $${idx++}`);
+      values.push(body.description.trim());
+    }
+    if (body.displayOrder !== undefined || body.display_order !== undefined) {
+      updates.push(`display_order = $${idx++}`);
+      values.push(Number(body.displayOrder ?? body.display_order));
+    }
+    if (body.is_active !== undefined || body.isActive !== undefined) {
+      updates.push(`is_active = $${idx++}`);
+      values.push(Boolean(body.is_active ?? body.isActive));
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json({ success: false, error: "No fields to update" }, { status: 400 });
+    }
+
+    values.push(id);
+    const res = await query(
+      `UPDATE public.categories SET ${updates.join(", ")}, updated_at = NOW() WHERE id = $${idx} RETURNING *;`,
+      values
+    );
+
+    if (res.rowCount === 0) {
+      return NextResponse.json({ success: false, error: "Category not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Category updated successfully",
+      category: res.rows[0],
+    });
+  } catch (error: any) {
+    console.error("Categories PATCH error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to update category" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Category ID is required" }, { status: 400 });
+    }
+
+    // Check if products exist for this category
+    const check = await query(`SELECT COUNT(*) as cnt FROM public.products WHERE category_id = $1`, [id]);
+    const prodCount = parseInt(check.rows[0]?.cnt || "0", 10);
+    if (prodCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete category with ${prodCount} associated product${prodCount > 1 ? "s" : ""}. Please reassign or delete these products first.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const res = await query(`DELETE FROM public.categories WHERE id = $1 RETURNING id;`, [id]);
+    if (res.rowCount === 0) {
+      return NextResponse.json({ success: false, error: "Category not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: "Category deleted successfully" });
+  } catch (error: any) {
+    console.error("Categories DELETE error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to delete category" },
+      { status: 500 }
+    );
+  }
+}

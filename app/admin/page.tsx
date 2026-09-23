@@ -11,7 +11,7 @@ import { formatCurrency } from "@/lib/utils";
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState("7d");
+  const [timeRange, setTimeRange] = useState("all");
   const [dashboardData, setDashboardData] = useState<any>(null);
 
   const fetchDashboardData = async () => {
@@ -45,18 +45,18 @@ export default function AdminDashboardPage() {
   }
 
   const stats = dashboardData?.stats || {
-    totalRevenue: 345000,
-    totalOrders: 6,
-    totalCustomers: 5,
-    avgOrderValue: 57500,
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalCustomers: 0,
+    avgOrderValue: 0,
   };
 
   const statusCounts = dashboardData?.statusCounts || {
-    confirmed: 2,
-    optician_assembly: 1,
-    quality_check: 1,
-    dispatched: 1,
-    delivered: 1,
+    confirmed: 0,
+    optician_assembly: 0,
+    quality_check: 0,
+    dispatched: 0,
+    delivered: 0,
   };
 
   const lowStock = dashboardData?.lowStock || [];

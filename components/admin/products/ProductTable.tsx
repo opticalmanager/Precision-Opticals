@@ -15,6 +15,8 @@ interface ProductRow {
   base_price: number | string;
   original_price?: number | string;
   is_active: boolean;
+  is_new_arrival?: boolean;
+  is_best_seller?: boolean;
   created_at: string;
   brand_name?: string;
   category_name?: string;
@@ -137,6 +139,11 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                         <div className="text-[11px] text-stone-500 truncate">
                           {p.subtitle || p.shape}
                         </div>
+                        {p.is_new_arrival && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-[#C86A28] border border-amber-200/80 px-1.5 py-0.2 rounded-full inline-block mt-0.5">
+                            New Arrival
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>

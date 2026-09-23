@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminGlobalSearchModal } from "../common/AdminGlobalSearchModal";
@@ -20,37 +22,104 @@ interface AdminHeaderProps {
   onToggleMobileMenu: () => void;
 }
 
+interface NotificationItem {
+  id: string;
+  title: string;
+  desc: string;
+  time: string;
+  unread: boolean;
+  type: "order" | "alert" | "info";
+  href: string;
+}
+
+function getRelativeTime(dateString: string): string {
+  try {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffMs = now.getTime() - past.getTime();
+    if (isNaN(diffMs) || diffMs < 0) return "Just now";
+
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays}d ago`;
+  } catch {
+    return "";
+  }
+}
+
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
-  // Mock live notification items for optical retail
-  const notifications = [
-    {
-      id: "n-1",
-      title: "New Luxury Order",
-      desc: "Order PO-914820 (Cartier Première) received for Optician Assembly",
-      time: "10m ago",
-      unread: true,
-      type: "order",
-    },
-    {
-      id: "n-2",
-      title: "Low Stock Alert",
-      desc: "Ray-Ban Meta Matte Black stock dropped to 4 units",
-      time: "1h ago",
-      unread: true,
-      type: "alert",
-    },
-    {
-      id: "n-3",
-      title: "Eye Exam Appointment",
-      desc: "Dr. R. K. Malhotra confirmed boutique session at Noida Arcade",
-      time: "3h ago",
-      unread: false,
-      type: "appointment",
-    },
-  ];
+  // Fetch real notifications from dashboard metrics
+  useEffect(() => {
+    let isMounted = true;
+    const loadNotifications = async () => {
+      setLoadingNotifications(true);
+      try {
+        const res = await fetch("/api/admin/dashboard?range=all");
+        const data = await res.json();
+        if (data.success && isMounted) {
+          const items: NotificationItem[] = [];
+
+          // 1. Recent orders
+          if (Array.isArray(data.recentOrders)) {
+            data.recentOrders.slice(0, 4).forEach((o: any) => {
+              const productName = o.items?.[0]?.snapshot?.name || "Eyewear item";
+              const itemCount = o.items?.length || 1;
+              const moreText = itemCount > 1 ? ` (+${itemCount - 1} more)` : "";
+              items.push({
+                id: `order-${o.id}`,
+                title: `Order #${o.order_number}`,
+                desc: `${productName}${moreText} • ₹${Number(o.total_amount).toLocaleString("en-IN")} (${o.status.replace(/_/g, " ")})`,
+                time: getRelativeTime(o.created_at),
+                unread: o.status === "confirmed" || o.status === "optician_assembly",
+                type: "order",
+                href: `/admin/orders/${o.id}`,
+              });
+            });
+          }
+
+          // 2. Low stock alerts
+          if (Array.isArray(data.lowStock)) {
+            data.lowStock.slice(0, 3).forEach((s: any) => {
+              items.push({
+                id: `stock-${s.id}`,
+                title: "Low Inventory Alert",
+                desc: `${s.product_name} (${s.color_name || s.sku}) is down to ${s.stock_quantity} unit${s.stock_quantity === 1 ? "" : "s"}`,
+                time: "Action needed",
+                unread: true,
+                type: "alert",
+                href: `/admin/inventory`,
+              });
+            });
+          }
+
+          setNotifications(items);
+        }
+      } catch (err) {
+        console.warn("Failed to load header notifications:", err);
+      } finally {
+        if (isMounted) setLoadingNotifications(false);
+      }
+    };
+
+    loadNotifications();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <>
@@ -61,12 +130,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
             type="button"
             onClick={onToggleMobileMenu}
             aria-label="Toggle mobile menu"
-            className="lg:hidden p-1.5 rounded-md text-stone-600 hover:text-[#2A1E17] hover:bg-black/5"
+            className="lg:hidden p-1.5 rounded-md text-stone-600 hover:text-[#2A1E17] hover:bg-black/5 cursor-pointer"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Global Search Input Button (Reference 1 & 2 style) */}
+          {/* Global Search Input Button */}
           <button
             type="button"
             onClick={() => setIsSearchOpen(true)}
@@ -99,7 +168,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
           </Link>
 
           {/* View Storefront Link */}
-          <a
+          <Link
             href="/"
             target="_blank"
             rel="noopener noreferrer"
@@ -107,7 +176,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
           >
             <span>View Store</span>
             <ExternalLink className="w-3 h-3 text-stone-400" />
-          </a>
+          </Link>
 
           {/* Notifications Dropdown */}
           <div className="relative">
@@ -118,40 +187,84 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
               className="relative p-1.5 rounded-md text-stone-600 hover:text-[#2A1E17] hover:bg-black/5 transition-colors cursor-pointer"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#C86A28]" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#C86A28]" />
+              )}
             </button>
 
             {isNotificationsOpen && (
               <div className="absolute right-0 mt-2 w-80 bg-white border border-[#E8DCCF] rounded-xl shadow-xl overflow-hidden z-40 animate-in fade-in duration-150">
                 <div className="px-4 py-3 border-b border-stone-100 flex items-center justify-between bg-[#FAF7F2]">
-                  <div className="text-xs font-bold text-[#2A1E17]">Notifications</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#2A1E17]">Live Atelier Alerts</span>
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#C86A28] text-white font-mono font-semibold">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsNotificationsOpen(false)}
-                    className="text-stone-400 hover:text-stone-600"
+                    className="text-stone-400 hover:text-stone-600 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
                 <div className="divide-y divide-stone-100 max-h-72 overflow-y-auto">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-3 text-xs hover:bg-[#FAF7F2] transition-colors cursor-pointer ${
-                        n.unread ? "bg-amber-50/40" : ""
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="font-semibold text-[#2A1E17] flex items-center gap-1.5">
-                          {n.type === "order" && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
-                          {n.type === "alert" && <AlertCircle className="w-3 h-3 text-amber-600" />}
-                          {n.title}
-                        </span>
-                        <span className="text-[10px] text-stone-400">{n.time}</span>
-                      </div>
-                      <p className="text-[11px] text-stone-600 leading-relaxed">{n.desc}</p>
+                  {loadingNotifications ? (
+                    <div className="py-8 text-center text-xs text-stone-400 flex flex-col items-center gap-1.5">
+                      <Clock className="w-4 h-4 animate-spin text-[#C86A28]" />
+                      <span>Checking optical activity...</span>
                     </div>
-                  ))}
+                  ) : notifications.length === 0 ? (
+                    <div className="py-8 px-4 text-center text-xs text-stone-500">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5 opacity-80" />
+                      <p className="font-semibold text-stone-700">All clear</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">
+                        No urgent orders or low inventory alerts
+                      </p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <Link
+                        key={n.id}
+                        href={n.href}
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className={`block p-3 text-xs hover:bg-[#FAF7F2] transition-colors cursor-pointer ${
+                          n.unread ? "bg-amber-50/40" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-semibold text-[#2A1E17] flex items-center gap-1.5">
+                            {n.type === "order" && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                            {n.type === "alert" && <AlertCircle className="w-3 h-3 text-amber-600" />}
+                            <span>{n.title}</span>
+                          </span>
+                          <span className="text-[10px] text-stone-400">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 leading-relaxed">{n.desc}</p>
+                      </Link>
+                    ))
+                  )}
+                </div>
+
+                <div className="px-3 py-2 bg-stone-50 border-t border-stone-100 flex items-center justify-between text-[11px]">
+                  <Link
+                    href="/admin/orders"
+                    onClick={() => setIsNotificationsOpen(false)}
+                    className="text-[#C86A28] font-semibold hover:underline"
+                  >
+                    View All Orders
+                  </Link>
+                  <Link
+                    href="/admin/inventory"
+                    onClick={() => setIsNotificationsOpen(false)}
+                    className="text-stone-500 hover:text-stone-800"
+                  >
+                    Stock Management
+                  </Link>
                 </div>
               </div>
             )}
@@ -159,14 +272,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleMobileMenu }) 
 
           <div className="h-4 w-px bg-stone-300 hidden sm:block" />
 
-          {/* Admin User Profile Pill (Reference 2 style) */}
+          {/* Admin User Profile Pill */}
           <div className="flex items-center gap-2 pl-1">
             <div className="w-7 h-7 rounded-full bg-[#2A1E17] text-[#E59B62] flex items-center justify-center text-xs font-serif font-bold shadow-xs">
-              AS
+              PO
             </div>
             <div className="hidden sm:block text-left leading-tight">
               <div className="text-xs font-semibold text-[#2A1E17] flex items-center gap-1">
-                <span>Alexander Sterling</span>
+                <span>Precision Admin</span>
                 <ShieldCheck className="w-3 h-3 text-emerald-600" />
               </div>
               <div className="text-[10px] text-stone-500">Super Admin & Retail Lead</div>

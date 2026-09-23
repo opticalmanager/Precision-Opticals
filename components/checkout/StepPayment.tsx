@@ -24,16 +24,34 @@ interface StepPaymentProps {
   shippingAddress: ShippingAddress;
   onPaymentSubmit: (paymentMethod: PaymentMethod, paymentDetails?: any) => void;
   isSubmitting?: boolean;
+  paymentsConfig?: any;
 }
 
 export const StepPayment: React.FC<StepPaymentProps> = ({
   shippingAddress,
   onPaymentSubmit,
   isSubmitting = false,
+  paymentsConfig,
 }) => {
   const { appliedCoupon, discountAmount, applyCoupon, removeCoupon } = useCart();
 
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("upi");
+  // Determine initial payment method based on enabled gateways
+  const upiEnabled = paymentsConfig?.razorpayUpi?.enabled !== false;
+  const cardEnabled = paymentsConfig?.stripe?.enabled !== false;
+  const netbankingEnabled = paymentsConfig?.netbanking?.enabled !== false;
+  const codEnabled = paymentsConfig?.cod?.enabled !== false;
+
+  const defaultMethod: PaymentMethod = upiEnabled
+    ? "upi"
+    : cardEnabled
+    ? "card"
+    : netbankingEnabled
+    ? "netbanking"
+    : codEnabled
+    ? "cod"
+    : "upi";
+
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(defaultMethod);
   const [selectedUpiOption, setSelectedUpiOption] = useState<"qr" | "id">("qr");
   const [upiId, setUpiId] = useState("");
 
@@ -52,17 +70,20 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
   // Voucher coupon state
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [couponInput, setCouponInput] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponInput.trim()) return;
-    const success = applyCoupon(couponInput.trim().toUpperCase());
-    if (success) {
-      toast.success(`Coupon ${couponInput.trim().toUpperCase()} applied successfully!`);
-      setIsCouponModalOpen(false);
-      setCouponInput("");
-    } else {
-      toast.error("Invalid coupon code. Try PRECISION10 or LUXURY20");
+    setValidatingCoupon(true);
+    try {
+      const res = await applyCoupon(couponInput.trim().toUpperCase());
+      if (res.success) {
+        setIsCouponModalOpen(false);
+        setCouponInput("");
+      }
+    } finally {
+      setValidatingCoupon(false);
     }
   };
 
@@ -71,19 +92,20 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
   return (
     <div className="w-full space-y-6">
       {/* 1. UPI Section */}
-      <div className="space-y-3">
-        <h3 className="font-serif font-extrabold text-stone-900 text-sm tracking-wider uppercase">
-          UPI
-        </h3>
+      {upiEnabled && (
+        <div className="space-y-3">
+          <h3 className="font-serif font-extrabold text-stone-900 text-sm tracking-wider uppercase">
+            UPI
+          </h3>
 
-        <div
-          onClick={() => setSelectedMethod("upi")}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer bg-white ${
-            selectedMethod === "upi"
-              ? "border-[#1C1917] ring-2 ring-[#1C1917]/10 shadow-xs"
-              : "border-[#E8DCCF] hover:border-stone-400"
-          }`}
-        >
+          <div
+            onClick={() => setSelectedMethod("upi")}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer bg-white ${
+              selectedMethod === "upi"
+                ? "border-[#1C1917] ring-2 ring-[#1C1917]/10 shadow-xs"
+                : "border-[#E8DCCF] hover:border-stone-400"
+            }`}
+          >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] border border-[#E8DCCF] flex items-center justify-center shrink-0">
@@ -184,8 +206,10 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
           )}
         </div>
       </div>
+      )}
 
       {/* 2. Cards Section */}
+      {cardEnabled && (
       <div className="space-y-3">
         <h3 className="font-serif font-extrabold text-stone-900 text-sm tracking-wider uppercase">
           Cards
@@ -300,8 +324,10 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
           )}
         </div>
       </div>
+      )}
 
       {/* 3. Net Banking Section */}
+      {netbankingEnabled && (
       <div className="space-y-3">
         <h3 className="font-serif font-extrabold text-stone-900 text-sm tracking-wider uppercase">
           Net Banking
@@ -379,8 +405,10 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* 4. Cash On Delivery Section */}
+      {codEnabled && (
       <div className="space-y-3">
         <h3 className="font-serif font-extrabold text-stone-900 text-sm tracking-wider uppercase">
           Cash On Delivery
@@ -418,13 +446,14 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
             </div>
           </div>
 
-          {/* Delivery Note Banner Matching media_1789993686014.png */}
+          {/* Delivery Note Banner */}
           <div className="bg-[#FFF8F0] border-t border-[#FED7AA]/60 px-4 py-2.5 flex items-center gap-2 text-xs text-[#C86A28] font-medium">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>Delivery by {codEstimatedDate} for COD</span>
           </div>
         </div>
       </div>
+      )}
 
       {/* 5. Apply Voucher Section Matching Figma */}
       <div className="pt-2">
@@ -441,7 +470,6 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
               type="button"
               onClick={() => {
                 removeCoupon();
-                toast.info("Coupon removed");
               }}
               className="text-xs font-bold text-red-600 hover:underline cursor-pointer"
             >
@@ -478,19 +506,20 @@ export const StepPayment: React.FC<StepPaymentProps> = ({
                 type="text"
                 value={couponInput}
                 onChange={(e) => setCouponInput(e.target.value)}
-                placeholder="PRECISION10"
+                placeholder="e.g. PRECISION10"
                 className="flex-1 px-3.5 py-2 bg-white border border-[#E8DCCF] rounded-xl text-sm font-bold uppercase outline-none focus:border-[#C86A28]"
                 autoFocus
               />
               <button
                 type="submit"
-                className="bg-[#C86A28] hover:bg-[#b05a1f] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer"
+                disabled={validatingCoupon}
+                className="bg-[#C86A28] hover:bg-[#b05a1f] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center min-w-[70px]"
               >
-                Apply
+                {validatingCoupon ? "..." : "Apply"}
               </button>
             </form>
             <div className="text-[11px] text-stone-500">
-              Available demo codes: <strong className="text-stone-800">PRECISION10</strong> (10% off), <strong className="text-stone-800">LUXURY20</strong> (20% off)
+              Verified boutique privilege codes: <strong className="text-stone-800">PRECISION10</strong> (10% off), <strong className="text-stone-800">LUXURY2026</strong> (₹2,000 off)
             </div>
           </div>
         )}

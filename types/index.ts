@@ -91,6 +91,9 @@ export interface FilterState {
   priceRange: [number, number];
   searchQuery: string;
   sortBy: 'featured' | 'price-asc' | 'price-desc' | 'newest' | 'rating';
+  onlyNewArrivals?: boolean;
+  onlySale?: boolean;
+  minDiscount?: number;
 }
 
 export type LensTypeOption = 'single-vision' | 'progressive' | 'zero-power-blue' | 'frame-only';
@@ -215,6 +218,8 @@ export interface UserProfile {
   name: string;
   email: string;
   phone: string;
+  role?: 'customer' | 'optician' | 'admin';
+  joinedDate?: string;
   gemPoints: number;
   savedAddresses: ShippingAddress[];
   savedPrescriptions: {

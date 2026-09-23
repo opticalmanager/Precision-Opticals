@@ -1,12 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ChevronRight, Glasses, Calendar, Phone, Check, Sparkles } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Menu, X, ChevronDown, ChevronRight, Glasses, Calendar, Phone, Check, Sparkles, User, UserCheck, LogOut, Package, FileText, MapPin, Award, ArrowRight } from 'lucide-react';
 import { LUXURY_BRANDS } from '@/data/brands';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
+import { getCatalogProducts } from '@/lib/productsService';
+import { Product } from '@/types';
 
 interface HeaderProps {
   onOpenSearch: () => void;
@@ -14,8 +18,8 @@ interface HeaderProps {
   onSelectCategory: (category: string) => void;
   onSelectBrand: (brandId: string) => void;
   activeCategory: string;
-  currentPage?: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart';
-  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart') => void;
+  currentPage?: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart' | 'account';
+  onNavigate?: (page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart' | 'account') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,9 +34,271 @@ export const Header: React.FC<HeaderProps> = ({
   const router = useRouter();
   const { cartCount, openCart, closeCart } = useCart();
   const { wishlistCount, openWishlist } = useWishlist();
+  const { user, isLoggedIn, logout, openAuthModal } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
-  const leaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic Catalog & Showcase State
+  const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>([]);
+  const [newArrivalProducts, setNewArrivalProducts] = useState<Product[]>([]);
+  const [newArrivalBrands, setNewArrivalBrands] = useState<string[]>([
+    'Komono',
+    'Jacques Marie Mage',
+    'T Henri',
+    'Off White',
+    'Tom Ford',
+    'Alaia',
+    'Gucci',
+    'Montblanc',
+  ]);
+  const [activeBrandPreview, setActiveBrandPreview] = useState<string | null>(null);
+  const [activeSunglassesBrand, setActiveSunglassesBrand] = useState<string | null>(null);
+  const [activeEyewearBrand, setActiveEyewearBrand] = useState<string | null>(null);
+  const [activeDirectoryBrand, setActiveDirectoryBrand] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCatalogProducts().then((products) => {
+      if (!isMounted || !products || products.length === 0) return;
+      setAllCatalogProducts(products);
+      const arrivals = products.filter((p) => p.isNewArrival);
+      setNewArrivalProducts(arrivals);
+
+      const dbBrands = Array.from(new Set(arrivals.map((p) => p.brand).filter(Boolean)));
+      const referenceBrands = [
+        'Komono',
+        'Jacques Marie Mage',
+        'T Henri',
+        'Off White',
+        'Tom Ford',
+        'Alaia',
+        'Gucci',
+        'Montblanc',
+      ];
+      const combined = Array.from(new Set([...dbBrands, ...referenceBrands])).slice(0, 8);
+      setNewArrivalBrands(combined);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const featuredNewArrivalDisplay = React.useMemo(() => {
+    if (activeBrandPreview) {
+      const match = newArrivalProducts.find(
+        (p) => p.brand?.toLowerCase() === activeBrandPreview.toLowerCase()
+      );
+      if (match) {
+        return {
+          brand: match.brand.toUpperCase(),
+          title: (match.subtitle || match.name).toUpperCase(),
+          image: match.images?.[0] || 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80',
+          url: `/product/${match.id}`,
+        };
+      }
+    }
+
+    // Default primary showcase: Lindberg Titanium or latest new arrival
+    const lindbergMatch = newArrivalProducts.find(
+      (p) => p.brand?.toLowerCase().includes('lindberg')
+    ) || newArrivalProducts[0];
+
+    if (lindbergMatch) {
+      return {
+        brand: lindbergMatch.brand?.toUpperCase() || 'LINDBERG',
+        title: (lindbergMatch.subtitle || lindbergMatch.name || 'VISIONARY BY DESIGN BLOK TITANIUM').toUpperCase(),
+        image: lindbergMatch.images?.[0] || 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80',
+        url: `/product/${lindbergMatch.id}`,
+      };
+    }
+
+    return {
+      brand: 'LINDBERG',
+      title: 'VISIONARY BY DESIGN BLOK TITANIUM',
+      image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80',
+      url: '/shop?brand=lindberg',
+    };
+  }, [activeBrandPreview, newArrivalProducts]);
+
+  const featuredSunglassesDisplay = React.useMemo(() => {
+    if (activeSunglassesBrand) {
+      const match =
+        allCatalogProducts.find(
+          (p) =>
+            p.brand?.toLowerCase() === activeSunglassesBrand.toLowerCase() &&
+            p.category === 'sunglasses'
+        ) ||
+        allCatalogProducts.find(
+          (p) => p.brand?.toLowerCase() === activeSunglassesBrand.toLowerCase()
+        );
+
+      if (match) {
+        return {
+          brand: match.brand.toUpperCase(),
+          title: (match.subtitle || match.name).toUpperCase(),
+          image:
+            match.images?.[0] ||
+            'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
+          url: `/product/${match.id}`,
+        };
+      }
+
+      return {
+        brand: activeSunglassesBrand.toUpperCase(),
+        title: 'EXCLUSIVE SUNGLASSES COLLECTION',
+        image:
+          'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
+        url: `/shop?category=sunglasses&brand=${activeSunglassesBrand.toLowerCase().replace(/\s+/g, '-')}`,
+      };
+    }
+
+    const akoniMatch =
+      allCatalogProducts.find(
+        (p) =>
+          p.brand?.toLowerCase().includes('akoni') && p.category === 'sunglasses'
+      ) || allCatalogProducts.find((p) => p.brand?.toLowerCase().includes('akoni'));
+
+    if (akoniMatch) {
+      return {
+        brand: akoniMatch.brand.toUpperCase(),
+        title: (akoniMatch.subtitle || akoniMatch.name || 'A STATEMENT OF TRUE CRAFTSMANSHIP').toUpperCase(),
+        image:
+          akoniMatch.images?.[0] ||
+          'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
+        url: `/product/${akoniMatch.id}`,
+      };
+    }
+
+    return {
+      brand: 'AKONI',
+      title: 'A STATEMENT OF TRUE CRAFTSMANSHIP',
+      image:
+        'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
+      url: '/shop?category=sunglasses&brand=akoni',
+    };
+  }, [activeSunglassesBrand, allCatalogProducts]);
+
+  const featuredEyewearDisplay = React.useMemo(() => {
+    if (activeEyewearBrand) {
+      const match =
+        allCatalogProducts.find(
+          (p) =>
+            p.brand?.toLowerCase() === activeEyewearBrand.toLowerCase() &&
+            p.category === 'eyeglasses'
+        ) ||
+        allCatalogProducts.find(
+          (p) => p.brand?.toLowerCase() === activeEyewearBrand.toLowerCase()
+        );
+
+      if (match) {
+        return {
+          brand: match.brand.toUpperCase(),
+          title: (match.subtitle || match.name).toUpperCase(),
+          image:
+            match.images?.[0] ||
+            'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80',
+          url: `/product/${match.id}`,
+        };
+      }
+
+      return {
+        brand: activeEyewearBrand.toUpperCase(),
+        title: 'LUXURY OPTICAL ATELIER',
+        image:
+          'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80',
+        url: `/shop?category=eyeglasses&brand=${activeEyewearBrand.toLowerCase().replace(/\s+/g, '-')}`,
+      };
+    }
+
+    const versaceMatch =
+      allCatalogProducts.find(
+        (p) =>
+          p.brand?.toLowerCase().includes('versace') && p.category === 'eyeglasses'
+      ) || allCatalogProducts.find((p) => p.brand?.toLowerCase().includes('versace'));
+
+    if (versaceMatch) {
+      return {
+        brand: versaceMatch.brand.toUpperCase(),
+        title: (versaceMatch.subtitle || versaceMatch.name || 'DESIGNED TO DOMINATE EVERY LOOK').toUpperCase(),
+        image:
+          versaceMatch.images?.[0] ||
+          'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80',
+        url: `/product/${versaceMatch.id}`,
+      };
+    }
+
+    return {
+      brand: 'VERSACE',
+      title: 'DESIGNED TO DOMINATE EVERY LOOK',
+      image:
+        'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80',
+      url: '/shop?category=eyeglasses&brand=versace',
+    };
+  }, [activeEyewearBrand, allCatalogProducts]);
+
+  const featuredDirectoryDisplay = React.useMemo(() => {
+    if (activeDirectoryBrand) {
+      const match = allCatalogProducts.find(
+        (p) => p.brand?.toLowerCase() === activeDirectoryBrand.toLowerCase()
+      );
+
+      if (match) {
+        return {
+          brand: match.brand.toUpperCase(),
+          title: (match.subtitle || match.name).toUpperCase(),
+          image:
+            match.images?.[0] ||
+            'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=700&q=80',
+          url: `/product/${match.id}`,
+        };
+      }
+
+      return {
+        brand: activeDirectoryBrand.toUpperCase(),
+        title: 'DESIGNER MAISON COLLECTION',
+        image:
+          'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=700&q=80',
+        url: `/shop?brand=${activeDirectoryBrand.toLowerCase().replace(/\s+/g, '-')}`,
+      };
+    }
+
+    const komonoMatch = allCatalogProducts.find((p) =>
+      p.brand?.toLowerCase().includes('komono')
+    );
+
+    if (komonoMatch) {
+      return {
+        brand: komonoMatch.brand.toUpperCase(),
+        title: (komonoMatch.subtitle || komonoMatch.name || 'WHERE SIMPLICITY MEETS INNOVATION').toUpperCase(),
+        image:
+          komonoMatch.images?.[0] ||
+          'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=700&q=80',
+        url: `/product/${komonoMatch.id}`,
+      };
+    }
+
+    return {
+      brand: 'KOMONO',
+      title: 'WHERE SIMPLICITY MEETS INNOVATION',
+      image:
+        'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=700&q=80',
+      url: '/shop?brand=komono',
+    };
+  }, [activeDirectoryBrand, allCatalogProducts]);
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleMenuEnter = (menuKey: string) => {
     if (leaveTimeoutRef.current) {
@@ -57,9 +323,16 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
-  const handleNavClick = (category?: string, page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart' = 'shop') => {
+  const handleNavClick = (category?: string, page: 'home' | 'shop' | 'contact' | 'appointment' | 'wishlist' | 'about' | 'privacy' | 'cart' | 'account' = 'shop') => {
     if (page === 'wishlist') {
       openWishlist();
+      return;
+    }
+
+    if (page === 'account') {
+      if (onNavigate) onNavigate('account');
+      router.push('/account');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -151,6 +424,26 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
+            <button
+              onClick={() => {
+                if (isLoggedIn) {
+                  router.push('/account');
+                } else {
+                  openAuthModal('/account');
+                }
+              }}
+              className="p-1 text-stone-800 hover:text-black focus:outline-none relative cursor-pointer sm:hidden"
+              aria-label="Account"
+              title={isLoggedIn ? "My Account" : "Sign In with Mobile OTP"}
+            >
+              {isLoggedIn ? (
+                <div className="w-4.5 h-4.5 rounded-full bg-[#2A1E17] text-[#FAF7F2] flex items-center justify-center text-[8px] font-bold">
+                  {user.name ? user.name[0].toUpperCase() : 'P'}
+                </div>
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -172,7 +465,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Top Actions */}
-        <div className="flex-1 flex items-center justify-end gap-3 sm:gap-4 text-[10px] tracking-widest font-medium text-stone-800">
+        <div className="flex-1 flex items-center justify-end gap-2.5 sm:gap-3.5 text-[10px] tracking-widest font-medium text-stone-800">
           <button
             onClick={onOpenSearch}
             className="hidden lg:flex items-center gap-1 hover:text-orange-600 focus:outline-none uppercase cursor-pointer"
@@ -222,6 +515,143 @@ export const Header: React.FC<HeaderProps> = ({
             <ShoppingBag className="w-3.5 h-3.5 text-white" />
             <span className="font-extrabold tracking-wider">CART ({cartCount})</span>
           </button>
+
+          {/* USER ACCOUNT / SIGN IN BUTTON & DROPDOWN (Right of Cart) */}
+          {!isLoggedIn ? (
+            <button
+              onClick={() => openAuthModal()}
+              className="flex items-center gap-1.5 hover:text-orange-600 focus:outline-none uppercase cursor-pointer py-1 px-1.5 transition-colors"
+              title="Sign In with Mobile OTP"
+            >
+              <User className="w-3.5 h-3.5 text-stone-700" />
+              <span className="hidden sm:inline font-bold">SIGN IN</span>
+            </button>
+          ) : (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center gap-1.5 hover:text-orange-600 focus:outline-none uppercase cursor-pointer py-1 px-2 rounded-full hover:bg-[#F2E8DC] border border-[#E8DCCF]/80 transition-colors"
+                title="Patron Atelier Account"
+              >
+                <div className="w-4.5 h-4.5 rounded-full bg-[#2A1E17] text-[#FAF7F2] flex items-center justify-center text-[9px] font-bold">
+                  {user.name
+                    ? user.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()
+                    : "PO"}
+                </div>
+                <span className="hidden sm:inline font-bold text-stone-900 tracking-wider">
+                  {user.name ? user.name.split(" ")[0].toUpperCase() : "ACCOUNT"}
+                </span>
+                <ChevronDown
+                  className={`w-3 h-3 text-stone-500 transition-transform ${
+                    userDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Luxury Dropdown Menu */}
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-[#FAF3EB] border border-[#E8DCCF] rounded-2xl shadow-2xl p-3.5 z-50 text-left normal-case tracking-normal animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* Patron Summary Card */}
+                  <div className="bg-[#FFFDF9] border border-[#E8DCCF] rounded-xl p-3 mb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full bg-[#2A1E17] text-[#FAF7F2] flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+                        {user.name
+                          ? user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()
+                          : "PO"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-bold text-stone-900 truncate">
+                          {user.name || "Alexander Sterling"}
+                        </h4>
+                        <p className="text-[10px] text-stone-500 truncate">
+                          {user.phone || user.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-[#E8DCCF]/60 flex items-center justify-between text-[10px]">
+                      <span className="inline-flex items-center gap-1 font-bold text-[#C86A28]">
+                        <Award className="w-3 h-3 text-[#C86A28]" /> VIP Platinum
+                      </span>
+                      <span className="bg-[#FAF3EB] border border-[#E8DCCF] text-stone-800 px-2 py-0.5 rounded-full font-bold">
+                        {user.gemPoints} Gem Pts
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Menu Links */}
+                  <div className="space-y-1 text-xs text-stone-700 font-medium">
+                    <Link
+                      href="/account"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F2E8DC] hover:text-[#C86A28] transition-colors"
+                    >
+                      <User className="w-4 h-4 text-stone-500" />
+                      <span>My Account & Profile</span>
+                    </Link>
+                    <Link
+                      href="/account?tab=orders"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F2E8DC] hover:text-[#C86A28] transition-colors"
+                    >
+                      <Package className="w-4 h-4 text-stone-500" />
+                      <span>My Orders & Lab Queue</span>
+                    </Link>
+                    <Link
+                      href="/account?tab=prescriptions"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F2E8DC] hover:text-[#C86A28] transition-colors"
+                    >
+                      <FileText className="w-4 h-4 text-stone-500" />
+                      <span>Clinical Prescriptions (OD/OS)</span>
+                    </Link>
+                    <Link
+                      href="/account?tab=addresses"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F2E8DC] hover:text-[#C86A28] transition-colors"
+                    >
+                      <MapPin className="w-4 h-4 text-stone-500" />
+                      <span>Saved Delivery Addresses</span>
+                    </Link>
+                    <Link
+                      href="/account?tab=loyalty"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F2E8DC] hover:text-[#C86A28] transition-colors"
+                    >
+                      <Award className="w-4 h-4 text-stone-500" />
+                      <span>Gem Loyalty Privileges</span>
+                    </Link>
+                  </div>
+
+                  {/* Sign Out Button */}
+                  <div className="mt-2 pt-2 border-t border-[#E8DCCF]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        logout();
+                        setUserDropdownOpen(false);
+                        toast.success("Signed out successfully");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-stone-600 hover:text-red-700 hover:bg-red-50 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 text-stone-400 group-hover:text-red-600" />
+                      <span>Sign Out of Atelier</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -251,78 +681,125 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   onMouseEnter={() => handleMenuEnter('new-arrivals')}
                   onMouseLeave={handleMenuLeave}
-                  className="absolute top-full left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-xl p-5 grid grid-cols-3 gap-6 text-left normal-case tracking-normal z-50 rounded-b-md text-xs before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[860px] max-w-[calc(100vw-2rem)] max-h-[min(85vh,720px)] overflow-y-auto bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl px-8 py-7 grid grid-cols-12 gap-8 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
-                  <div>
-                    <h4 className="font-serif font-bold text-[11px] tracking-widest uppercase text-stone-900 mb-2 border-b border-stone-200 pb-1">
+                  {/* Left Column: SHOP NEW */}
+                  <div className="col-span-3 border-r border-[#E8DCCF] pr-4">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4">
                       SHOP NEW
                     </h4>
-                    <ul className="space-y-1.5 text-[11px] text-stone-700">
+                    <ul className="space-y-3 text-xs text-stone-700">
                       <li>
-                        <button onClick={() => handleNavClick('sunglasses', 'shop')} className="hover:text-orange-600 font-medium cursor-pointer">
-                          New Sunglasses
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses&filter=new_arrivals');
+                            setHoveredMenu(null);
+                          }}
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
+                        >
+                          Sunglasses
                         </button>
                       </li>
                       <li>
-                        <button onClick={() => handleNavClick('eyeglasses', 'shop')} className="hover:text-orange-600 font-medium cursor-pointer">
-                          New Eyeglasses
-                        </button>
-                      </li>
-                      <li>
-                        <button onClick={() => handleNavClick('meta-smart', 'shop')} className="hover:text-orange-600 font-medium cursor-pointer">
-                          New Meta Smart Glasses
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses&filter=new_arrivals');
+                            setHoveredMenu(null);
+                          }}
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
+                        >
+                          Eyeglasses
                         </button>
                       </li>
                     </ul>
                   </div>
 
-                  <div>
-                    <h4 className="font-serif font-bold text-[11px] tracking-widest uppercase text-stone-900 mb-2 border-b border-stone-200 pb-1">
+                  {/* Middle Column: NEW THIS WEEK */}
+                  <div className="col-span-4 border-r border-[#E8DCCF] pr-4">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4">
                       NEW THIS WEEK
                     </h4>
-                    <ul className="space-y-1 text-[11px] text-stone-700">
-                      {['GAST Milano', 'Jacques Marie Mage', 'T Henri', 'Off-White', 'Tom Ford', 'Gucci', 'Lindberg'].map((brand) => (
-                        <li key={brand}>
-                          <button
-                            onClick={() => {
-                              const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                              onSelectBrand(bSlug);
-                              if (onNavigate) onNavigate('shop');
-                              router.push(`/shop?brand=${bSlug}`);
-                              setHoveredMenu(null);
-                            }}
-                            className="hover:text-orange-600 transition-colors cursor-pointer"
-                          >
-                            {brand}
-                          </button>
-                        </li>
-                      ))}
-                      <li className="pt-1.5">
-                        <button onClick={() => handleNavClick('new', 'shop')} className="text-orange-600 font-bold text-[10px] underline cursor-pointer">
-                          View All New Arrivals →
+                    <ul className="space-y-1.5 text-xs text-stone-700">
+                      {newArrivalBrands.map((brand) => {
+                        const isHovered = activeBrandPreview === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?brand=${bSlug}&filter=new_arrivals`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveBrandPreview(brand)}
+                              className={`transition-colors cursor-pointer text-left ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                      <li className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('new', 'shop');
+                            router.push('/shop?filter=new_arrivals');
+                            setHoveredMenu(null);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-[#C86A28] hover:text-[#b0581e] font-semibold text-[11px] tracking-wide cursor-pointer group"
+                        >
+                          <span>View All New Arrivals</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </li>
                     </ul>
                   </div>
 
-                  <div className="bg-orange-100/60 p-2.5 rounded-md border border-orange-200/80 flex flex-col justify-between">
-                    <img
-                      src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=500&q=80"
-                      alt="Featured Lindberg"
-                      className="w-full h-28 object-cover rounded-xs mb-1.5"
-                    />
-                    <div>
-                      <span className="text-[9px] tracking-widest uppercase font-serif text-orange-600 font-bold">FEATURED BRAND</span>
-                      <h5 className="font-serif font-bold text-xs text-stone-900">LINDBERG TITANIUM</h5>
-                      <p className="text-[10px] text-stone-600 leading-tight mt-0.5">Visionary screwless Titanium frames.</p>
-                    </div>
+                  {/* Right Column: Featured Showcase Card */}
+                  <div className="col-span-5 flex flex-col justify-start">
+                    <Link
+                      href={featuredNewArrivalDisplay.url}
+                      onClick={() => setHoveredMenu(null)}
+                      className="group block overflow-hidden rounded-xl border border-[#E8DCCF] bg-[#FFFDF9] p-3 transition-all hover:border-[#C86A28]/40 hover:shadow-md cursor-pointer"
+                    >
+                      <div className="w-full aspect-[16/10] bg-[#FAF7F2] overflow-hidden rounded-lg flex items-center justify-center">
+                        <img
+                          src={featuredNewArrivalDisplay.image}
+                          alt={featuredNewArrivalDisplay.brand}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="pt-3 pb-1 text-center">
+                        <h5 className="font-serif font-bold text-xs tracking-[0.2em] text-[#2A1E17] uppercase">
+                          {featuredNewArrivalDisplay.brand}
+                        </h5>
+                        <p className="text-[10px] tracking-[0.15em] text-stone-500 uppercase mt-0.5 font-medium">
+                          {featuredNewArrivalDisplay.title}
+                        </p>
+                      </div>
+                    </Link>
                   </div>
                 </div>
               )}
             </li>
 
             {/* 2. META (Figma Styled Pill) */}
-            <li className="py-2.5 flex items-center">
+            <li
+              className="py-2.5 group relative flex items-center"
+              onMouseEnter={() => handleMenuEnter('meta-smart')}
+              onMouseLeave={handleMenuLeave}
+            >
               <button
                 onClick={() => handleNavClick('meta-smart', 'shop')}
                 className={`border border-[#38BDF8] bg-[#F0F9FF] text-[#0284C7] hover:bg-[#E0F2FE] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 transition-all text-[11px] font-bold tracking-wider cursor-pointer shadow-2xs ${
@@ -334,7 +811,60 @@ export const Header: React.FC<HeaderProps> = ({
                   <path d="M12 10.5C10.5 8.5 8.5 7.5 6 7.5C2.7 7.5 0 10.2 0 13.5C0 16.8 2.7 19.5 6 19.5C9.5 19.5 11.5 16 12 14.5C12.5 16 14.5 19.5 18 19.5C21.3 19.5 24 16.8 24 13.5C24 10.2 21.3 7.5 18 7.5C15.5 7.5 13.5 8.5 12 10.5ZM6 17.5C3.8 17.5 2 15.7 2 13.5C2 11.3 3.8 9.5 6 9.5C8 9.5 9.8 10.8 10.8 12.5C9.8 14.5 8 17.5 6 17.5ZM18 17.5C16 17.5 14.2 14.5 13.2 12.5C14.2 10.8 16 9.5 18 9.5C20.2 9.5 22 11.3 22 13.5C22 15.7 20.2 17.5 18 17.5Z" />
                 </svg>
                 <span>META</span>
+                <ChevronDown className="w-2.5 h-2.5 opacity-60 group-hover:rotate-180 transition-transform ml-0.5" />
               </button>
+
+              {/* Meta Dropdown */}
+              {hoveredMenu === 'meta-smart' && (
+                <div
+                  onMouseEnter={() => handleMenuEnter('meta-smart')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-60 bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl p-4 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
+                  <ul className="space-y-2 text-xs text-stone-700">
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleNavClick('meta-smart', 'shop');
+                          router.push('/shop?category=meta-smart&brand=ray-ban');
+                          setHoveredMenu(null);
+                        }}
+                        className="w-full text-left text-stone-800 hover:text-[#C86A28] font-medium transition-colors cursor-pointer py-1.5 px-2 rounded-lg hover:bg-[#F2E8DC] block"
+                      >
+                        Ray-ban X Meta
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleNavClick('meta-smart', 'shop');
+                          router.push('/shop?category=meta-smart&brand=oakley');
+                          setHoveredMenu(null);
+                        }}
+                        className="w-full text-left text-stone-800 hover:text-[#C86A28] font-medium transition-colors cursor-pointer py-1.5 px-2 rounded-lg hover:bg-[#F2E8DC] block"
+                      >
+                        Oakley X Meta
+                      </button>
+                    </li>
+                    <li className="pt-2 border-t border-[#E8DCCF]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleNavClick('meta-smart', 'shop');
+                          router.push('/shop?category=meta-smart');
+                          setHoveredMenu(null);
+                        }}
+                        className="w-full text-left text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] flex items-center justify-between px-2 py-1 group cursor-pointer"
+                      >
+                        <span>Shop All Meta</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
             </li>
 
             {/* 3. EYEGLASSES */}
@@ -358,187 +888,234 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   onMouseEnter={() => handleMenuEnter('eyewear')}
                   onMouseLeave={handleMenuLeave}
-                  className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[1120px] max-w-[calc(100vw-2rem)] max-h-[min(85vh,720px)] overflow-y-auto bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl px-8 py-7 grid grid-cols-12 gap-6 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
-                  {/* MEN Eyeglasses Column */}
-                  <div className="space-y-3">
-                    <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
-                      <div>
-                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
-                          MEN <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
-                        </h4>
-                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> FREE Anti-Glare Lenses Included
-                        </span>
-                      </div>
-                      <img
-                        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
-                        alt="Men Eyeglasses"
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      {[
-                        {
-                          brands: 'Tom Ford | Ray-Ban | GAST',
-                          price: 'Starts at ₹3,000',
-                          img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Gucci | Prada | Saint Laurent',
-                          price: 'Starts at ₹4,500',
-                          img: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Lindberg | Moscot | Oliver Peoples',
-                          price: 'Starts at ₹6,000',
-                          img: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=200&q=80'
-                        }
-                      ].map((item, idx) => (
+                  {/* 1. BY GENDER */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      BY GENDER
+                    </h4>
+                    <ul className="space-y-2 text-xs text-stone-700">
+                      <li>
                         <button
-                          key={idx}
-                          onClick={() => {
-                            handleNavClick('men', 'shop');
-                            setHoveredMenu(null);
-                          }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
-                            <div>
-                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
-                                {item.brands}
-                              </div>
-                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
-                                {item.price}
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* WOMEN Eyeglasses Column */}
-                  <div className="space-y-3">
-                    <div className="bg-[#FAF3EB] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
-                      <div>
-                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
-                          WOMEN <span className="font-normal text-stone-600 text-xs">Eyeglasses</span>
-                        </h4>
-                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> FREE Anti-Glare Lenses Included
-                        </span>
-                      </div>
-                      <img
-                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
-                        alt="Women Eyeglasses"
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      {[
-                        {
-                          brands: 'Prada | Gucci | Saint Laurent',
-                          price: 'Starts at ₹3,500',
-                          img: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Tom Ford | Dolce & Gabbana',
-                          price: 'Starts at ₹4,000',
-                          img: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'GAST | Ray-Ban | Cartier',
-                          price: 'Starts at ₹5,000',
-                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=200&q=80'
-                        }
-                      ].map((item, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            handleNavClick('women', 'shop');
-                            setHoveredMenu(null);
-                          }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
-                            <div>
-                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
-                                {item.brands}
-                              </div>
-                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
-                                {item.price}
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* COMPUTER & BLUE-CUT Eyeglasses Column */}
-                  <div className="space-y-3">
-                    <div className="bg-[#F5EBE1] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
-                      <div>
-                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
-                          COMPUTER <span className="font-normal text-stone-600 text-xs">Glasses</span>
-                        </h4>
-                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> 99% Blue-Cut Protection
-                        </span>
-                      </div>
-                      <span className="w-10 h-10 rounded-full bg-stone-900 text-[#FAF3EB] font-serif font-bold text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
-                        Zero
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {[
-                        {
-                          title: 'Zero Power Computer Frames',
-                          price: 'Starts at ₹1,800',
-                          img: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          title: 'Anti-Glare Reading Glasses',
-                          price: 'Starts at ₹2,200',
-                          img: 'https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          title: 'Digital Screen High-Index',
-                          price: 'Starts at ₹2,800',
-                          img: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=200&q=80'
-                        }
-                      ].map((item, idx) => (
-                        <button
-                          key={idx}
+                          type="button"
                           onClick={() => {
                             handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses&gender=men');
                             setHoveredMenu(null);
                           }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
                         >
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} alt={item.title} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
-                            <div>
-                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
-                                {item.title}
-                              </div>
-                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
-                                {item.price}
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                          Men&apos;s frames
                         </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses&gender=women');
+                            setHoveredMenu(null);
+                          }}
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
+                        >
+                          Women&apos;s frames
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses&gender=unisex');
+                            setHoveredMenu(null);
+                          }}
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
+                        >
+                          Unisex
+                        </button>
+                      </li>
+                      <li className="pt-2 border-t border-[#E8DCCF]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses');
+                            setHoveredMenu(null);
+                          }}
+                          className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
+                        >
+                          <span>Shop all</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* 2. BY SHAPE */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      BY SHAPE
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-700">
+                      {[
+                        { label: 'Aviator', shape: 'aviator' },
+                        { label: 'Butterfly', shape: 'cat-eye' },
+                        { label: 'Cat Eye', shape: 'cat-eye' },
+                        { label: 'Oversized', shape: 'square' },
+                        { label: 'Round', shape: 'round' },
+                        { label: 'Rectangle', shape: 'rectangle' },
+                      ].map((item) => (
+                        <li key={item.label}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleNavClick('eyeglasses', 'shop');
+                              router.push(`/shop?category=eyeglasses&shape=${item.shape}`);
+                              setHoveredMenu(null);
+                            }}
+                            className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800 text-left block w-full"
+                          >
+                            {item.label}
+                          </button>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
+                  </div>
+
+                  {/* 3. TOP BRANDS */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      TOP BRANDS
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-700">
+                      {[
+                        'Gucci',
+                        'Prada',
+                        'Burberry',
+                        'Tom Ford',
+                        'Versace',
+                        'Dolce & Gabbana',
+                      ].map((brand) => {
+                        const isHovered = activeEyewearBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?category=eyeglasses&brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveEyewearBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                      <li className="pt-2 border-t border-[#E8DCCF]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses');
+                            setHoveredMenu(null);
+                          }}
+                          className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
+                        >
+                          <span>All brands</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* 4. EXCLUSIVE BRANDS */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      EXCLUSIVE BRANDS
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-700">
+                      {[
+                        'Cartier',
+                        'Lindberg',
+                        'Maybach',
+                        'Jacques Marie Mage',
+                        'Akoni',
+                        'Balmain',
+                      ].map((brand) => {
+                        const isHovered = activeEyewearBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?category=eyeglasses&brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveEyewearBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                      <li className="pt-2 border-t border-[#E8DCCF]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('eyeglasses', 'shop');
+                            router.push('/shop?category=eyeglasses');
+                            setHoveredMenu(null);
+                          }}
+                          className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
+                        >
+                          <span>All exclusive</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* 5. SHOWCASE CARD */}
+                  <div className="col-span-4 flex flex-col justify-start pl-2">
+                    <Link
+                      href={featuredEyewearDisplay.url}
+                      onClick={() => setHoveredMenu(null)}
+                      className="group block overflow-hidden rounded-xl border border-[#E8DCCF] bg-[#FFFDF9] p-3 transition-all hover:border-[#C86A28]/40 hover:shadow-md cursor-pointer"
+                    >
+                      <div className="w-full aspect-[16/10] bg-[#FAF7F2] overflow-hidden rounded-lg flex items-center justify-center">
+                        <img
+                          src={featuredEyewearDisplay.image}
+                          alt={featuredEyewearDisplay.brand}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="pt-3 pb-1 text-center">
+                        <h5 className="font-serif font-bold text-xs tracking-[0.2em] text-[#2A1E17] uppercase">
+                          {featuredEyewearDisplay.brand}
+                        </h5>
+                        <p className="text-[10px] tracking-[0.15em] text-stone-500 uppercase mt-0.5 font-medium">
+                          {featuredEyewearDisplay.title}
+                        </p>
+                      </div>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -565,189 +1142,240 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   onMouseEnter={() => handleMenuEnter('sunglasses')}
                   onMouseLeave={handleMenuLeave}
-                  className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[1120px] max-w-[calc(100vw-2rem)] max-h-[min(85vh,720px)] overflow-y-auto bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl px-8 py-7 grid grid-cols-12 gap-6 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
-                  {/* MEN Sunglasses Column */}
-                  <div className="space-y-3">
-                    <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
-                      <div>
-                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
-                          MEN <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
-                        </h4>
-                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> 100% UV400 Polarized Lenses
-                        </span>
-                      </div>
-                      <img
-                        src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80"
-                        alt="Men Sunglasses"
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      {[
-                        {
-                          brands: 'Ray-Ban | Oakley | Persol',
-                          price: 'Starts at ₹3,200',
-                          img: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Tom Ford | Gucci | Prada',
-                          price: 'Starts at ₹5,500',
-                          img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Oliver Peoples | Jacques Marie Mage',
-                          price: 'Starts at ₹8,500',
-                          img: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=200&q=80'
-                        }
-                      ].map((item, idx) => (
+                  {/* 1. BY GENDER */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      BY GENDER
+                    </h4>
+                    <ul className="space-y-2 text-xs text-stone-700">
+                      <li>
                         <button
-                          key={idx}
+                          type="button"
                           onClick={() => {
                             handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses&gender=men');
                             setHoveredMenu(null);
                           }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
                         >
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
-                            <div>
-                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
-                                {item.brands}
-                              </div>
-                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
-                                {item.price}
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                          Men&apos;s sunglasses
                         </button>
-                      ))}
-                    </div>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses&gender=women');
+                            setHoveredMenu(null);
+                          }}
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
+                        >
+                          Women&apos;s sunglasses
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses&gender=unisex');
+                            setHoveredMenu(null);
+                          }}
+                          className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800"
+                        >
+                          Unisex
+                        </button>
+                      </li>
+                      <li className="pt-2 border-t border-[#E8DCCF]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses');
+                            setHoveredMenu(null);
+                          }}
+                          className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
+                        >
+                          <span>Shop all</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </li>
+                    </ul>
                   </div>
 
-                  {/* WOMEN Sunglasses Column */}
-                  <div className="space-y-3">
-                    <div className="bg-[#FAF3EB] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
-                      <div>
-                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
-                          WOMEN <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
-                        </h4>
-                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> 100% UV400 Polarized Lenses
-                        </span>
-                      </div>
-                      <img
-                        src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80"
-                        alt="Women Sunglasses"
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
+                  {/* 2. BY SHAPE */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      BY SHAPE
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-700">
                       {[
-                        {
-                          brands: 'Prada | Miu Miu | Saint Laurent',
-                          price: 'Starts at ₹4,200',
-                          img: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Gucci | Dolce & Gabbana | Chanel',
-                          price: 'Starts at ₹6,000',
-                          img: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          brands: 'Tom Ford | Celine | Dior',
-                          price: 'Starts at ₹7,500',
-                          img: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=200&q=80'
-                        }
-                      ].map((item, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            handleNavClick('sunglasses', 'shop');
-                            setHoveredMenu(null);
-                          }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} alt={item.brands} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
-                            <div>
-                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
-                                {item.brands}
-                              </div>
-                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
-                                {item.price}
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </button>
+                        { label: 'Aviator', shape: 'aviator' },
+                        { label: 'Butterfly', shape: 'cat-eye' },
+                        { label: 'Cat eye', shape: 'cat-eye' },
+                        { label: 'Oversized', shape: 'square' },
+                        { label: 'Round', shape: 'round' },
+                        { label: 'Rectangle', shape: 'rectangle' },
+                        { label: 'Sports', shape: 'geometric' },
+                      ].map((item) => (
+                        <li key={item.label}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleNavClick('sunglasses', 'shop');
+                              router.push(`/shop?category=sunglasses&shape=${item.shape}`);
+                              setHoveredMenu(null);
+                            }}
+                            className="hover:text-[#C86A28] font-medium transition-colors cursor-pointer text-stone-800 text-left block w-full"
+                          >
+                            {item.label}
+                          </button>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
 
-                  {/* LUXURY & SPORT Sunglasses Column */}
-                  <div className="space-y-3">
-                    <div className="bg-[#F5EBE1] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
-                      <div>
-                        <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
-                          LUXURY & SPORT <span className="font-normal text-stone-600 text-xs">Sunglasses</span>
-                        </h4>
-                        <span className="text-[#C86A28] font-bold text-[10px] flex items-center gap-1 mt-0.5">
-                          <Check className="w-3 h-3 text-[#C86A28] shrink-0" /> Impact-Resistant Lenses
-                        </span>
-                      </div>
-                      <img
-                        src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=120&q=80"
-                        alt="Sport Sunglasses"
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
+                  {/* 3. TOP BRANDS */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      TOP BRANDS
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-700">
                       {[
-                        {
-                          title: 'Sports & Driving Lenses',
-                          price: 'Starts at ₹2,500',
-                          img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          title: 'Aviators & Wayfarers',
-                          price: 'Starts at ₹2,900',
-                          img: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=200&q=80'
-                        },
-                        {
-                          title: 'Oversized & Cat Eye',
-                          price: 'Starts at ₹3,800',
-                          img: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=200&q=80'
-                        }
-                      ].map((item, idx) => (
+                        'Gucci',
+                        'Burberry',
+                        'Prada',
+                        'Saint Laurent',
+                        'Off-White',
+                        'Tom Ford',
+                        'Dolce & Gabbana',
+                        'Montblanc',
+                        'Gast',
+                        'Versace',
+                      ].map((brand) => {
+                        const isHovered = activeSunglassesBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?category=sunglasses&brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveSunglassesBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                      <li className="pt-2 border-t border-[#E8DCCF]">
                         <button
-                          key={idx}
+                          type="button"
                           onClick={() => {
                             handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses');
                             setHoveredMenu(null);
                           }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                          className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
                         >
-                          <div className="flex items-center gap-3">
-                            <img src={item.img} alt={item.title} className="w-11 h-9 object-contain rounded-lg bg-[#FAF7F2] p-1 border border-[#E8DCCF]/60" />
-                            <div>
-                              <div className="text-[11px] font-bold text-stone-900 leading-tight group-hover:text-[#C86A28] transition-colors">
-                                {item.title}
-                              </div>
-                              <div className="text-[10.5px] font-extrabold text-[#C86A28] mt-0.5">
-                                {item.price}
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-[#C86A28] group-hover:translate-x-0.5 transition-all shrink-0" />
+                          <span>All brands</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                         </button>
-                      ))}
-                    </div>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* 4. EXCLUSIVE BRANDS */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      EXCLUSIVE BRANDS
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-stone-700">
+                      {[
+                        'Cartier',
+                        'Maybach',
+                        'Jacques Marie Mage',
+                        'Capote',
+                        'T Henri',
+                        'Akoni',
+                        'Balmain',
+                      ].map((brand) => {
+                        const isHovered = activeSunglassesBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?category=sunglasses&brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveSunglassesBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                      <li className="pt-2 border-t border-[#E8DCCF]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('sunglasses', 'shop');
+                            router.push('/shop?category=sunglasses');
+                            setHoveredMenu(null);
+                          }}
+                          className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
+                        >
+                          <span>All exclusive</span>
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* 5. SHOWCASE CARD */}
+                  <div className="col-span-4 flex flex-col justify-start pl-2">
+                    <Link
+                      href={featuredSunglassesDisplay.url}
+                      onClick={() => setHoveredMenu(null)}
+                      className="group block overflow-hidden rounded-xl border border-[#E8DCCF] bg-[#FFFDF9] p-3 transition-all hover:border-[#C86A28]/40 hover:shadow-md cursor-pointer"
+                    >
+                      <div className="w-full aspect-[16/10] bg-[#FAF7F2] overflow-hidden rounded-lg flex items-center justify-center">
+                        <img
+                          src={featuredSunglassesDisplay.image}
+                          alt={featuredSunglassesDisplay.brand}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="pt-3 pb-1 text-center">
+                        <h5 className="font-serif font-bold text-xs tracking-[0.2em] text-[#2A1E17] uppercase">
+                          {featuredSunglassesDisplay.brand}
+                        </h5>
+                        <p className="text-[10px] tracking-[0.15em] text-stone-500 uppercase mt-0.5 font-medium">
+                          {featuredSunglassesDisplay.title}
+                        </p>
+                      </div>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -774,11 +1402,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   onMouseEnter={() => handleMenuEnter('contacts')}
                   onMouseLeave={handleMenuLeave}
-                  className="absolute top-full left-1/2 -translate-x-1/2 w-[920px] max-w-[calc(100vw-2rem)] bg-[#FFFDF9] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[940px] max-w-[calc(100vw-2rem)] max-h-[min(85vh,720px)] overflow-y-auto bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-3 gap-5 text-left normal-case tracking-normal z-50 rounded-b-2xl animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
                   {/* CLEAR Contacts Column */}
                   <div className="space-y-3">
-                    <div className="bg-[#FAF7F2] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                    <div className="bg-[#FFFDF9] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
                       <div>
                         <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
                           CLEAR <span className="font-normal text-stone-600 text-xs">Contacts</span>
@@ -816,7 +1444,7 @@ export const Header: React.FC<HeaderProps> = ({
                             handleNavClick('contact-lenses', 'shop');
                             setHoveredMenu(null);
                           }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                          className="w-full bg-white hover:bg-[#FFFDF9] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             <img src={item.img} alt={item.title} className="w-9 h-9 object-cover rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DCCF]/60" />
@@ -837,7 +1465,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {/* COLOR Contacts Column */}
                   <div className="space-y-3">
-                    <div className="bg-[#FAF3EB] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                    <div className="bg-[#FFFDF9] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
                       <div>
                         <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
                           COLOR <span className="font-normal text-stone-600 text-xs">Contacts</span>
@@ -875,7 +1503,7 @@ export const Header: React.FC<HeaderProps> = ({
                             handleNavClick('contact-lenses', 'shop');
                             setHoveredMenu(null);
                           }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                          className="w-full bg-white hover:bg-[#FFFDF9] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             <img src={item.img} alt={item.title} className="w-9 h-9 object-cover rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DCCF]/60" />
@@ -896,7 +1524,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {/* Solution & Accessories Column */}
                   <div className="space-y-3">
-                    <div className="bg-[#F5EBE1] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
+                    <div className="bg-[#FFFDF9] rounded-2xl p-3.5 flex items-center justify-between border border-[#E8DCCF] shadow-xs">
                       <div>
                         <h4 className="text-stone-900 font-extrabold text-sm tracking-tight font-sans">
                           Solution & <span className="font-normal text-stone-600 text-xs">Accessories</span>
@@ -934,7 +1562,7 @@ export const Header: React.FC<HeaderProps> = ({
                             handleNavClick('contact-lenses', 'shop');
                             setHoveredMenu(null);
                           }}
-                          className="w-full bg-white hover:bg-[#FAF3EB] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-2xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
+                          className="w-full bg-white hover:bg-[#FFFDF9] border border-[#E8DCCF]/80 hover:border-[#C86A28]/50 p-2.5 rounded-xl flex items-center justify-between shadow-2xs transition-all text-left group cursor-pointer"
                         >
                           <div className="flex items-center gap-3">
                             <img src={item.img} alt={item.title} className="w-9 h-9 object-cover rounded-lg bg-[#FAF7F2] p-0.5 border border-[#E8DCCF]/60" />
@@ -970,87 +1598,240 @@ export const Header: React.FC<HeaderProps> = ({
                 <ChevronDown className="w-3 h-3 opacity-60 group-hover:rotate-180 transition-transform" />
               </button>
 
+              {/* LUXURY BRANDS Alphabetical Megamenu Dropdown */}
               {hoveredMenu === 'brands' && (
                 <div
                   onMouseEnter={() => handleMenuEnter('brands')}
                   onMouseLeave={handleMenuLeave}
-                  className="absolute top-full left-1/2 -translate-x-1/2 w-[880px] max-w-[calc(100vw-2rem)] bg-white border border-[#E8DCCF] shadow-2xl p-6 grid grid-cols-12 gap-6 text-left normal-case tracking-normal z-50 rounded-3xl animate-in fade-in slide-in-from-top-2 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-[1160px] max-w-[calc(100vw-2rem)] max-h-[min(85vh,720px)] overflow-y-auto bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl px-8 py-7 grid grid-cols-12 gap-5 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
-                  {/* Left Brand List */}
-                  <div className="col-span-4 pr-2 border-r border-stone-200">
-                    <h4 className="font-serif font-black text-xs tracking-widest uppercase text-[#C86A28] mb-3 pb-1 border-b border-stone-200">
-                      LUXURY BRANDS
+                  {/* Column 1: A - C */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
+                      A - C
                     </h4>
-                    <ul className="space-y-1.5 text-xs text-stone-800 font-sans">
+                    <ul className="space-y-1 text-xs text-stone-700">
                       {[
-                        { name: 'Ray-Ban', id: 'ray-ban' },
-                        { name: 'Dolce & Gabbana', id: 'dolce-gabbana' },
-                        { name: 'Oakley', id: 'oakley' },
-                        { name: 'Tom Ford', id: 'tom-ford' },
-                        { name: 'Gucci', id: 'gucci' },
-                        { name: 'Prada', id: 'prada' },
-                        { name: 'Oliver Peoples', id: 'oliver-peoples' },
-                        { name: 'Persol', id: 'persol' },
-                        { name: 'Silhouette', id: 'silhouette' },
-                        { name: 'Moscot', id: 'moscot' },
-                        { name: 'Lindberg', id: 'lindberg' }
-                      ].map((brand) => (
-                        <li key={brand.id}>
-                          <button
-                            onClick={() => {
-                              onSelectBrand(brand.id);
-                              if (onNavigate) onNavigate('shop');
-                              router.push(`/shop?brand=${brand.id}`);
-                              setHoveredMenu(null);
-                            }}
-                            className="w-full text-left font-bold text-stone-800 hover:text-[#C86A28] hover:translate-x-1 transition-all py-0.5 flex items-center justify-between group cursor-pointer"
-                          >
-                            <span>{brand.name}</span>
-                            <span className="text-[10px] text-stone-400 group-hover:text-[#C86A28] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                          </button>
-                        </li>
-                      ))}
+                        'Akoni',
+                        'Alaïa',
+                        'Alexander McQueen',
+                        'Balenciaga',
+                        'Balmain',
+                        'Bottega Veneta',
+                        'Bruno Chaussignand',
+                        'Bugatti',
+                        'Burberry',
+                        'Bvlgari',
+                        'Calvin Klein',
+                        'Capote',
+                      ].map((brand) => {
+                        const isHovered = activeDirectoryBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
 
-                  {/* Right Featured Release Card */}
-                  <div className="col-span-8 bg-[#FAF7F2] rounded-2xl p-6 border border-[#E8DCCF] flex items-center gap-6 relative overflow-hidden shadow-xs">
-                    <div className="w-48 h-36 shrink-0 bg-white rounded-xl p-3 border border-stone-200 flex items-center justify-center shadow-2xs">
-                      <img
-                        src="https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=500&q=80"
-                        alt="Astro Diamond Bevel Frames"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-[10px] font-sans font-extrabold tracking-[0.2em] text-[#C86A28] uppercase block mb-1">
-                        EXCLUSIVE RELEASE
-                      </span>
-                      <h3 className="font-serif font-extrabold text-stone-900 text-lg uppercase tracking-tight leading-tight mb-2">
-                        ASTRO DIAMOND BEVEL FRAMES
-                      </h3>
-                      <p className="text-xs text-stone-600 font-sans leading-relaxed mb-4">
-                        Japanese Beta Titanium alloy, ultra-lightweight 8.5g frame with anti-fatigue polarized UV lenses.
-                      </p>
-                      <button
-                        onClick={() => {
-                          handleNavClick('all', 'shop');
-                          setHoveredMenu(null);
-                        }}
-                        className="bg-[#C86A28] hover:bg-[#b05a1f] text-white font-black text-[10px] tracking-widest uppercase px-5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
-                      >
-                        EXPLORE COLLECTION
-                      </button>
-                    </div>
+                  {/* Column 2: D - J */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
+                      D - J
+                    </h4>
+                    <ul className="space-y-1 text-xs text-stone-700">
+                      {[
+                        'David Beckham',
+                        'Dolce & Gabbana',
+                        'Dunhill',
+                        'Elie Saab',
+                        'Emporio Armani',
+                        'Etnia Barcelona',
+                        'Ferragamo',
+                        'Fendi',
+                        'Fire Horn',
+                        'Fred',
+                        'Frency & Mercury',
+                        'Gast',
+                      ].map((brand) => {
+                        const isHovered = activeDirectoryBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Column 3: K - O */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
+                      K - O
+                    </h4>
+                    <ul className="space-y-1 text-xs text-stone-700">
+                      {[
+                        'Kate Spade',
+                        'Kenzo',
+                        'Komono',
+                        'Kuboraum',
+                        'Lapima',
+                        'Linda Farrow',
+                        'Lindberg',
+                        'Loewe',
+                        'Marc Jacobs',
+                        'Masunaga',
+                        'Maui Jim',
+                        'Matsuda',
+                      ].map((brand) => {
+                        const isHovered = activeDirectoryBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Column 4: P - Z */}
+                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
+                      P - Z
+                    </h4>
+                    <ul className="space-y-1 text-xs text-stone-700">
+                      {[
+                        'Persol',
+                        'Philipp Plein',
+                        'Prada',
+                        'Prada Sports',
+                        'Pugnale Eyewear',
+                        'Rayban',
+                        'Robert La Roche',
+                        'Saint Laurent',
+                        'Seventh Street',
+                        'Silhouette',
+                        'So Ya',
+                        'Swarovski',
+                      ].map((brand) => {
+                        const isHovered = activeDirectoryBrand === brand;
+                        return (
+                          <li key={brand}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
+                                onSelectBrand(bSlug);
+                                if (onNavigate) onNavigate('shop');
+                                router.push(`/shop?brand=${bSlug}`);
+                                setHoveredMenu(null);
+                              }}
+                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
+                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
+                                isHovered
+                                  ? 'text-[#C86A28] font-bold'
+                                  : 'text-stone-700 hover:text-[#C86A28]'
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Column 5: SHOWCASE CARD */}
+                  <div className="col-span-4 flex flex-col justify-start pl-3">
+                    <Link
+                      href={featuredDirectoryDisplay.url}
+                      onClick={() => setHoveredMenu(null)}
+                      className="group block overflow-hidden rounded-xl border border-[#E8DCCF] bg-[#FFFDF9] p-3 transition-all hover:border-[#C86A28]/40 hover:shadow-md cursor-pointer"
+                    >
+                      <div className="w-full aspect-[16/10] bg-[#FAF7F2] overflow-hidden rounded-lg flex items-center justify-center">
+                        <img
+                          src={featuredDirectoryDisplay.image}
+                          alt={featuredDirectoryDisplay.brand}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="pt-3 pb-1 text-center">
+                        <h5 className="font-serif font-bold text-xs tracking-[0.2em] text-[#2A1E17] uppercase">
+                          {featuredDirectoryDisplay.brand}
+                        </h5>
+                        <p className="text-[10px] tracking-[0.15em] text-stone-500 uppercase mt-0.5 font-medium">
+                          {featuredDirectoryDisplay.title}
+                        </p>
+                      </div>
+                    </Link>
                   </div>
                 </div>
               )}
             </li>
 
             {/* 7. SALE (Figma Editorial Calligraphy Style) */}
-            <li className="py-2.5 flex items-center">
+            <li
+              className="py-2.5 group relative flex items-center"
+              onMouseEnter={() => handleMenuEnter('sale')}
+              onMouseLeave={handleMenuLeave}
+            >
               <button
-                onClick={() => handleNavClick('sale', 'shop')}
+                onClick={() => {
+                  handleNavClick('sale', 'shop');
+                  router.push('/shop?filter=sale');
+                }}
                 className="hover:scale-105 transition-transform flex items-center gap-1.5 cursor-pointer py-1 px-1.5"
                 title="Sale Offers"
               >
@@ -1058,7 +1839,56 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-[9px] font-extrabold tracking-wider text-stone-900 border-b-2 border-red-500 pb-0.5 leading-none uppercase">
                   UP TO 40%
                 </span>
+                <ChevronDown className="w-2.5 h-2.5 text-stone-600 opacity-60 group-hover:rotate-180 transition-transform ml-0.5" />
               </button>
+
+              {/* SALE Dropdown */}
+              {hoveredMenu === 'sale' && (
+                <div
+                  onMouseEnter={() => handleMenuEnter('sale')}
+                  onMouseLeave={handleMenuLeave}
+                  className="absolute top-full left-1/2 -translate-x-1/2 w-52 bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl p-3 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
+                >
+                  <ul className="space-y-1 text-xs text-stone-700">
+                    {[
+                      { label: 'FLAT 10%', discount: 10 },
+                      { label: 'FLAT 12%', discount: 12 },
+                      { label: 'FLAT 15%', discount: 15 },
+                      { label: 'FLAT 20%', discount: 20 },
+                      { label: 'FLAT 40%', discount: 40 },
+                    ].map((item) => (
+                      <li key={item.label}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleNavClick('sale', 'shop');
+                            router.push(`/shop?discount=${item.discount}&filter=sale`);
+                            setHoveredMenu(null);
+                          }}
+                          className="w-full text-left text-stone-800 hover:text-[#C86A28] font-bold tracking-wide transition-colors cursor-pointer py-1.5 px-2 rounded-lg hover:bg-[#F2E8DC] flex items-center justify-between group"
+                        >
+                          <span>{item.label}</span>
+                          <ArrowRight className="w-3 h-3 text-[#C86A28] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      </li>
+                    ))}
+                    <li className="pt-2 border-t border-[#E8DCCF]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleNavClick('sale', 'shop');
+                          router.push('/shop?filter=sale');
+                          setHoveredMenu(null);
+                        }}
+                        className="w-full text-left text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] flex items-center justify-between px-2 py-1 group cursor-pointer"
+                      >
+                        <span>All Sale Frames</span>
+                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
             </li>
 
             {/* 8. CONTACT US */}
@@ -1089,6 +1919,68 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#FAF3EB] border-t border-[#E8DCCF] px-4 pt-3 pb-6 space-y-3">
+          {/* Mobile Patron Profile / Sign In Banner */}
+          {!isLoggedIn ? (
+            <div className="bg-[#FFFDF9] border border-[#E8DCCF] rounded-2xl p-3.5 shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#FAF3EB] border border-[#E8DCCF] flex items-center justify-center text-stone-700">
+                  <User className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-stone-900 leading-tight">Patron Sign In</h4>
+                  <p className="text-[10px] text-stone-500">Sign in with Mobile OTP</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  openAuthModal('/account');
+                }}
+                className="bg-[#1C1917] hover:bg-black text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                Sign In
+              </button>
+            </div>
+          ) : (
+            <div className="bg-[#FFFDF9] border border-[#E8DCCF] rounded-2xl p-3.5 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#2A1E17] text-[#FAF7F2] flex items-center justify-center text-xs font-bold shadow-2xs">
+                    {user.name ? user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "PO"}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-900 leading-tight">{user.name || "Alexander Sterling"}</h4>
+                    <span className="text-[10px] text-stone-500 block">{user.phone || user.email}</span>
+                  </div>
+                </div>
+                <span className="bg-[#FAF3EB] border border-[#E8DCCF] text-stone-800 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                  {user.gemPoints} Pts
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#E8DCCF]/60 text-[10px]">
+                <Link
+                  href="/account"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="bg-[#FAF3EB] hover:bg-[#F2E8DC] text-stone-800 font-bold py-1.5 px-2.5 rounded-lg text-center transition-colors"
+                >
+                  My Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                    toast.success("Signed out successfully");
+                  }}
+                  className="bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold py-1.5 px-2.5 rounded-lg text-center transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1 divide-y divide-stone-300/60 text-[11px] tracking-wider uppercase font-medium text-stone-900">
             <button
               onClick={() => {

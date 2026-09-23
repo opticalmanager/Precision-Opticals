@@ -416,26 +416,39 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-6 pt-5">
-              <label className="flex items-center gap-2 text-xs font-semibold text-stone-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded text-[#C86A28]"
-                />
-                <span>Published (Visible in Store)</span>
-              </label>
+            <div className="sm:col-span-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-lg p-4 space-y-3">
+              <div className="text-xs font-bold text-[#2A1E17] uppercase tracking-wider">
+                Storefront Merchandising & Placement Flags
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="flex items-start gap-2.5 text-xs text-stone-700 cursor-pointer p-3 rounded-md bg-white border border-[#E8DCCF] hover:border-[#C86A28]/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="mt-0.5 rounded text-[#C86A28] focus:ring-[#C86A28]"
+                  />
+                  <div>
+                    <span className="font-semibold block text-[#2A1E17]">Published in Catalog</span>
+                    <span className="text-[11px] text-stone-500">Enable customers to browse, view, and purchase this frame.</span>
+                  </div>
+                </label>
 
-              <label className="flex items-center gap-2 text-xs font-semibold text-stone-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isNewArrival}
-                  onChange={(e) => setFormData({ ...formData, isNewArrival: e.target.checked })}
-                  className="rounded text-[#C86A28]"
-                />
-                <span>New Arrival Badge</span>
-              </label>
+                <label className="flex items-start gap-2.5 text-xs text-stone-700 cursor-pointer p-3 rounded-md bg-white border border-[#E8DCCF] hover:border-[#C86A28]/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.isNewArrival}
+                    onChange={(e) => setFormData({ ...formData, isNewArrival: e.target.checked })}
+                    className="mt-0.5 rounded text-[#C86A28] focus:ring-[#C86A28]"
+                  />
+                  <div>
+                    <span className="font-semibold block text-[#2A1E17]">Show in &quot;New Arrivals&quot;</span>
+                    <span className="text-[11px] text-stone-500">
+                      Flag as a new arrival: frame appears in New In collections and its brand automatically populates the Navbar New Arrivals dropdown.
+                    </span>
+                  </div>
+                </label>
+              </div>
             </div>
 
             <div className="sm:col-span-2">

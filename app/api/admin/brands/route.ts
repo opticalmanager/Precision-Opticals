@@ -62,3 +62,104 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const id = body.id;
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Brand ID is required" }, { status: 400 });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (body.name !== undefined) {
+      updates.push(`name = $${idx++}`);
+      values.push(body.name.trim());
+    }
+    if (body.origin !== undefined) {
+      updates.push(`origin = $${idx++}`);
+      values.push(body.origin.trim());
+    }
+    if (body.tagline !== undefined) {
+      updates.push(`tagline = $${idx++}`);
+      values.push(body.tagline.trim());
+    }
+    if (body.description !== undefined) {
+      updates.push(`description = $${idx++}`);
+      values.push(body.description.trim());
+    }
+    if (body.is_featured !== undefined || body.isFeatured !== undefined) {
+      updates.push(`is_featured = $${idx++}`);
+      values.push(Boolean(body.is_featured ?? body.isFeatured));
+    }
+    if (body.is_active !== undefined || body.isActive !== undefined) {
+      updates.push(`is_active = $${idx++}`);
+      values.push(Boolean(body.is_active ?? body.isActive));
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json({ success: false, error: "No fields to update" }, { status: 400 });
+    }
+
+    values.push(id);
+    const res = await query(
+      `UPDATE public.brands SET ${updates.join(", ")}, updated_at = NOW() WHERE id = $${idx} RETURNING *;`,
+      values
+    );
+
+    if (res.rowCount === 0) {
+      return NextResponse.json({ success: false, error: "Brand not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Brand updated successfully",
+      brand: res.rows[0],
+    });
+  } catch (error: any) {
+    console.error("Brands PATCH error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to update brand" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Brand ID is required" }, { status: 400 });
+    }
+
+    // Check if products exist for this brand
+    const check = await query(`SELECT COUNT(*) as cnt FROM public.products WHERE brand_id = $1`, [id]);
+    const prodCount = parseInt(check.rows[0]?.cnt || "0", 10);
+    if (prodCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete brand with ${prodCount} associated product${prodCount > 1 ? "s" : ""}. Please reassign or delete these products first.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const res = await query(`DELETE FROM public.brands WHERE id = $1 RETURNING id;`, [id]);
+    if (res.rowCount === 0) {
+      return NextResponse.json({ success: false, error: "Brand not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: "Brand deleted successfully" });
+  } catch (error: any) {
+    console.error("Brands DELETE error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to delete brand" },
+      { status: 500 }
+    );
+  }
+}

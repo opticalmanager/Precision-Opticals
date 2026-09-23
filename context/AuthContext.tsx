@@ -13,16 +13,22 @@ interface AuthContextType {
   logout: () => void;
   updateUserProfile: (data: Partial<UserProfile>) => void;
   saveShippingAddress: (address: ShippingAddress) => void;
+  deleteSavedAddress: (index: number) => void;
   orders: Order[];
   gemPoints: number;
   addPoints: (amount: number) => void;
   redeemPoints: (amount: number) => boolean;
   saveOrder: (order: Order) => void;
   savePrescription: (title: string, data: PrescriptionData, doctorName?: string) => void;
+  removePrescription: (id: string) => void;
   selectedTrackingOrder: Order | null;
   isTrackingModalOpen: boolean;
   openTrackingModal: (order?: Order) => void;
   closeTrackingModal: () => void;
+  isAuthModalOpen: boolean;
+  openAuthModal: (returnUrl?: string) => void;
+  closeAuthModal: () => void;
+  authReturnUrl: string | null;
 }
 
 const ORDERS_STORAGE_KEY = "precision_optics_orders_v2";
@@ -34,6 +40,8 @@ const INITIAL_USER: UserProfile = {
   name: "Alexander Sterling",
   email: "a.sterling@precisionoptics.com",
   phone: "+91 98100 12345",
+  role: "customer",
+  joinedDate: "October 2024",
   gemPoints: 850,
   savedAddresses: [
     {
@@ -73,6 +81,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [selectedTrackingOrder, setSelectedTrackingOrder] = useState<Order | null>(null);
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
+
+  // Global Auth Modal State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authReturnUrl, setAuthReturnUrl] = useState<string | null>(null);
+
+  const openAuthModal = useCallback((returnUrl?: string) => {
+    if (returnUrl) setAuthReturnUrl(returnUrl);
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setIsAuthModalOpen(false);
+  }, []);
 
   useEffect(() => {
     try {
@@ -128,6 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     setIsLoggedIn(true);
     setIsGuest(false);
+    setIsAuthModalOpen(false);
   }, []);
 
   const loginWithEmail = useCallback((email: string, name?: string) => {
@@ -138,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     setIsLoggedIn(true);
     setIsGuest(false);
+    setIsAuthModalOpen(false);
   }, []);
 
   const logout = useCallback(() => {
@@ -155,7 +178,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveShippingAddress = useCallback((address: ShippingAddress) => {
     setUser((prev) => {
-      // Avoid duplicate exact addresses
       const filtered = prev.savedAddresses.filter(
         (a) =>
           a.streetAddress.toLowerCase() !== address.streetAddress.toLowerCase() ||
@@ -166,6 +188,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         savedAddresses: [address, ...filtered],
       };
     });
+  }, []);
+
+  const deleteSavedAddress = useCallback((index: number) => {
+    setUser((prev) => ({
+      ...prev,
+      savedAddresses: prev.savedAddresses.filter((_, i) => i !== index),
+    }));
   }, []);
 
   const addPoints = useCallback((amount: number) => {
@@ -208,6 +237,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
+  const removePrescription = useCallback((id: string) => {
+    setUser((prev) => ({
+      ...prev,
+      savedPrescriptions: prev.savedPrescriptions.filter((p) => p.id !== id),
+    }));
+  }, []);
+
   const openTrackingModal = useCallback(
     (order?: Order) => {
       if (order) {
@@ -237,16 +273,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         updateUserProfile,
         saveShippingAddress,
+        deleteSavedAddress,
         orders,
         gemPoints: user.gemPoints,
         addPoints,
         redeemPoints,
         saveOrder,
         savePrescription,
+        removePrescription,
         selectedTrackingOrder,
         isTrackingModalOpen,
         openTrackingModal,
         closeTrackingModal,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
+        authReturnUrl,
       }}
     >
       {children}

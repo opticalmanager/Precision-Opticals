@@ -43,9 +43,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   if (!isCartOpen) return null;
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
-    const res = applyCoupon(couponInput);
+    const res = await applyCoupon(couponInput);
     setCouponFeedback(res.message);
   };
 

@@ -19,7 +19,7 @@ interface CartContextType {
   clearCart: () => void;
   appliedCoupon: string | null;
   discountPercentage: number;
-  applyCoupon: (code: string) => { success: boolean; message: string };
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
   removeCoupon: () => void;
   includeCleaningKit: boolean;
   setIncludeCleaningKit: (include: boolean) => void;
@@ -39,7 +39,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [couponDetails, setCouponDetails] = useState<{
+    code: string;
+    discountType: string;
+    discountValue: number;
+    maxDiscount: number | null;
+  } | null>(null);
   const [includeCleaningKit, setIncludeCleaningKit] = useState<boolean>(false);
 
   // Load from localStorage on mount (hydration safe)
@@ -169,45 +174,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const clearCart = useCallback(() => {
-    setItems([]);
-    setAppliedCoupon(null);
-    setDiscountPercentage(0);
-    setIncludeCleaningKit(false);
-  }, []);
-
-  const applyCoupon = useCallback((code: string) => {
-    const cleanCode = code.trim().toUpperCase();
-    if (cleanCode === "PO10" || cleanCode === "GEM10" || cleanCode === "BOGO") {
-      setAppliedCoupon(cleanCode);
-      setDiscountPercentage(10);
-      toast.success("Coupon Applied", {
-        description: `Promo code "${cleanCode}" saved 10% on your order.`,
-      });
-      return { success: true, message: "10% discount applied successfully!" };
-    }
-    if (cleanCode === "PRECISION20") {
-      setAppliedCoupon(cleanCode);
-      setDiscountPercentage(20);
-      toast.success("VIP Voucher Applied", {
-        description: "20% VIP Privilege discount unlocked.",
-      });
-      return { success: true, message: "VIP 20% discount applied!" };
-    }
-
-    toast.error("Invalid Promo Code", {
-      description: "Code not recognized. Try using 'PO10' for 10% off.",
-    });
-    return { success: false, message: "Invalid code. Use 'PO10' for 10% off" };
-  }, []);
-
-  const removeCoupon = useCallback(() => {
-    setAppliedCoupon(null);
-    setDiscountPercentage(0);
-    toast.info("Coupon Removed");
-  }, []);
-
-  // Subtotal & Grand Total Calculations
+  // Subtotal Calculations
   const rawSubtotal = useMemo(() => {
     return items.reduce((acc, item) => {
       const itemLensPrice = item.lensConfig ? item.lensConfig.totalLensPrice : 0;
@@ -217,7 +184,76 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const cleaningKitPrice = includeCleaningKit ? CLEANING_KIT_PRICE : 0;
   const currentSubtotal = rawSubtotal + cleaningKitPrice;
-  const discountAmount = Math.round((currentSubtotal * discountPercentage) / 100);
+
+  const applyCoupon = useCallback(
+    async (code: string) => {
+      const cleanCode = code.trim().toUpperCase();
+      if (!cleanCode) {
+        toast.error("Please enter a promo code");
+        return { success: false, message: "Please enter a promo code" };
+      }
+
+      try {
+        const res = await fetch("/api/coupons/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: cleanCode, orderAmount: currentSubtotal }),
+        });
+        const data = await res.json();
+        if (data.success && data.coupon) {
+          setAppliedCoupon(data.coupon.code);
+          setCouponDetails({
+            code: data.coupon.code,
+            discountType: data.coupon.discountType,
+            discountValue: Number(data.coupon.discountValue),
+            maxDiscount: data.coupon.maxDiscount ? Number(data.coupon.maxDiscount) : null,
+          });
+          toast.success("Privilege Code Applied", {
+            description: data.message,
+          });
+          return { success: true, message: data.message };
+        } else {
+          toast.error("Voucher Declined", {
+            description: data.error || "Invalid privilege code",
+          });
+          return { success: false, message: data.error || "Invalid code" };
+        }
+      } catch (e: any) {
+        toast.error("Validation Error", { description: e.message });
+        return { success: false, message: e.message };
+      }
+    },
+    [currentSubtotal]
+  );
+
+  const removeCoupon = useCallback(() => {
+    setAppliedCoupon(null);
+    setCouponDetails(null);
+    toast.info("Coupon Removed");
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setItems([]);
+    setAppliedCoupon(null);
+    setCouponDetails(null);
+    setIncludeCleaningKit(false);
+  }, []);
+
+  // Discount and Grand Total Calculations
+  const discountAmount = useMemo(() => {
+    if (!couponDetails) return 0;
+    if (couponDetails.discountType === "percentage") {
+      const raw = Math.round((currentSubtotal * couponDetails.discountValue) / 100);
+      return couponDetails.maxDiscount ? Math.min(raw, couponDetails.maxDiscount) : raw;
+    }
+    // Fixed amount
+    return Math.min(couponDetails.discountValue, currentSubtotal);
+  }, [couponDetails, currentSubtotal]);
+
+  const discountPercentage = useMemo(() => {
+    return currentSubtotal > 0 ? Math.round((discountAmount / currentSubtotal) * 100) : 0;
+  }, [discountAmount, currentSubtotal]);
+
   const grandTotal = Math.max(0, currentSubtotal - discountAmount);
 
   const cartCount = useMemo(() => {

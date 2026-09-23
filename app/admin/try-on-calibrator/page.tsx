@@ -215,8 +215,27 @@ function AdminTryOnCalibratorContent() {
     };
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     CalibrationStore.saveCalibration(selectedProduct.id, calibration);
+    try {
+      const res = await fetch(`/api/admin/products/${selectedProduct.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: selectedProduct.name,
+          basePrice: (selectedProduct as any).base_price || selectedProduct.price,
+          tryOnConfiguration: calibration,
+          tryOnEnabled: true,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Calibration saved to database for ${selectedProduct.name}`);
+        return;
+      }
+    } catch (e) {
+      console.warn("Could not persist to database:", e);
+    }
     toast.success(`Calibration saved for ${selectedProduct.name}`);
   };
 

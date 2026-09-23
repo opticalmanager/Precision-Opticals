@@ -29,32 +29,32 @@ export const KpiCardsRow: React.FC<KpiCardsRowProps> = ({
       id: "revenue",
       title: "TOTAL REVENUE",
       value: formatCurrency(data.totalRevenue || 0),
-      growth: data.revenueGrowth || "+14.8%",
-      isPositive: true,
+      growth: data.revenueGrowth || null,
+      isPositive: !data.revenueGrowth?.startsWith("-"),
       icon: IndianRupee,
     },
     {
       id: "orders",
       title: "TOTAL ORDERS",
       value: (data.totalOrders || 0).toLocaleString(),
-      growth: data.ordersGrowth || "+9.2%",
-      isPositive: true,
+      growth: data.ordersGrowth || null,
+      isPositive: !data.ordersGrowth?.startsWith("-"),
       icon: ShoppingBag,
     },
     {
       id: "aov",
       title: "AVG. ORDER VALUE",
       value: formatCurrency(data.avgOrderValue || 0),
-      growth: data.aovGrowth || "+3.1%",
-      isPositive: true,
+      growth: data.aovGrowth || null,
+      isPositive: !data.aovGrowth?.startsWith("-"),
       icon: Package,
     },
     {
       id: "customers",
       title: "CUSTOMERS",
       value: (data.totalCustomers || 0).toLocaleString(),
-      growth: data.customersGrowth || "+6.4%",
-      isPositive: true,
+      growth: data.customersGrowth || null,
+      isPositive: !data.customersGrowth?.startsWith("-"),
       icon: Users,
     },
   ];
@@ -74,10 +74,11 @@ export const KpiCardsRow: React.FC<KpiCardsRowProps> = ({
 
         <div className="flex items-center gap-1 bg-[#FAF3EB] p-1 rounded-lg border border-[#E8DCCF] text-xs">
           {[
+            { id: "all", label: "All time" },
             { id: "today", label: "Today" },
             { id: "7d", label: "Last 7 days" },
             { id: "30d", label: "Last 30 days" },
-            { id: "month", label: "This month" },
+            { id: "this_month", label: "This month" },
           ].map((t) => (
             <button
               key={t.id}
@@ -122,23 +123,29 @@ export const KpiCardsRow: React.FC<KpiCardsRowProps> = ({
                 {card.value}
               </div>
 
-              <div className="flex items-center gap-2 text-xs">
-                <span
-                  className={`inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[11px] ${
-                    card.isPositive
-                      ? "text-emerald-700 bg-emerald-50"
-                      : "text-rose-700 bg-rose-50"
-                  }`}
-                >
-                  {card.isPositive ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  {card.growth}
-                </span>
-                <span className="text-[11px] text-stone-400">vs last period</span>
-              </div>
+              {card.growth ? (
+                <div className="flex items-center gap-2 text-xs">
+                  <span
+                    className={`inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[11px] ${
+                      card.isPositive
+                        ? "text-emerald-700 bg-emerald-50"
+                        : "text-rose-700 bg-rose-50"
+                    }`}
+                  >
+                    {card.isPositive ? (
+                      <TrendingUp className="w-3 h-3" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3" />
+                    )}
+                    {card.growth}
+                  </span>
+                  <span className="text-[11px] text-stone-400">vs prior period</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-stone-400">
+                  <span className="text-[11px]">Verified boutique registry</span>
+                </div>
+              )}
             </div>
           );
         })}

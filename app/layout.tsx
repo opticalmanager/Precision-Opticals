@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { CartProvider } from "@/context/CartContext";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -47,6 +48,7 @@ export default function RootLayout({
           <WishlistProvider>
             <CartProvider>
               {children}
+              <AuthModal />
               <Toaster position="bottom-right" richColors />
             </CartProvider>
           </WishlistProvider>

@@ -7,24 +7,34 @@ export async function GET(req: NextRequest) {
     const range = searchParams.get("range") || "7d";
 
     let dateFilter = "";
+    let prevDateFilter = "";
     let intervalStr = "6 days";
     let stepStr = "1 day";
     let labelFmt = "Dy";
 
     if (range === "today") {
       dateFilter = "WHERE created_at >= CURRENT_DATE";
+      prevDateFilter = "WHERE created_at >= CURRENT_DATE - INTERVAL '1 day' AND created_at < CURRENT_DATE";
       intervalStr = "0 days";
     } else if (range === "30d") {
       dateFilter = "WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'";
+      prevDateFilter = "WHERE created_at >= CURRENT_DATE - INTERVAL '60 days' AND created_at < CURRENT_DATE - INTERVAL '30 days'";
       intervalStr = "29 days";
       labelFmt = "DD Mon";
     } else if (range === "this_month") {
       dateFilter = "WHERE created_at >= date_trunc('month', CURRENT_DATE)";
+      prevDateFilter = "WHERE created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '1 month' AND created_at < date_trunc('month', CURRENT_DATE)";
+      intervalStr = "29 days";
+      labelFmt = "DD Mon";
+    } else if (range === "all") {
+      dateFilter = "WHERE 1=1";
+      prevDateFilter = "";
       intervalStr = "29 days";
       labelFmt = "DD Mon";
     } else {
       // 7d default
       dateFilter = "WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'";
+      prevDateFilter = "WHERE created_at >= CURRENT_DATE - INTERVAL '14 days' AND created_at < CURRENT_DATE - INTERVAL '7 days'";
       intervalStr = "6 days";
       labelFmt = "Dy";
     }
@@ -42,7 +52,38 @@ export async function GET(req: NextRequest) {
 
     const stats = statsRes.rows[0];
 
-    // 2. Status counts
+    // 1b. Previous period stats for comparative growth calculation
+    let revenueGrowth: string | null = null;
+    let ordersGrowth: string | null = null;
+    let customersGrowth: string | null = null;
+    let aovGrowth: string | null = null;
+
+    if (prevDateFilter) {
+      const prevStatsRes = await query(`
+        SELECT 
+          COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) as total_revenue,
+          COUNT(id) as total_orders,
+          COUNT(DISTINCT COALESCE(guest_email, guest_phone)) as total_customers,
+          COALESCE(AVG(CASE WHEN payment_status = 'paid' THEN total_amount END), 0) as avg_order_value
+        FROM public.orders
+        ${prevDateFilter};
+      `);
+      const prevStats = prevStatsRes.rows[0];
+
+      const calcGrowth = (curr: number, prev: number) => {
+        if (prev === 0 && curr > 0) return "+100%";
+        if (prev === 0 && curr === 0) return null;
+        const diff = ((curr - prev) / prev) * 100;
+        return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
+      };
+
+      revenueGrowth = calcGrowth(Number(stats.total_revenue), Number(prevStats.total_revenue));
+      ordersGrowth = calcGrowth(Number(stats.total_orders), Number(prevStats.total_orders));
+      customersGrowth = calcGrowth(Number(stats.total_customers), Number(prevStats.total_customers));
+      aovGrowth = calcGrowth(Number(stats.avg_order_value), Number(prevStats.avg_order_value));
+    }
+
+    // 2. Status counts (all-time active queue)
     const statusRes = await query(`
       SELECT status, COUNT(*) as count
       FROM public.orders
@@ -138,7 +179,51 @@ export async function GET(req: NextRequest) {
       LEFT JOIN public.brands b ON b.id = p.brand_id
       GROUP BY p.id, p.name, p.slug, b.name, p.base_price
       ORDER BY units_sold DESC
-      LIMIT 4;
+      LIMIT 6;
+    `);
+
+    // 7. Clinical Lens Breakdown (from real order items)
+    const lensRes = await query(`
+      SELECT 
+        COALESCE(product_snapshot->>'lensType', 'frame-only') as lens_type,
+        COUNT(*) as count
+      FROM public.order_items
+      GROUP BY lens_type;
+    `);
+    const lensCounts: Record<string, number> = {};
+    let totalLenses = 0;
+    for (const r of lensRes.rows) {
+      const c = parseInt(r.count, 10);
+      lensCounts[r.lens_type] = c;
+      totalLenses += c;
+    }
+
+    const progressiveCount = (lensCounts["progressive"] || 0);
+    const blueCutCount = (lensCounts["single-vision"] || 0) + (lensCounts["zero-power-blue"] || 0);
+    const frameOnlyCount = (lensCounts["frame-only"] || 0) + (lensCounts["demo"] || 0);
+
+    const lensBreakdown = {
+      total: totalLenses,
+      progressivePercent: totalLenses > 0 ? Math.round((progressiveCount / totalLenses) * 100) : 0,
+      blueCutPercent: totalLenses > 0 ? Math.round((blueCutCount / totalLenses) * 100) : 0,
+      frameOnlyPercent: totalLenses > 0 ? Math.round((frameOnlyCount / totalLenses) * 100) : 0,
+      progressiveCount,
+      blueCutCount,
+      frameOnlyCount,
+    };
+
+    // 8. Brand Performance Breakdown
+    const brandBreakdownRes = await query(`
+      SELECT 
+        COALESCE(b.name, 'Independent Maison') as brand_name,
+        COALESCE(SUM(oi.total_price), 0) as total_revenue,
+        COUNT(oi.id) as units_sold
+      FROM public.order_items oi
+      JOIN public.products p ON p.id = oi.product_id
+      LEFT JOIN public.brands b ON b.id = p.brand_id
+      GROUP BY b.name
+      ORDER BY total_revenue DESC
+      LIMIT 5;
     `);
 
     return NextResponse.json({
@@ -148,10 +233,10 @@ export async function GET(req: NextRequest) {
         totalOrders: Number(stats.total_orders),
         totalCustomers: Number(stats.total_customers),
         avgOrderValue: Math.round(Number(stats.avg_order_value)),
-        revenueGrowth: "+14.8%",
-        ordersGrowth: "+9.2%",
-        customersGrowth: "+6.4%",
-        aovGrowth: "+3.1%",
+        revenueGrowth,
+        ordersGrowth,
+        customersGrowth,
+        aovGrowth,
       },
       statusCounts: {
         confirmed: statusCounts["confirmed"] || 0,
@@ -165,6 +250,8 @@ export async function GET(req: NextRequest) {
       recentOrders: recentOrdersRes.rows,
       salesHistory: salesHistoryRes.rows,
       topProducts: topProductsRes.rows,
+      lensBreakdown,
+      brandBreakdown: brandBreakdownRes.rows,
     });
   } catch (error: any) {
     console.error("Admin dashboard error:", error);
