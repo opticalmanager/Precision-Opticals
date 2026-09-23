@@ -72,6 +72,8 @@ export async function GET(req: NextRequest) {
         o.status,
         o.payment_status,
         o.payment_method,
+        o.payment_id,
+        o.payment_details,
         o.subtotal,
         o.discount_amount,
         o.coupon_code,

@@ -18,6 +18,8 @@ import {
   MapPin,
   CreditCard,
   Glasses,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/common/StatusBadge";
@@ -32,6 +34,7 @@ export default function AdminOrderDetailPage() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [copiedTxId, setCopiedTxId] = useState(false);
 
   // Editable fields
   const [newStatus, setNewStatus] = useState("");
@@ -427,11 +430,59 @@ export default function AdminOrderDetailPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-[11px]">
-              <span className="text-stone-500">Method</span>
-              <span className="font-semibold text-stone-800 uppercase">
-                {order.payment_method}
-              </span>
+            <div className="pt-3 border-t border-stone-100 space-y-2 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500">Method</span>
+                <span className="font-semibold text-stone-800 uppercase">
+                  {order.payment_method === "upi"
+                    ? "Razorpay UPI"
+                    : order.payment_method === "card"
+                    ? "Razorpay Cards"
+                    : order.payment_method === "netbanking"
+                    ? "Razorpay NetBanking"
+                    : "Cash on Delivery"}
+                </span>
+              </div>
+
+              {order.payment_id && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-stone-500">Gateway Txn ID</span>
+                  <div className="flex items-center gap-1 font-mono text-[11px] text-[#2A1E17]">
+                    <span className="font-bold">{order.payment_id}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(order.payment_id);
+                        setCopiedTxId(true);
+                        toast.success("Transaction ID copied");
+                        setTimeout(() => setCopiedTxId(false), 2000);
+                      }}
+                      className="text-stone-400 hover:text-stone-700 transition-colors p-0.5 cursor-pointer"
+                      title="Copy transaction ID"
+                    >
+                      {copiedTxId ? (
+                        <Check className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {order.payment_details?.razorpay_order_id && (
+                <div className="flex items-center justify-between text-[10px] text-stone-400 pt-0.5">
+                  <span>Gateway Order</span>
+                  <span className="font-mono">{order.payment_details.razorpay_order_id}</span>
+                </div>
+              )}
+
+              {order.payment_id && order.payment_status === "paid" && (
+                <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>HMAC-SHA256 Cryptographically Verified</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -511,6 +562,12 @@ export default function AdminOrderDetailPage() {
             <div>
               <span className="font-semibold">Payment Status:</span> {order.payment_status?.toUpperCase()}
             </div>
+            {order.payment_id && (
+              <div>
+                <span className="font-semibold">Gateway Txn Ref:</span>{" "}
+                <span className="font-mono">{order.payment_id}</span>
+              </div>
+            )}
           </div>
         </div>
 

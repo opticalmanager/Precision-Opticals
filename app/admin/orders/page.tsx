@@ -289,6 +289,14 @@ export default function AdminOrdersPage() {
 
                     <td className="py-3 px-3">
                       <StatusBadge status={o.payment_status} size="sm" />
+                      {o.payment_id && (
+                        <div
+                          className="font-mono text-[9px] text-stone-500 mt-1 truncate max-w-[100px]"
+                          title={`Gateway Txn ID: ${o.payment_id}`}
+                        >
+                          {o.payment_id}
+                        </div>
+                      )}
                     </td>
 
                     <td className="py-3 px-3">

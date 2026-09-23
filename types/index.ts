@@ -149,9 +149,13 @@ export interface ShippingAddress {
   state: string;
   pincode: string;
   country: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  apartment?: string;
 }
 
-export type PaymentMethod = 'upi' | 'card' | 'netbanking' | 'cod';
+export type PaymentMethod = 'razorpay' | 'upi' | 'card' | 'netbanking' | 'cod';
 
 export interface Order {
   id: string;
@@ -160,6 +164,9 @@ export interface Order {
   items: CartItem[];
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;
+  paymentId?: string;
+  paymentDetails?: any;
+  paymentStatus?: 'paid' | 'unpaid' | 'failed' | 'refunded';
   subtotal: number;
   discount: number;
   couponApplied?: string;

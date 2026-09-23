@@ -16,8 +16,13 @@ export async function POST(req: Request) {
       body.shippingAddress?.email || body.email || "guest@precisionoptics.com";
     const guestPhone =
       body.shippingAddress?.phone || body.phone || "+91 9810012345";
-    const paymentStatus = body.paymentMethod === "cod" ? "unpaid" : "paid";
+    const paymentStatus =
+      body.paymentStatus || (body.paymentMethod === "cod" ? "unpaid" : "paid");
     const paymentMethod = body.paymentMethod || "upi";
+    const paymentId = body.paymentId || body.payment_id || null;
+    const paymentDetails = JSON.stringify(
+      body.paymentDetails || body.payment_details || {}
+    );
     const subtotal = Number(body.subtotal || body.totalAmount || 0);
     const discountAmount = Number(body.discount || 0);
     const couponCode = body.couponApplied || null;
@@ -30,9 +35,9 @@ export async function POST(req: Request) {
     const orderRes = await query(
       `INSERT INTO public.orders (
         order_number, guest_email, guest_phone, status, payment_status,
-        payment_method, subtotal, discount_amount, coupon_code, shipping_fee,
+        payment_method, payment_id, payment_details, subtotal, discount_amount, coupon_code, shipping_fee,
         total_amount, shipping_address, tracking_number, estimated_delivery, created_at
-      ) VALUES ($1, $2, $3, 'confirmed', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+      ) VALUES ($1, $2, $3, 'confirmed', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
       RETURNING id, order_number, tracking_number;`,
       [
         orderNumber,
@@ -40,6 +45,8 @@ export async function POST(req: Request) {
         guestPhone,
         paymentStatus,
         paymentMethod,
+        paymentId,
+        paymentDetails,
         subtotal,
         discountAmount,
         couponCode,

@@ -41,9 +41,20 @@ export async function GET() {
     };
 
     const rawPayments = settingsMap["payments"] || {};
+    const razorpayKeyId =
+      rawPayments.razorpayUpi?.keyId ||
+      process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+      "rzp_test_TfV4G6DOOj6ykQ";
+    const razorpayMode =
+      rawPayments.razorpayUpi?.mode ||
+      process.env.RAZORPAY_MODE ||
+      "test";
+
     const payments = {
       razorpayUpi: {
         enabled: rawPayments.razorpayUpi?.enabled ?? true,
+        keyId: razorpayKeyId,
+        mode: razorpayMode,
       },
       stripe: {
         enabled: rawPayments.stripe?.enabled ?? true,
