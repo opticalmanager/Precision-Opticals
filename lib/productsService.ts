@@ -46,88 +46,7 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
     }
 
     // Map database rows to frontend Product interface
-    const mapped: Product[] = data.map((row: any) => {
-      const localMatch = PRODUCTS.find((p) => p.id === row.slug);
-      const rawImages = (row.product_images || [])
-        .slice()
-        .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || (a.display_order || 0) - (b.display_order || 0))
-        .map((img: any) => (img.url || img.image_url)?.trim())
-        .filter((url: string | undefined): url is string => Boolean(url && (url.startsWith("/") || url.startsWith("http"))));
-
-      const resolvedImages = rawImages.length > 0 
-        ? rawImages 
-        : (localMatch?.images && localMatch.images.length > 0 
-            ? localMatch.images 
-            : []);
-
-      const rawName = row.name || localMatch?.name || "Designer Eyewear";
-      const cleanName = rawName.replace(/\s+/g, ' ').trim();
-
-      const rawSubtitle = row.subtitle || localMatch?.subtitle || cleanName;
-      const cleanSubtitle = rawSubtitle.replace(/\s+/g, ' ').trim();
-
-      return {
-        id: row.slug || row.id,
-        brand: row.brand?.name || localMatch?.brand || "PRECISION",
-        name: cleanName,
-        subtitle: cleanSubtitle,
-        price: Number(row.base_price) || localMatch?.price || 87125,
-        originalPrice: row.original_price ? Number(row.original_price) : localMatch?.originalPrice,
-        category: row.category?.slug || localMatch?.category || "sunglasses",
-        gender: row.gender || localMatch?.gender || "unisex",
-        shape: row.shape || localMatch?.shape || "rectangle",
-        rimType: row.rim_type || localMatch?.rimType || "rimless",
-        material: row.material || localMatch?.material || "titanium",
-        color: row.color || localMatch?.color || "Gold",
-        colorHex: row.color_hex || localMatch?.colorHex || "#D4AF37",
-        lensProperties: row.lens_properties && row.lens_properties.length > 0 ? row.lens_properties : (localMatch?.lensProperties || ["uv-protection"]),
-        isNewArrival: row.is_new_arrival ?? localMatch?.isNewArrival ?? false,
-        isBestSeller: row.is_best_seller ?? localMatch?.isBestSeller ?? false,
-        isOnSale: row.is_on_sale ?? localMatch?.isOnSale ?? false,
-        isLimitedEdition: row.is_limited_edition ?? localMatch?.isLimitedEdition ?? false,
-        rating: Number(row.rating) || localMatch?.rating || 5.0,
-        reviewCount: Number(row.review_count) || localMatch?.reviewCount || 0,
-        images: resolvedImages,
-        description: row.description || localMatch?.description || "",
-        specs: row.specs || localMatch?.specs || {
-          lensWidth: 53,
-          bridgeWidth: 18,
-          templeLength: 145,
-          frameWidth: 140,
-          weight: "20g",
-        },
-        packageDimensions: row.package_dimensions || row.specs?.packageDimensions || localMatch?.packageDimensions,
-        contactLensSpecs: row.specs?.contactLensSpecs || localMatch?.contactLensSpecs,
-        colorVariants: (row.color_variants || localMatch?.colorVariants || []).map((cv: any) => ({
-          ...cv,
-          colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
-        })),
-        sourceUrl: row.source_url || localMatch?.sourceUrl,
-        variants: row.product_variants && row.product_variants.length > 0
-          ? row.product_variants.map((v: any) => {
-              const variantImgObj = (row.product_images || []).find((img: any) => img.variant_id === v.id);
-              const rawVarUrl = variantImgObj?.url || variantImgObj?.image_url;
-              const validVarImg = (rawVarUrl && (rawVarUrl.startsWith("/") || rawVarUrl.startsWith("http")))
-                ? rawVarUrl.trim()
-                : resolvedImages[0];
-
-              return {
-                id: v.id,
-                colorName: (v.color_name || "").replace(/\s+/g, ' ').trim(),
-                colorHex: v.color_hex,
-                image: validVarImg,
-                inStock: v.stock_quantity > 0,
-              };
-            })
-          : (localMatch?.variants || []).map((v: any) => ({
-              ...v,
-              colorName: (v.colorName || '').replace(/\s+/g, ' ').trim(),
-            })),
-        tryOnEnabled: row.try_on_enabled ?? localMatch?.tryOnEnabled ?? false,
-        tryOnModelUrl: row.try_on_model_url || localMatch?.tryOnModelUrl,
-        tryOnConfig: row.try_on_configuration || localMatch?.tryOnConfig,
-      };
-    });
+    const mapped: Product[] = data.map(mapRowToProduct);
 
     cachedProducts = mapped;
     return mapped;
@@ -136,6 +55,150 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
     cachedProducts = ALL_FALLBACK_PRODUCTS;
     return ALL_FALLBACK_PRODUCTS;
   }
+}
+
+/**
+ * Map a raw database row to the typed Product model with resilient variant and image fallbacks
+ */
+export function mapRowToProduct(row: any): Product {
+  const localMatch = PRODUCTS.find((p) => p.id === row.slug);
+  const rawImages = (row.product_images || [])
+    .slice()
+    .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || (a.display_order || 0) - (b.display_order || 0))
+    .map((img: any) => (img.url || img.image_url)?.trim())
+    .filter((url: string | undefined): url is string => Boolean(url && (url.startsWith("/") || url.startsWith("http"))));
+
+  const resolvedImages = rawImages.length > 0 
+    ? rawImages 
+    : (localMatch?.images && localMatch.images.length > 0 
+        ? localMatch.images 
+        : []);
+
+  const rawName = row.name || localMatch?.name || "Designer Eyewear";
+  const cleanName = rawName.replace(/\s+/g, ' ').trim();
+
+  const rawSubtitle = row.subtitle || localMatch?.subtitle || cleanName;
+  const cleanSubtitle = rawSubtitle.replace(/\s+/g, ' ').trim();
+
+  return {
+    id: row.slug || row.id,
+    brand: row.brand?.name || localMatch?.brand || "PRECISION",
+    name: cleanName,
+    subtitle: cleanSubtitle,
+    price: Number(row.base_price) || localMatch?.price || 87125,
+    originalPrice: row.original_price ? Number(row.original_price) : localMatch?.originalPrice,
+    category: row.category?.slug || localMatch?.category || "sunglasses",
+    gender: row.gender || localMatch?.gender || "unisex",
+    shape: row.shape || localMatch?.shape || "rectangle",
+    rimType: row.rim_type || localMatch?.rimType || "rimless",
+    material: row.material || localMatch?.material || "titanium",
+    color: row.color || localMatch?.color || "Gold",
+    colorHex: row.color_hex || localMatch?.colorHex || "#D4AF37",
+    lensProperties: row.lens_properties && row.lens_properties.length > 0 ? row.lens_properties : (localMatch?.lensProperties || ["uv-protection"]),
+    isNewArrival: row.is_new_arrival ?? localMatch?.isNewArrival ?? false,
+    isBestSeller: row.is_best_seller ?? localMatch?.isBestSeller ?? false,
+    isOnSale: row.is_on_sale ?? localMatch?.isOnSale ?? false,
+    isLimitedEdition: row.is_limited_edition ?? localMatch?.isLimitedEdition ?? false,
+    rating: Number(row.rating) || localMatch?.rating || 5.0,
+    reviewCount: Number(row.review_count) || localMatch?.reviewCount || 0,
+    images: resolvedImages,
+    description: row.description || localMatch?.description || "",
+    specs: row.specs || localMatch?.specs || {
+      lensWidth: 53,
+      bridgeWidth: 18,
+      templeLength: 145,
+      frameWidth: 140,
+      weight: "20g",
+    },
+    packageDimensions: row.package_dimensions || row.specs?.packageDimensions || localMatch?.packageDimensions,
+    contactLensSpecs: row.specs?.contactLensSpecs || localMatch?.contactLensSpecs,
+    colorVariants: (row.color_variants || localMatch?.colorVariants || []).map((cv: any) => ({
+      ...cv,
+      colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+    })),
+    sourceUrl: row.source_url || localMatch?.sourceUrl,
+    variants: row.product_variants && row.product_variants.length > 0
+      ? row.product_variants.map((v: any) => {
+          const variantImgObj = (row.product_images || []).find((img: any) => img.variant_id === v.id);
+          const rawVarUrl = variantImgObj?.url || variantImgObj?.image_url;
+          const validVarImg = (rawVarUrl && (rawVarUrl.startsWith("/") || rawVarUrl.startsWith("http")))
+            ? rawVarUrl.trim()
+            : resolvedImages[0];
+
+          return {
+            id: v.id,
+            colorName: (v.color_name || "").replace(/\s+/g, ' ').trim(),
+            colorHex: v.color_hex,
+            image: validVarImg,
+            inStock: v.stock_quantity > 0,
+          };
+        })
+      : (row.color_variants && row.color_variants.length > 0
+          ? row.color_variants.map((cv: any, cIdx: number) => ({
+              id: cv.id || `var-${row.slug || row.id}-${cIdx}`,
+              colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+              colorHex: cv.colorHex || '#1A1A1A',
+              image: cv.featuredImage || cv.gallery?.[0] || resolvedImages[0],
+              inStock: cv.available !== false,
+            }))
+          : (localMatch?.variants || []).map((v: any) => ({
+              ...v,
+              colorName: (v.colorName || '').replace(/\s+/g, ' ').trim(),
+            }))),
+    tryOnEnabled: row.try_on_enabled ?? localMatch?.tryOnEnabled ?? false,
+    tryOnModelUrl: row.try_on_model_url || localMatch?.tryOnModelUrl,
+    tryOnConfig: row.try_on_configuration || localMatch?.tryOnConfig,
+  };
+}
+
+/**
+ * Fast single product fetch - delivers instantaneous product views without waiting for entire catalog
+ */
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  if (!slug) return null;
+  const cleanSlug = decodeURIComponent(slug).toLowerCase();
+
+  // 1. Fast in-memory catalog cache lookup (0 ms)
+  if (cachedProducts && cachedProducts.length > 0) {
+    const found = cachedProducts.find(
+      (p) =>
+        p.id.toLowerCase() === cleanSlug ||
+        p.id.replace(/\s+/g, "-").toLowerCase() === cleanSlug
+    );
+    if (found) return found;
+  }
+
+  // 2. Direct single row lookup in Supabase (~30ms)
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select(`
+        *,
+        brand:brands(name, slug),
+        category:categories(name, slug),
+        product_variants(*),
+        product_images(*)
+      `)
+      .eq("is_active", true)
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (data && !error) {
+      return mapRowToProduct(data);
+    }
+  } catch (err) {
+    console.warn("Single product Supabase lookup error:", err);
+  }
+
+  // 3. Fallback to catalog or local static dataset
+  const all = await getCatalogProducts();
+  return (
+    all.find(
+      (p) =>
+        p.id.toLowerCase() === cleanSlug ||
+        p.id.replace(/\s+/g, "-").toLowerCase() === cleanSlug
+    ) || null
+  );
 }
 
 /**

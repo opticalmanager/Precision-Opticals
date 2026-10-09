@@ -45,6 +45,15 @@ export const ProductCard = memo(function ProductCard({
     setImgSrc(product.images?.[0] || fallbackImg);
   }, [product.images]);
 
+  // Optimize Shopify CDN image width for grid cards (480px)
+  const optimizedImgSrc = React.useMemo(() => {
+    if (!imgSrc || typeof imgSrc !== "string") return fallbackImg;
+    if (imgSrc.includes("cdn.shopify.com") && !imgSrc.includes("width=")) {
+      return `${imgSrc}${imgSrc.includes("?") ? "&" : "?"}width=480`;
+    }
+    return imgSrc;
+  }, [imgSrc]);
+
   // Offers vs Sale badge logic matching Figma
   const hasMultipleOffers = product.id.includes("cartier-gold") || product.brand?.toLowerCase() === "cartier";
 
@@ -102,7 +111,7 @@ export const ProductCard = memo(function ProductCard({
         className="w-full h-36 sm:h-40 shrink-0 flex items-center justify-center p-2 relative overflow-hidden mb-2 bg-transparent block"
       >
         <img
-          src={imgSrc}
+          src={optimizedImgSrc}
           alt={product.name}
           onError={() => setImgSrc(fallbackImg)}
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"

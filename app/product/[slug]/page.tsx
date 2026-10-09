@@ -17,7 +17,7 @@ import { WhatsAppWidget } from "@/components/widgets/WhatsAppWidget";
 import { OrderTrackingModal } from "@/components/pages/OrderTrackingModal";
 import { CheckoutModal } from "@/components/cart/CheckoutModal";
 import { OrderSuccessModal } from "@/components/cart/OrderSuccessModal";
-import { getCatalogProducts, ALL_FALLBACK_PRODUCTS } from "@/lib/productsService";
+import { getCatalogProducts, getProductBySlug, ALL_FALLBACK_PRODUCTS } from "@/lib/productsService";
 import { Product, SelectedLensConfig, Order } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -35,6 +35,7 @@ function ProductPageContent() {
   const { openWishlist } = useWishlist();
 
   const [products, setProducts] = useState<Product[]>(ALL_FALLBACK_PRODUCTS);
+  const [singleProduct, setSingleProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals & Overlays
@@ -44,9 +45,21 @@ function ProductPageContent() {
   const [selectedVirtualTryOnProduct, setSelectedVirtualTryOnProduct] = useState<Product | null>(null);
   const [selectedLensCustomizerProduct, setSelectedLensCustomizerProduct] = useState<Product | null>(null);
 
-  // Fetch all active products
+  // Fetch product directly by slug for instantaneous page display
   useEffect(() => {
     let mounted = true;
+    if (slug) {
+      getProductBySlug(slug)
+        .then((p) => {
+          if (mounted && p) {
+            setSingleProduct(p);
+            setIsLoading(false);
+          }
+        })
+        .catch((err) => console.warn("Direct product lookup error:", err));
+    }
+
+    // Simultaneously fetch full catalog in background for related products and search modal
     getCatalogProducts()
       .then((data) => {
         if (mounted && data && data.length > 0) {
@@ -57,13 +70,15 @@ function ProductPageContent() {
       .finally(() => {
         if (mounted) setIsLoading(false);
       });
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [slug]);
 
-  // Match the active product by slug or ID
+  // Match the active product: priority to singleProduct, then catalog lookup
   const product = useMemo(() => {
+    if (singleProduct) return singleProduct;
     if (!slug) return null;
     return (
       products.find(
@@ -72,7 +87,7 @@ function ProductPageContent() {
           p.id.replace(/\s+/g, "-").toLowerCase() === slug.toLowerCase()
       ) || null
     );
-  }, [slug, products]);
+  }, [slug, singleProduct, products]);
 
   // Deep link support: auto-open 3D try-on if ?tryon=true is passed
   useEffect(() => {

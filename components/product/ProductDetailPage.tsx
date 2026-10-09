@@ -178,6 +178,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     }
   }, [activeImgIdx]);
 
+  // Preload secondary view angles in browser background for instant 0ms switching
+  useEffect(() => {
+    if (typeof window !== "undefined" && imagesToDisplay.length > 1) {
+      imagesToDisplay.slice(1).forEach((imgUrl) => {
+        if (!imgUrl) return;
+        const targetSrc =
+          imgUrl.includes("cdn.shopify.com") && !imgUrl.includes("width=")
+            ? `${imgUrl}${imgUrl.includes("?") ? "&" : "?"}width=1000`
+            : imgUrl;
+        const preloader = new window.Image();
+        preloader.src = targetSrc;
+      });
+    }
+  }, [imagesToDisplay]);
+
   // Support horizontal wheel scrolling on desktop
   const handleThumbnailWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (thumbnailContainerRef.current && Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
@@ -360,11 +375,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               {/* Eyewear Image with Bold Luxury Scale & Zoom */}
               <div className="w-full h-full flex items-center justify-center relative overflow-hidden select-none scrollbar-none">
                 <ImageWithFallback
-                  key={currentImage}
                   src={currentImage}
                   alt={`${product.brand} - ${product.name}`}
                   className="w-[88%] sm:w-[92%] h-auto max-h-[85%] object-contain transform transition-transform duration-500 group-hover:scale-105 select-none"
                   fallbackSrc={imagesToDisplay[0] || product.images?.[0] || "/images/clean_frame_1.png"}
+                  loading="eager"
+                  fetchPriority="high"
                 />
               </div>
             </div>
@@ -393,6 +409,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         alt={`${product.name} angle ${idx + 1}`}
                         className="w-full h-full object-contain"
                         fallbackSrc={imagesToDisplay[0] || product.images?.[0] || "/images/clean_frame_1.png"}
+                        thumbnail={true}
+                        loading="lazy"
                       />
                     </button>
                   ))}
