@@ -418,7 +418,7 @@ export default function CheckoutPage() {
               <span className="hidden sm:inline">Back to Cart</span>
             </Link>
 
-            {/* Center: Brand Wordmark (GEM OPTICIANS Style) */}
+            {/* Center: Brand Wordmark (Precision Optics Atelier) */}
             <Link href="/" className="text-center group select-none">
               <div className="font-serif font-black tracking-[0.25em] text-base sm:text-lg text-[#2A1E17] uppercase group-hover:text-[#C86A28] transition-colors">
                 Precision Optics

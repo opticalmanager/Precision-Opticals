@@ -74,7 +74,7 @@ export async function POST(req: Request) {
               phone: prof.phone || canonicalPhone,
               role: prof.role || "customer",
               joinedDate: new Date(prof.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-              gemPoints: prof.gem_loyalty_points || 500,
+              gemPoints: prof.gem_loyalty_points ?? 0,
               phoneVerified: true,
               savedAddresses: [],
               savedPrescriptions: [],
@@ -212,7 +212,7 @@ export async function POST(req: Request) {
           phone_verified, phone_verified_at, phone_verification_channel,
           created_at, updated_at
         ) VALUES (
-          $1, $2, $3, 'customer', 500,
+          $1, $2, $3, 'customer', 0,
           true, NOW(), $4,
           NOW(), NOW()
         )
@@ -293,7 +293,7 @@ export async function POST(req: Request) {
             year: "numeric",
           })
         : "October 2026",
-      gemPoints: profile?.gem_loyalty_points || 500,
+      gemPoints: profile?.gem_loyalty_points ?? 0,
       phoneVerified: true,
       phoneVerificationChannel: record.channel || "whatsapp",
       savedAddresses: defaultSavedAddresses,

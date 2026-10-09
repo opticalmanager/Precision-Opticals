@@ -98,18 +98,18 @@ export default function AdminMarketingPage() {
             Marketing & Clinical Appointments
           </h1>
           <p className="text-xs text-stone-500">
-            Manage eye examination appointments and Gems loyalty rewards program
+            Manage eye examination appointments and Precision Credits privilege program
           </p>
         </div>
       </div>
 
-      {/* Gems Loyalty Rewards Module */}
+      {/* Precision Credits Privilege Module */}
       <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#C86A28]" />
             <h2 className="text-sm font-bold text-[#2A1E17]">
-              Precision Gems Loyalty Rewards Architecture
+              Precision Credits Privilege Architecture
             </h2>
           </div>
           <Button
@@ -124,13 +124,13 @@ export default function AdminMarketingPage() {
           </Button>
         </div>
         <p className="text-xs text-stone-500">
-          Tiered rewards engine granting loyalty gems on every verified luxury order.
+          Tiered privilege engine granting Precision Credits on every verified luxury order.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-stone-100 text-xs">
           <div>
             <label className="block text-stone-700 font-semibold mb-1">
-              Gems Earned per ₹100 Spent
+              Credits Earned per ₹100 Spent
             </label>
             <input
               type="number"
@@ -142,7 +142,7 @@ export default function AdminMarketingPage() {
 
           <div>
             <label className="block text-stone-700 font-semibold mb-1">
-              Redemption Value (INR ₹ per Gem)
+              Redemption Value (INR ₹ per Credit)
             </label>
             <input
               type="number"

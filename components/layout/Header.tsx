@@ -576,7 +576,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <Award className="w-3 h-3 text-[#C86A28]" /> VIP Platinum
                       </span>
                       <span className="bg-[#FAF3EB] border border-[#E8DCCF] text-stone-800 px-2 py-0.5 rounded-full font-bold">
-                        {user.gemPoints} Gem Pts
+                        {user.gemPoints} Credits
                       </span>
                     </div>
                   </div>
@@ -621,7 +621,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[#F2E8DC] hover:text-[#C86A28] transition-colors"
                     >
                       <Award className="w-4 h-4 text-stone-500" />
-                      <span>Gem Loyalty Privileges</span>
+                      <span>Precision Privilege Credits</span>
                     </Link>
                   </div>
 
@@ -1820,7 +1820,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
                 <span className="bg-[#FAF3EB] border border-[#E8DCCF] text-stone-800 text-[9px] px-2 py-0.5 rounded-full font-bold">
-                  {user.gemPoints} Pts
+                  {user.gemPoints} Credits
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#E8DCCF]/60 text-[10px]">

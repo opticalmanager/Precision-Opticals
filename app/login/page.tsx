@@ -7,13 +7,11 @@ import {
   Lock,
   MessageSquare,
   Smartphone,
-  Mail,
   ArrowRight,
   RotateCcw,
   ShieldCheck,
   Loader2,
   X,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -23,19 +21,15 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || searchParams.get("redirect") || "/account";
 
-  const { loginWithPhone, loginWithEmail, isLoggedIn } = useAuth();
+  const { loginWithPhone, isLoggedIn } = useAuth();
 
-  const [method, setMethod] = useState<"phone" | "email">("phone");
   const [channel, setChannel] = useState<"whatsapp" | "sms">("whatsapp");
-
-  // Zero dummy data
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
 
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [activeChannel, setActiveChannel] = useState<"whatsapp" | "sms">("whatsapp");
-  const [resendTimer, setResendTimer] = useState(60);
+  const [resendTimer, setResendTimer] = useState(30);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoadingOtp, setIsLoadingOtp] = useState(false);
   const [isSwitchingChannel, setIsSwitchingChannel] = useState(false);
@@ -62,96 +56,64 @@ function LoginContent() {
   const handleSendOtp = async (channelPreference: "whatsapp" | "sms" = channel, e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (method === "phone") {
-      const cleanPhone = phone.replace(/\D/g, "");
-      if (cleanPhone.length < 10) {
-        toast.error("Please enter a valid 10-digit mobile number");
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length < 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
+    setIsLoadingOtp(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          channel: channelPreference,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        toast.error("Unable to dispatch verification code", {
+          description: data.error || "Please check your mobile number and try again.",
+        });
+        if (data.cooldownRemaining) {
+          setResendTimer(data.cooldownRemaining);
+        }
         return;
       }
 
-      setIsLoadingOtp(true);
-      try {
-        const res = await fetch("/api/auth/send-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            channel: channelPreference,
-          }),
+      const deliveredChannel = (data.channel || channelPreference) as "whatsapp" | "sms";
+      setActiveChannel(deliveredChannel);
+      setIsOtpSent(true);
+      setOtp(["", "", "", "", "", ""]);
+      setResendTimer(data.cooldown || 30);
+
+      if (data.fallbackUsed) {
+        toast.info("WhatsApp delivery fallback active", {
+          description: `Verification code dispatched via SMS to +91 ${cleanPhone.slice(-10)}.`,
         });
-
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          toast.error("Unable to dispatch verification code", {
-            description: data.error || "Please check your mobile number and try again.",
-          });
-          if (data.cooldownRemaining) {
-            setResendTimer(data.cooldownRemaining);
-          }
-          return;
-        }
-
-        const deliveredChannel = (data.channel || channelPreference) as "whatsapp" | "sms";
-        setActiveChannel(deliveredChannel);
-        setIsOtpSent(true);
-        setOtp(["", "", "", "", "", ""]);
-        setResendTimer(data.cooldown || 60);
-
-        if (data.fallbackUsed) {
-          toast.info("WhatsApp delivery fallback active", {
-            description: `Verification code dispatched via SMS to +91 ${cleanPhone.slice(-10)}.`,
-          });
-        } else if (deliveredChannel === "whatsapp") {
-          toast.success("WhatsApp verification code sent", {
-            description: `Check your WhatsApp for the 6-digit atelier code sent to +91 ${cleanPhone.slice(-10)}.`,
-          });
-        } else {
-          toast.success("SMS verification code sent", {
-            description: `6-digit code dispatched via SMS to +91 ${cleanPhone.slice(-10)}.`,
-          });
-        }
-
-        setTimeout(() => {
-          otpInputsRef.current[0]?.focus();
-        }, 150);
-      } catch (err: any) {
-        toast.error("Network error sending verification code", {
-          description: err?.message || "Please check your internet connection.",
+      } else if (deliveredChannel === "whatsapp") {
+        toast.success("WhatsApp verification code sent", {
+          description: `Check your WhatsApp for the 6-digit atelier code sent to +91 ${cleanPhone.slice(-10)}.`,
         });
-      } finally {
-        setIsLoadingOtp(false);
+      } else {
+        toast.success("SMS verification code sent", {
+          description: `6-digit code dispatched via SMS to +91 ${cleanPhone.slice(-10)}.`,
+        });
       }
-    } else {
-      if (!email || !email.includes("@")) {
-        toast.error("Please enter a valid email address");
-        return;
-      }
-      setIsLoadingOtp(true);
-      try {
-        const res = await fetch("/api/auth/send-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, mode: "email" }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          toast.error(data.error || "Failed to dispatch email verification code");
-          return;
-        }
-        setIsOtpSent(true);
-        setResendTimer(60);
-        toast.success("Verification code sent!", {
-          description: `Code dispatched to ${email}`,
-        });
-        setTimeout(() => {
-          otpInputsRef.current[0]?.focus();
-        }, 150);
-      } catch {
-        toast.error("Failed to send verification code");
-      } finally {
-        setIsLoadingOtp(false);
-      }
+
+      setTimeout(() => {
+        otpInputsRef.current[0]?.focus();
+      }, 150);
+    } catch (err: any) {
+      toast.error("Network error sending verification code", {
+        description: err?.message || "Please check your internet connection.",
+      });
+    } finally {
+      setIsLoadingOtp(false);
     }
   };
 
@@ -173,7 +135,7 @@ function LoginContent() {
         return;
       }
       setActiveChannel(newChannel);
-      setResendTimer(data.cooldown || 60);
+      setResendTimer(data.cooldown || 30);
       toast.success(`Verification code dispatched via ${newChannel === "whatsapp" ? "WhatsApp" : "SMS"}`, {
         description: `Check +91 ${cleanPhone.slice(-10)} for your 6-digit atelier code.`,
       });
@@ -258,9 +220,8 @@ function LoginContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: cleanPhone,
-          email,
           otp: fullCode,
-          mode: method,
+          mode: "phone",
         }),
       });
 
@@ -274,11 +235,7 @@ function LoginContent() {
         return;
       }
 
-      if (method === "phone") {
-        loginWithPhone(cleanPhone, data.user, data.orders);
-      } else {
-        loginWithEmail(email);
-      }
+      loginWithPhone(cleanPhone, data.user, data.orders);
 
       toast.success("Welcome to Precision Optics Atelier", {
         description: `Signed in as ${data.user?.name || `+91 ${cleanPhone.slice(-10)}`}`,
@@ -306,220 +263,150 @@ function LoginContent() {
           Sign In to Atelier
         </h1>
         <p className="text-xs text-stone-500 mb-6 font-normal leading-relaxed">
-          Instant passwordless access via mobile OTP. Access your custom orders, Zeiss lens prescriptions, and privileges.
+          Instant passwordless access via mobile OTP. Access your bespoke orders, Zeiss lens prescriptions, and privileges.
         </p>
 
         {!isOtpSent ? (
           <div className="space-y-4">
-            {method === "phone" ? (
-              <form onSubmit={(e) => handleSendOtp(channel, e)} className="space-y-4">
-                {/* Channel Selector: WhatsApp OTP (Default/Recommended) vs SMS OTP */}
-                <div>
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block mb-1.5">
-                    VERIFICATION CHANNEL
-                  </label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* WhatsApp Option (Primary & Pre-selected) */}
-                    <button
-                      type="button"
-                      onClick={() => setChannel("whatsapp")}
-                      className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
+            <form onSubmit={(e) => handleSendOtp(channel, e)} className="space-y-4">
+              {/* Channel Selector: WhatsApp OTP (Default/Recommended) vs SMS OTP */}
+              <div>
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block mb-1.5">
+                  VERIFICATION CHANNEL
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* WhatsApp Option (Primary & Pre-selected) */}
+                  <button
+                    type="button"
+                    onClick={() => setChannel("whatsapp")}
+                    className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
+                      channel === "whatsapp"
+                        ? "bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-2xs"
+                        : "bg-white border-[#E8DCCF] text-stone-600 hover:bg-stone-50"
+                    }`}
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                         channel === "whatsapp"
-                          ? "bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-2xs"
-                          : "bg-white border-[#E8DCCF] text-stone-600 hover:bg-stone-50"
+                          ? "bg-emerald-600 text-white shadow-2xs"
+                          : "bg-stone-100 text-stone-600"
                       }`}
                     >
-                      <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          channel === "whatsapp"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "bg-stone-100 text-stone-600"
-                        }`}
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs font-bold truncate block">WhatsApp</span>
-                        <span className="text-[10px] font-semibold text-emerald-700 block truncate">
-                          Primary / Instant
-                        </span>
-                      </div>
-                      {channel === "whatsapp" && (
-                        <div className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-                      )}
-                    </button>
-
-                    {/* SMS Option */}
-                    <button
-                      type="button"
-                      onClick={() => setChannel("sms")}
-                      className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
-                        channel === "sms"
-                          ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-950 shadow-2xs"
-                          : "bg-white border-[#E8DCCF] text-stone-600 hover:bg-stone-50"
-                      }`}
-                    >
-                      <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          channel === "sms"
-                            ? "bg-blue-600 text-white shadow-2xs"
-                            : "bg-stone-100 text-stone-600"
-                        }`}
-                      >
-                        <Smartphone className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs font-bold block truncate">SMS OTP</span>
-                        <span className="text-[10px] text-stone-500 block truncate">
-                          Direct Mobile
-                        </span>
-                      </div>
-                      {channel === "sms" && (
-                        <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile Number Input */}
-                <div>
-                  <div className="flex items-center border border-[#E8DCCF] rounded-xl overflow-hidden focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white">
-                    <div className="px-4 py-3.5 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none flex items-center gap-1.5">
-                      <span>+91</span>
+                      <MessageSquare className="w-3.5 h-3.5" />
                     </div>
-                    <div className="flex-1 px-3.5 py-1.5 flex flex-col justify-center relative">
-                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500">
-                        10-DIGIT MOBILE NUMBER *
-                      </label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        maxLength={10}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                        placeholder="Enter mobile number"
-                        className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal font-mono"
-                        autoFocus
-                      />
-                      {phone && (
-                        <button
-                          type="button"
-                          onClick={() => setPhone("")}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {channel === "whatsapp" ? (
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2">
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>Code will be delivered directly to your WhatsApp app</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-[11px] text-blue-800 bg-blue-50 border border-blue-200/80 rounded-lg px-3 py-1.5 mt-2">
-                      <Smartphone className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>Code will be dispatched via standard cellular SMS</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Primary CTA */}
-                <button
-                  type="submit"
-                  disabled={isLoadingOtp}
-                  className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer active:scale-95 text-center flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isLoadingOtp ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Dispatching Code...
-                    </span>
-                  ) : (
-                    <>
-                      {channel === "whatsapp" ? (
-                        <MessageSquare className="w-4 h-4 text-emerald-400" />
-                      ) : (
-                        <Smartphone className="w-4 h-4 text-blue-300" />
-                      )}
-                      <span>
-                        {channel === "whatsapp" ? "Get WhatsApp OTP" : "Get SMS OTP"}
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold truncate block">WhatsApp</span>
+                      <span className="text-[10px] font-semibold text-emerald-700 block truncate">
+                        Primary / Instant
                       </span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              /* Email Auth Form */
-              <form onSubmit={(e) => handleSendOtp("whatsapp", e)} className="space-y-4">
-                <div className="border border-[#E8DCCF] rounded-xl px-4 py-2.5 focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white relative">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block">
-                    EMAIL ADDRESS *
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@precisionoptics.com"
-                    className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-1"
-                    autoFocus
-                  />
-                  {email && (
-                    <button
-                      type="button"
-                      onClick={() => setEmail("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+                    </div>
+                    {channel === "whatsapp" && (
+                      <div className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                    )}
+                  </button>
+
+                  {/* SMS Option */}
+                  <button
+                    type="button"
+                    onClick={() => setChannel("sms")}
+                    className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
+                      channel === "sms"
+                        ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-950 shadow-2xs"
+                        : "bg-white border-[#E8DCCF] text-stone-600 hover:bg-stone-50"
+                    }`}
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        channel === "sms"
+                          ? "bg-blue-600 text-white shadow-2xs"
+                          : "bg-stone-100 text-stone-600"
+                      }`}
                     >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                      <Smartphone className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold block truncate">SMS OTP</span>
+                      <span className="text-[10px] text-stone-500 block truncate">
+                        Direct Mobile
+                      </span>
+                    </div>
+                    {channel === "sms" && (
+                      <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Mobile Number Input */}
+              <div>
+                <div className="flex items-center border border-[#E8DCCF] rounded-xl overflow-hidden focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white">
+                  <div className="px-4 py-3.5 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none flex items-center gap-1.5">
+                    <span>+91</span>
+                  </div>
+                  <div className="flex-1 px-3.5 py-1.5 flex flex-col justify-center relative">
+                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500">
+                      10-DIGIT MOBILE NUMBER *
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      maxLength={10}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Enter mobile number"
+                      className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal font-mono"
+                      autoFocus
+                    />
+                    {phone && (
+                      <button
+                        type="button"
+                        onClick={() => setPhone("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoadingOtp}
-                  className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer active:scale-95 text-center flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isLoadingOtp ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Sending...
-                    </span>
-                  ) : (
-                    <>
-                      <span>Get Email Verification Code</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+                {channel === "whatsapp" ? (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Code will be delivered directly to your WhatsApp app</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-[11px] text-blue-800 bg-blue-50 border border-blue-200/80 rounded-lg px-3 py-1.5 mt-2">
+                    <Smartphone className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>Code will be dispatched via standard cellular SMS</span>
+                  </div>
+                )}
+              </div>
 
-            {/* Switch to Email option */}
-            <div className="pt-2 text-center">
+              {/* Primary CTA */}
               <button
-                type="button"
-                onClick={() => {
-                  setMethod(method === "phone" ? "email" : "phone");
-                  setIsOtpSent(false);
-                }}
-                className="text-xs text-stone-600 hover:text-[#C86A28] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                type="submit"
+                disabled={isLoadingOtp}
+                className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer active:scale-95 text-center flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {method === "phone" ? (
-                  <>
-                    <Mail className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Prefer email? Sign in with email instead</span>
-                  </>
+                {isLoadingOtp ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Dispatching Code...
+                  </span>
                 ) : (
                   <>
-                    <Smartphone className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Back to Phone OTP (WhatsApp / SMS)</span>
+                    {channel === "whatsapp" ? (
+                      <MessageSquare className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Smartphone className="w-4 h-4 text-blue-300" />
+                    )}
+                    <span>
+                      {channel === "whatsapp" ? "Get WhatsApp OTP" : "Get SMS OTP"}
+                    </span>
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
-            </div>
+            </form>
 
             {/* Switch to Sign Up */}
             <div className="pt-4 border-t border-[#E8DCCF]/80 text-center">
@@ -554,7 +441,7 @@ function LoginContent() {
                       SMS
                     </span>
                   )}
-                  <span>{method === "phone" ? `+91 ${phone}` : email}</span>
+                  <span>+91 {phone}</span>
                 </span>
               </div>
               <button
@@ -600,39 +487,37 @@ function LoginContent() {
             </div>
 
             {/* Dynamic Channel Switcher during verification */}
-            {method === "phone" && (
-              <div className="text-center pt-1">
-                {activeChannel === "whatsapp" ? (
-                  <button
-                    type="button"
-                    onClick={() => handleChannelSwitchDuringOtp("sms")}
-                    disabled={isSwitchingChannel}
-                    className="text-xs text-stone-600 hover:text-[#C86A28] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {isSwitchingChannel ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Smartphone className="w-3.5 h-3.5" />
-                    )}
-                    <span>Didn&apos;t receive on WhatsApp? Get OTP via SMS</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleChannelSwitchDuringOtp("whatsapp")}
-                    disabled={isSwitchingChannel}
-                    className="text-xs text-stone-600 hover:text-emerald-700 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {isSwitchingChannel ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                    )}
-                    <span>Send via WhatsApp instead</span>
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="text-center pt-1">
+              {activeChannel === "whatsapp" ? (
+                <button
+                  type="button"
+                  onClick={() => handleChannelSwitchDuringOtp("sms")}
+                  disabled={isSwitchingChannel}
+                  className="text-xs text-stone-600 hover:text-[#C86A28] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isSwitchingChannel ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Smartphone className="w-3.5 h-3.5" />
+                  )}
+                  <span>Didn&apos;t receive on WhatsApp? Get OTP via SMS</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleChannelSwitchDuringOtp("whatsapp")}
+                  disabled={isSwitchingChannel}
+                  className="text-xs text-stone-600 hover:text-emerald-700 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isSwitchingChannel ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  <span>Send via WhatsApp instead</span>
+                </button>
+              )}
+            </div>
 
             {/* Verify Button & Resend Countdown */}
             <div className="space-y-3 pt-1">

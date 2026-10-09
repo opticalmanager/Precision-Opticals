@@ -558,17 +558,17 @@ function AccountDashboardContent() {
             </div>
           </div>
 
-          {/* Right Gem Loyalty Card & Actions */}
+          {/* Right Precision Credits Card & Actions */}
           <div className="flex items-center gap-3">
             <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-2xl px-4 py-2.5 text-right">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block">
-                GEM LOYALTY BALANCE
+                PRECISION CREDITS
               </span>
               <div className="text-lg sm:text-xl font-bold text-[#C86A28]">
-                {user.gemPoints} Points
+                {user.gemPoints} Credits
               </div>
               <span className="text-[10px] text-stone-500">
-                Worth {formatCurrency(user.gemPoints)} on next order
+                Redeemable on bespoke orders
               </span>
             </div>
 
@@ -593,7 +593,7 @@ function AccountDashboardContent() {
           { id: "orders", label: "Orders & Lab Queue", icon: Package, count: orders.length },
           { id: "prescriptions", label: "Clinical Prescriptions", icon: FileText, count: user.savedPrescriptions.length },
           { id: "addresses", label: "Delivery Addresses", icon: MapPin, count: user.savedAddresses.length },
-          { id: "loyalty", label: "Gem Loyalty Privileges", icon: Award },
+          { id: "loyalty", label: "Precision Privileges & Credits", icon: Award },
           { id: "profile", label: "Personal Details", icon: User },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -953,34 +953,34 @@ function AccountDashboardContent() {
         </div>
       )}
 
-      {/* TAB 4: GEM LOYALTY CLUB */}
+      {/* TAB 4: PRECISION PRIVILEGES & CREDITS */}
       {activeTab === "loyalty" && (
         <div className="space-y-6">
           <div className="bg-[#2A1E17] text-[#FAF7F2] rounded-3xl p-6 sm:p-10 shadow-lg relative overflow-hidden">
             <div className="relative z-10 max-w-xl space-y-4">
               <span className="text-[10px] font-extrabold tracking-widest uppercase text-[#C86A28] bg-white/10 px-3 py-1 rounded-full inline-block">
-                ESTD. 1969 • ATELIER GEM CLUB
+                ESTD. 1969 • ATELIER PRIVILEGE CLUB
               </span>
               <h3 className="text-2xl sm:text-4xl font-serif font-bold text-white tracking-tight">
                 VIP Platinum Patron Privileges
               </h3>
               <p className="text-xs text-stone-300 leading-relaxed">
-                As an esteemed patron of Precision Optics, every bespoke eyewear order accumulates Gem Loyalty Points directly applicable as store currency on future orders.
+                As an esteemed patron of Precision Optics, your bespoke eyewear purchases accumulate Precision Credits, redeemable directly toward Zeiss lens packages, frame customizer, and atelier services.
               </p>
 
               <div className="pt-2 flex items-center gap-6">
                 <div>
                   <span className="text-[10px] text-stone-400 uppercase tracking-wider block">
-                    Available Balance
+                    Available Precision Credits
                   </span>
                   <span className="text-2xl font-bold text-[#C86A28]">
-                    {user.gemPoints} Points
+                    {user.gemPoints} Credits
                   </span>
                 </div>
                 <div className="h-8 w-px bg-white/20" />
                 <div>
                   <span className="text-[10px] text-stone-400 uppercase tracking-wider block">
-                    Redemption Value
+                    Privilege Value
                   </span>
                   <span className="text-2xl font-bold text-white">
                     {formatCurrency(user.gemPoints)}
