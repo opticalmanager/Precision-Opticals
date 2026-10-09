@@ -26,11 +26,11 @@ export async function POST(req: Request) {
 
     const canonicalPhone = normalized.e164; // e.g. "+919810012345"
 
-    // 2. Cooldown check: 60 seconds per phone number
+    // 2. Cooldown check: 30 seconds per phone number
     const recentOtpRes = await query(
       `SELECT created_at, EXTRACT(EPOCH FROM (NOW() - created_at)) as seconds_ago 
        FROM public.otp_verifications 
-       WHERE phone = $1 AND verified_at IS NULL AND created_at > NOW() - INTERVAL '60 seconds'
+       WHERE phone = $1 AND verified_at IS NULL AND created_at > NOW() - INTERVAL '30 seconds'
        ORDER BY created_at DESC 
        LIMIT 1;`,
       [canonicalPhone]
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
     if (recentOtpRes.rows.length > 0) {
       const secondsAgo = Math.floor(Number(recentOtpRes.rows[0].seconds_ago || 0));
-      const remainingCooldown = Math.max(1, 60 - secondsAgo);
+      const remainingCooldown = Math.max(1, 30 - secondsAgo);
       return NextResponse.json(
         {
           success: false,
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Hourly rate limit: Max 6 requests per phone per hour
+    // 3. Hourly rate limit: Max 20 requests per phone per hour
     const hourlyCountRes = await query(
       `SELECT COUNT(*) as request_count 
        FROM public.otp_verifications 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     );
 
     const hourlyCount = Number(hourlyCountRes.rows[0]?.request_count || 0);
-    if (hourlyCount >= 6) {
+    if (hourlyCount >= 20) {
       return NextResponse.json(
         {
           success: false,
@@ -85,11 +85,11 @@ export async function POST(req: Request) {
       [canonicalPhone]
     );
 
-    // 7. Store hashed OTP in database with 5-minute expiry
+    // 7. Store hashed OTP in database with 10-minute expiry
     const insertRes = await query(
       `INSERT INTO public.otp_verifications (
          phone, otp_hash, channel, attempts, max_attempts, expires_at, created_at
-       ) VALUES ($1, $2, $3, 0, 5, NOW() + INTERVAL '5 minutes', NOW())
+       ) VALUES ($1, $2, $3, 0, 5, NOW() + INTERVAL '10 minutes', NOW())
        RETURNING id;`,
       [canonicalPhone, otpHash, channel === "sms" ? "sms" : "whatsapp"]
     );

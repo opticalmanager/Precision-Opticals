@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
-import { query } from "@/lib/adminDb";
+import { pool, query } from "@/lib/adminDb";
 import { normalizePhoneNumber } from "@/lib/phoneUtils";
 
 const OTP_PEPPER = process.env.OTP_SECRET_PEPPER || "precision_optics_super_secure_otp_pepper_2026";
@@ -8,7 +8,7 @@ const OTP_PEPPER = process.env.OTP_SECRET_PEPPER || "precision_optics_super_secu
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { phone, otp, name } = body;
+    const { phone, otp, name, mode } = body;
 
     // 1. Validate and normalize phone number
     const normalized = normalizePhoneNumber(phone);
@@ -47,6 +47,43 @@ export async function POST(req: Request) {
     );
 
     if (recordRes.rows.length === 0) {
+      // Check if user recently verified within the last 90 seconds (handle double-click or fast re-submits)
+      const recentlyVerifiedRes = await query(
+        `SELECT id FROM public.otp_verifications
+         WHERE phone = $1 AND verified_at > NOW() - INTERVAL '90 seconds'
+         ORDER BY verified_at DESC LIMIT 1;`,
+        [canonicalPhone]
+      );
+
+      if (recentlyVerifiedRes.rows.length > 0) {
+        // Find existing user and return success
+        const profileRes = await query(
+          `SELECT id, full_name, email, phone, role, gem_loyalty_points, created_at
+           FROM public.profiles WHERE phone = $1 LIMIT 1;`,
+          [canonicalPhone]
+        );
+        if (profileRes.rows.length > 0) {
+          const prof = profileRes.rows[0];
+          return NextResponse.json({
+            success: true,
+            message: "Authentication successful",
+            user: {
+              id: prof.id,
+              name: prof.full_name || name || "Valued Patron",
+              email: prof.email || undefined,
+              phone: prof.phone || canonicalPhone,
+              role: prof.role || "customer",
+              joinedDate: new Date(prof.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+              gemPoints: prof.gem_loyalty_points || 500,
+              phoneVerified: true,
+              savedAddresses: [],
+              savedPrescriptions: [],
+            },
+            orders: [],
+          });
+        }
+      }
+
       return NextResponse.json(
         {
           success: false,
@@ -120,70 +157,111 @@ export async function POST(req: Request) {
       );
     }
 
-    // 7. Success: Mark OTP record as verified
-    await query(
-      `UPDATE public.otp_verifications SET verified_at = NOW() WHERE id = $1;`,
-      [record.id]
-    );
-
+    // 7. Atomic Database Transaction:
+    // Create/link auth.users + upsert public.profiles + mark OTP verified
     const userName = name?.trim() || "";
     let profile: any = null;
     let pastOrders: any[] = [];
 
-    // 8. Find or create profile by canonical phone
-    const existingProfileRes = await query(
-      `SELECT id, full_name, email, phone, role, gem_loyalty_points, created_at, phone_verified
-       FROM public.profiles
-       WHERE phone = $1
-       LIMIT 1;`,
-      [canonicalPhone]
-    );
+    const dbClient = await pool.connect();
+    try {
+      await dbClient.query("BEGIN");
 
-    if (existingProfileRes.rows.length > 0) {
-      // Profile exists: update phone verification status
-      const updateRes = await query(
-        `UPDATE public.profiles
-         SET phone_verified = true,
-             phone_verified_at = NOW(),
-             phone_verification_channel = $2,
-             full_name = COALESCE(NULLIF($3, ''), full_name),
-             updated_at = NOW()
-         WHERE id = $1
-         RETURNING id, full_name, email, phone, role, gem_loyalty_points, created_at;`,
-        [existingProfileRes.rows[0].id, record.channel, userName]
+      // A. Check if auth.users record already exists by phone
+      const existingAuthRes = await dbClient.query(
+        `SELECT id FROM auth.users WHERE phone = $1 LIMIT 1;`,
+        [canonicalPhone]
       );
-      profile = updateRes.rows[0] || existingProfileRes.rows[0];
-    } else {
-      // Create new customer profile with verified phone
-      const insertRes = await query(
+
+      let userId: string;
+      if (existingAuthRes.rows.length > 0) {
+        userId = existingAuthRes.rows[0].id;
+      } else {
+        // Create authenticated user in auth.users
+        const newAuthRes = await dbClient.query(
+          `INSERT INTO auth.users (
+            id,
+            instance_id,
+            aud,
+            role,
+            phone,
+            phone_confirmed_at,
+            raw_user_meta_data,
+            created_at,
+            updated_at
+          ) VALUES (
+            gen_random_uuid(),
+            '00000000-0000-0000-0000-000000000000',
+            'authenticated',
+            'authenticated',
+            $1,
+            NOW(),
+            jsonb_build_object('full_name', $2::text, 'name', $2::text),
+            NOW(),
+            NOW()
+          ) RETURNING id;`,
+          [canonicalPhone, userName]
+        );
+        userId = newAuthRes.rows[0].id;
+      }
+
+      // B. Upsert into public.profiles matching auth.users foreign key
+      const profileUpsertRes = await dbClient.query(
         `INSERT INTO public.profiles (
-          id, full_name, email, phone, role, gem_loyalty_points,
+          id, full_name, phone, role, gem_loyalty_points,
           phone_verified, phone_verified_at, phone_verification_channel,
           created_at, updated_at
         ) VALUES (
-          gen_random_uuid(), $1, NULL, $2, 'customer', 500,
-          true, NOW(), $3,
+          $1, $2, $3, 'customer', 500,
+          true, NOW(), $4,
           NOW(), NOW()
-        ) RETURNING id, full_name, email, phone, role, gem_loyalty_points, created_at;`,
-        [userName || "Valued Patron", canonicalPhone, record.channel]
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), public.profiles.full_name),
+          phone = EXCLUDED.phone,
+          phone_verified = true,
+          phone_verified_at = NOW(),
+          phone_verification_channel = EXCLUDED.phone_verification_channel,
+          updated_at = NOW()
+        RETURNING id, full_name, email, phone, role, gem_loyalty_points, created_at;`,
+        [userId, userName || "Valued Patron", canonicalPhone, record.channel]
       );
-      profile = insertRes.rows[0];
+
+      profile = profileUpsertRes.rows[0];
+
+      // C. Mark OTP record as verified inside transaction
+      await dbClient.query(
+        `UPDATE public.otp_verifications SET verified_at = NOW() WHERE id = $1;`,
+        [record.id]
+      );
+
+      await dbClient.query("COMMIT");
+    } catch (txErr: any) {
+      await dbClient.query("ROLLBACK");
+      console.error("[AUTH-OTP] Transaction failed, rolled back:", txErr);
+      throw txErr;
+    } finally {
+      dbClient.release();
     }
 
-    // 9. Query past orders associated with this patron
+    // 8. Query past orders associated with this patron
     if (profile) {
-      const ordersRes = await query(
-        `SELECT id, order_number, status, payment_status, payment_method,
-                subtotal, discount_amount, shipping_fee, total_amount,
-                shipping_address, tracking_number, courier_partner, estimated_delivery, created_at
-         FROM public.orders
-         WHERE customer_id = $1 OR guest_phone = $2
-         ORDER BY created_at DESC
-         LIMIT 10;`,
-        [profile.id, canonicalPhone]
-      );
-      if (ordersRes && ordersRes.rows.length > 0) {
-        pastOrders = ordersRes.rows;
+      try {
+        const ordersRes = await query(
+          `SELECT id, order_number, status, payment_status, payment_method,
+                  subtotal, discount_amount, shipping_fee, total_amount,
+                  shipping_address, tracking_number, courier_partner, estimated_delivery, created_at
+           FROM public.orders
+           WHERE customer_id = $1 OR guest_phone = $2
+           ORDER BY created_at DESC
+           LIMIT 10;`,
+          [profile.id, canonicalPhone]
+        );
+        if (ordersRes && ordersRes.rows.length > 0) {
+          pastOrders = ordersRes.rows;
+        }
+      } catch (orderErr) {
+        console.warn("[AUTH-OTP] Non-fatal past orders query warning:", orderErr);
       }
     }
 
@@ -232,7 +310,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("[AUTH-OTP] verify-otp route error:", error?.message || error);
     return NextResponse.json(
-      { success: false, error: "Failed to verify authentication code" },
+      { success: false, error: "Failed to verify authentication code. Please try again." },
       { status: 500 }
     );
   }
