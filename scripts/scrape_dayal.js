@@ -474,8 +474,6 @@ function calculateShiprocketPackageDimensions(isContactLens, variantGrams) {
 function cleanHdImageUrl(url) {
   if (!url) return '';
   let clean = url.startsWith('//') ? 'https:' + url : url;
-  clean = clean.replace(/_(?:pico|icon|thumb|small|compact|medium|large|grande|1024x1024|2048x2048|800x800w)\./gi, '.');
-  clean = clean.replace(/-\d+x\d+w\./gi, '.');
   try {
     const parsed = new URL(clean);
     parsed.searchParams.delete('width');
@@ -718,7 +716,7 @@ async function scrapeDayalOpticals() {
 
     // Canonical Brand Name (e.g. "Ray-Ban", "Carrera", "Alcon")
     const brand = cfg ? cfg.canonical : (raw.vendor || 'Dayal Opticals');
-    const title = raw.title || 'Luxury Eyewear';
+    const title = (raw.title || 'Luxury Eyewear').replace(/\s+/g, ' ').trim();
     const bodyText = cleanHtmlText(raw.body_html || '');
     const tags = Array.isArray(raw.tags) ? raw.tags : [];
 
@@ -829,9 +827,39 @@ async function scrapeDayalOpticals() {
         const vPrice = Math.round(parseFloat(v.price) || price);
         const vImgSrc = v.featured_image ? cleanHdImageUrl(v.featured_image.src) : primaryImg;
 
-        const variantGallery = rawImages
-          .filter(img => img.variant_ids && img.variant_ids.includes(v.id))
+        // Smart gallery extraction for this variant
+        const directImages = rawImages
+          .filter(img => (img.variant_ids && img.variant_ids.includes(v.id)) || (v.image_id && img.id === v.image_id))
           .map(img => cleanHdImageUrl(img.src));
+
+        // Extract numeric colorway codes (e.g. 352, 5078, 2000, 601) or distinct color tokens
+        const numTokens = colorName
+          .split(/[\s/_-]+/)
+          .map(t => t.trim())
+          .filter(t => t.length >= 2 && !isNaN(t));
+
+        const wordTokens = colorName
+          .toLowerCase()
+          .split(/[\s/_-]+/)
+          .filter(t => t.length >= 4 && !['color', 'size', 'lens', 'optical', 'gold', 'frame'].includes(t));
+
+        const activeTokens = numTokens.length > 0 ? numTokens : wordTokens;
+
+        const tokenMatchedImages = rawImages
+          .filter(img => {
+            const fn = (img.src || '').toLowerCase().split('/').pop();
+            return activeTokens.some(tok => fn.includes(tok.toLowerCase()));
+          })
+          .map(img => cleanHdImageUrl(img.src));
+
+        const combinedGallery = [];
+        [vImgSrc, ...directImages, ...tokenMatchedImages].forEach(u => {
+          if (u && !combinedGallery.includes(u)) combinedGallery.push(u);
+        });
+
+        const finalGallery = combinedGallery.length > 0
+          ? combinedGallery
+          : (raw.variants.length === 1 ? images : [vImgSrc]);
 
         const varId = `var-${id}-${vIdx}`;
         const sku = v.sku || `SKU-${brand.toUpperCase().replace(/[^A-Z0-9]/g, '')}-${slug.toUpperCase().slice(0, 8)}-${vIdx + 1}`;
@@ -846,7 +874,7 @@ async function scrapeDayalOpticals() {
           compareAtPrice: v.compare_at_price ? Math.round(parseFloat(v.compare_at_price)) : null,
           available: v.available ?? true,
           featuredImage: vImgSrc,
-          gallery: variantGallery.length > 0 ? variantGallery : [vImgSrc],
+          gallery: finalGallery,
         });
 
         processedVariants.push({

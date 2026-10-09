@@ -2,11 +2,11 @@ import React from 'react';
 import { Sparkles } from 'lucide-react';
 
 export const BRAND_LOGOS = [
-  { id: 'ray-ban', filterQuery: 'ray', label: 'Ray-Ban', font: 'font-sans font-black tracking-tighter text-sm sm:text-base' },
-  { id: 'cartier', filterQuery: 'cartier', label: 'Cartier', font: 'font-serif italic font-bold tracking-wide text-sm sm:text-base' },
-  { id: 'gucci', filterQuery: 'gucci', label: 'GUCCI', font: 'font-serif font-extrabold tracking-[0.28em] text-xs sm:text-sm' },
-  { id: 'tom-ford', filterQuery: 'tom', label: 'TOM FORD', font: 'font-sans font-bold tracking-[0.22em] text-xs sm:text-sm' },
-  { id: 'prada', filterQuery: 'prada', label: 'PRADA', font: 'font-serif font-black tracking-[0.25em] text-xs sm:text-sm' },
+  { id: 'ray-ban', filterQuery: 'ray-ban', label: 'Ray-Ban', font: 'font-sans font-black tracking-tighter text-sm sm:text-base' },
+  { id: 'vogue', filterQuery: 'vogue', label: 'Vogue', font: 'font-serif italic font-bold tracking-wide text-sm sm:text-base' },
+  { id: 'carrera', filterQuery: 'carrera', label: 'CARRERA', font: 'font-sans font-black tracking-[0.25em] text-xs sm:text-sm' },
+  { id: 'armani', filterQuery: 'emporio-armani', label: 'EMPORIO ARMANI', font: 'font-serif font-extrabold tracking-[0.2em] text-xs sm:text-sm' },
+  { id: 'acuvue', filterQuery: 'johnson-johnson', label: 'ACUVUE', font: 'font-sans font-bold tracking-[0.22em] text-xs sm:text-sm' },
 ];
 
 interface BrandMarqueeProps {

@@ -60,11 +60,17 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
             ? localMatch.images 
             : []);
 
+      const rawName = row.name || localMatch?.name || "Designer Eyewear";
+      const cleanName = rawName.replace(/\s+/g, ' ').trim();
+
+      const rawSubtitle = row.subtitle || localMatch?.subtitle || cleanName;
+      const cleanSubtitle = rawSubtitle.replace(/\s+/g, ' ').trim();
+
       return {
         id: row.slug || row.id,
         brand: row.brand?.name || localMatch?.brand || "PRECISION",
-        name: row.name,
-        subtitle: row.subtitle || localMatch?.subtitle || row.name,
+        name: cleanName,
+        subtitle: cleanSubtitle,
         price: Number(row.base_price) || localMatch?.price || 87125,
         originalPrice: row.original_price ? Number(row.original_price) : localMatch?.originalPrice,
         category: row.category?.slug || localMatch?.category || "sunglasses",
@@ -92,7 +98,10 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
         },
         packageDimensions: row.package_dimensions || row.specs?.packageDimensions || localMatch?.packageDimensions,
         contactLensSpecs: row.specs?.contactLensSpecs || localMatch?.contactLensSpecs,
-        colorVariants: row.color_variants || localMatch?.colorVariants,
+        colorVariants: (row.color_variants || localMatch?.colorVariants || []).map((cv: any) => ({
+          ...cv,
+          colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+        })),
         sourceUrl: row.source_url || localMatch?.sourceUrl,
         variants: row.product_variants && row.product_variants.length > 0
           ? row.product_variants.map((v: any) => {
@@ -104,13 +113,16 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
 
               return {
                 id: v.id,
-                colorName: v.color_name,
+                colorName: (v.color_name || "").replace(/\s+/g, ' ').trim(),
                 colorHex: v.color_hex,
                 image: validVarImg,
                 inStock: v.stock_quantity > 0,
               };
             })
-          : localMatch?.variants,
+          : (localMatch?.variants || []).map((v: any) => ({
+              ...v,
+              colorName: (v.colorName || '').replace(/\s+/g, ' ').trim(),
+            })),
         tryOnEnabled: row.try_on_enabled ?? localMatch?.tryOnEnabled ?? false,
         tryOnModelUrl: row.try_on_model_url || localMatch?.tryOnModelUrl,
         tryOnConfig: row.try_on_configuration || localMatch?.tryOnConfig,

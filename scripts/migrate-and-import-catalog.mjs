@@ -41,7 +41,7 @@ async function run() {
   const pool = new Pool({
     connectionString,
     ssl: { rejectUnauthorized: false },
-    max: 5,
+    max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
   });
@@ -202,35 +202,16 @@ async function run() {
     `);
     console.log(`[OK] Purged legacy mock/dummy products (${purgeRes.rowCount || 0} rows deleted).\n`);
 
-    // Check existing products with variants to allow fast resume
-    const existingProductsRes = await safeQuery(`
-      SELECT p.slug, COUNT(v.id) as variant_count
-      FROM public.products p
-      LEFT JOIN public.product_variants v ON v.product_id = p.id
-      GROUP BY p.slug
-    `);
-    const completedSlugs = new Set();
-    existingProductsRes.rows.forEach(r => {
-      if (parseInt(r.variant_count, 10) > 0) {
-        completedSlugs.add(r.slug);
-      }
-    });
-    console.log(`[Info] ${completedSlugs.size} products already fully ingested with variants. Ingesting remaining...`);
-
     // --------------------------------------------------------------------------
-    // 5. INGEST PRODUCTS, VARIANTS, AND IMAGES
+    // 5. INGEST PRODUCTS, VARIANTS, AND IMAGES WITH WORKING MASTER CDN URLS
     // --------------------------------------------------------------------------
-    let insertedProducts = completedSlugs.size;
+    console.log(`Step 5: Updating all ${rawItems.length} products with authentic master CDN URLs & colorway galleries...`);
+    let insertedProducts = 0;
     let newlyInsertedProducts = 0;
     let insertedVariants = 0;
     let insertedImages = 0;
 
-    for (let i = 0; i < rawItems.length; i++) {
-      const p = rawItems[i];
-      if (completedSlugs.has(p.id)) {
-        continue;
-      }
-
+    async function ingestProduct(p, i) {
       const normCat = (p.category || "").toLowerCase();
       let catSlug = "eyeglasses";
       if (normCat.includes("contact") || normCat.includes("lens")) catSlug = "contact-lenses";
@@ -260,6 +241,14 @@ async function run() {
       const price = Number(p.price) || 4999;
       const originalPrice = p.originalPrice ? Number(p.originalPrice) : null;
       const effectiveOriginalPrice = (originalPrice && originalPrice >= price) ? originalPrice : null;
+
+      const cleanName = (p.name || '').replace(/\s+/g, ' ').trim();
+      const cleanSubtitle = (p.tag || (catSlug === "contact-lenses" ? "Clinical Contact Lens" : `${p.brand} Eyewear`)).replace(/\s+/g, ' ').trim();
+
+      const cleanedColorVariants = (p.colorVariants || []).map(cv => ({
+        ...cv,
+        colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+      }));
 
       // Upsert Product
       const prodRes = await safeQuery(
@@ -296,6 +285,7 @@ async function run() {
         ) ON CONFLICT (slug) DO UPDATE
         SET
           name = EXCLUDED.name,
+          subtitle = EXCLUDED.subtitle,
           base_price = EXCLUDED.base_price,
           original_price = EXCLUDED.original_price,
           specs = EXCLUDED.specs,
@@ -306,16 +296,16 @@ async function run() {
         RETURNING id;`,
         [
           p.id,
-          p.name,
-          p.tag || (catSlug === "contact-lenses" ? "Clinical Contact Lens" : `${p.brand} Eyewear`),
+          cleanName,
+          cleanSubtitle,
           brandId,
           categoryId,
           validGender,
           normShape,
           normRim,
           p.material || (catSlug === "contact-lenses" ? "silicone-hydrogel" : "acetate"),
-          p.colorVariants?.[0]?.colorName || "Classic",
-          p.colorVariants?.[0]?.colorHex || p.colors?.[0] || "#1A1A1A",
+          cleanedColorVariants[0]?.colorName || "Classic",
+          cleanedColorVariants[0]?.colorHex || p.colors?.[0] || "#1A1A1A",
           price,
           effectiveOriginalPrice,
           catSlug === "contact-lenses" ? ["uv-protection"] : ["anti-reflective", "uv-protection", "blue-light-filter"],
@@ -330,22 +320,20 @@ async function run() {
           12 + ((i * 7) % 60),
           catSlug !== "contact-lenses",
           p.sourceUrl || "",
-          JSON.stringify(p.colorVariants || []),
+          JSON.stringify(cleanedColorVariants),
           JSON.stringify(p.packageDimensions || { lengthCm: 18, breadthCm: 9, heightCm: 7, weightKg: 0.25 })
         ]
       );
 
       const productId = prodRes.rows[0].id;
-      insertedProducts++;
-      newlyInsertedProducts++;
 
       // Delete existing variants and images for clean idempotent re-insertion
       await safeQuery("DELETE FROM public.product_variants WHERE product_id = $1", [productId]);
       await safeQuery("DELETE FROM public.product_images WHERE product_id = $1", [productId]);
 
       // Insert Variants
-      const variants = (p.colorVariants && p.colorVariants.length > 0)
-        ? p.colorVariants
+      const variants = (cleanedColorVariants.length > 0)
+        ? cleanedColorVariants
         : [
             {
               sku: `SKU-${p.id}-0`,
@@ -357,12 +345,15 @@ async function run() {
           ];
 
       const cleanProdId = String(p.id).replace(/^do-/, "");
+      let varCount = 0;
+      let imgCount = 0;
 
       for (let vIdx = 0; vIdx < variants.length; vIdx++) {
         const v = variants[vIdx];
         const variantSku = v.variantId
           ? `SKU-${cleanProdId}-${v.variantId}`
           : `SKU-${cleanProdId}-${vIdx + 1}`;
+        const cleanColorName = (v.colorName || "Default").replace(/\s+/g, ' ').trim();
 
         const vRes = await safeQuery(
           `INSERT INTO public.product_variants (
@@ -382,7 +373,7 @@ async function run() {
           RETURNING id;`,
           [
             productId,
-            v.colorName || "Default",
+            cleanColorName,
             v.colorHex || "#1A1A1A",
             variantSku,
             v.available !== false ? 12 : 0,
@@ -390,7 +381,7 @@ async function run() {
           ]
         );
         const variantId = vRes.rows[0].id;
-        insertedVariants++;
+        varCount++;
 
         // Insert variant image
         const vImg = v.featuredImage || primaryImg;
@@ -404,9 +395,9 @@ async function run() {
               display_order,
               is_primary
             ) VALUES ($1, $2, $3, $4, $5, $6);`,
-            [productId, variantId, vImg, `${p.name} - ${v.colorName || 'View'}`, vIdx, vIdx === 0]
+            [productId, variantId, vImg, `${cleanName} - ${cleanColorName}`, vIdx, vIdx === 0]
           );
-          insertedImages++;
+          imgCount++;
         }
       }
 
@@ -426,15 +417,26 @@ async function run() {
               display_order,
               is_primary
             ) VALUES ($1, NULL, $2, $3, $4, false);`,
-            [productId, gUrl, `${p.name} - Angle ${gIdx + 1}`, gIdx + 10]
+            [productId, gUrl, `${cleanName} - Angle ${gIdx + 1}`, gIdx + 10]
           );
-          insertedImages++;
+          imgCount++;
         }
       }
 
-      if ((i + 1) % 50 === 0 || i === rawItems.length - 1) {
-        console.log(` -> Ingested ${i + 1}/${rawItems.length} products (newly inserted: ${newlyInsertedProducts})...`);
-      }
+      return { varCount, imgCount };
+    }
+
+    const CHUNK_SIZE = 8;
+    for (let i = 0; i < rawItems.length; i += CHUNK_SIZE) {
+      const chunk = rawItems.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.all(chunk.map((item, cIdx) => ingestProduct(item, i + cIdx)));
+      insertedProducts += chunk.length;
+      newlyInsertedProducts += chunk.length;
+      results.forEach(r => {
+        insertedVariants += r.varCount;
+        insertedImages += r.imgCount;
+      });
+      console.log(` -> Ingested ${Math.min(i + CHUNK_SIZE, rawItems.length)}/${rawItems.length} products...`);
     }
 
     console.log("\n========================================================================");

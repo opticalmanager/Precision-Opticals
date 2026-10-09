@@ -39,7 +39,7 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
   const variants = (item.colorVariants && item.colorVariants.length > 0)
     ? item.colorVariants.map((cv: any, cIdx: number) => ({
         id: cv.sku || cv.id || `VAR-${item.id}-${cIdx}`,
-        colorName: cv.colorName || 'Default',
+        colorName: (cv.colorName || 'Default').replace(/\s+/g, ' ').trim(),
         colorHex: cv.colorHex || '#1A1A1A',
         image: cv.featuredImage || primaryImage,
         inStock: cv.available !== false,
@@ -61,7 +61,7 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
   return {
     id: item.id || `prod-${idx + 1}`,
     brand: item.brand || 'Precision',
-    name: item.name || 'Designer Eyewear',
+    name: (item.name || 'Designer Eyewear').replace(/\s+/g, ' ').trim(),
     subtitle: item.tag || (isContactLens ? 'Clinical Contact Lenses' : `${item.brand} Luxury Eyewear`),
     price: Number(item.price) || 4999,
     originalPrice: item.originalPrice ? Number(item.originalPrice) : undefined,
@@ -91,7 +91,10 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
       weight: item.measurements?.weight || (isContactLens ? '0.08g' : '22g'),
     },
     variants,
-    colorVariants: item.colorVariants || [],
+    colorVariants: (item.colorVariants || []).map((cv: any) => ({
+      ...cv,
+      colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+    })),
     sourceUrl: item.sourceUrl || '',
     packageDimensions,
     contactLensSpecs: item.contactLensSpecs || undefined,

@@ -67,19 +67,10 @@ export const Header: React.FC<HeaderProps> = ({
       const arrivals = products.filter((p) => p.isNewArrival);
       setNewArrivalProducts(arrivals);
 
-      const dbBrands = Array.from(new Set(arrivals.map((p) => p.brand).filter(Boolean)));
-      const referenceBrands = [
-        'Komono',
-        'Jacques Marie Mage',
-        'T Henri',
-        'Off White',
-        'Tom Ford',
-        'Alaia',
-        'Gucci',
-        'Montblanc',
-      ];
-      const combined = Array.from(new Set([...dbBrands, ...referenceBrands])).slice(0, 8);
-      setNewArrivalBrands(combined);
+      const allBrands = Array.from(new Set(products.map((p) => p.brand).filter(Boolean)));
+      const arrivalBrands = Array.from(new Set(arrivals.map((p) => p.brand).filter(Boolean)));
+      const combined = arrivalBrands.length > 0 ? arrivalBrands : allBrands;
+      setNewArrivalBrands(combined.slice(0, 8));
     });
     return () => {
       isMounted = false;
@@ -213,29 +204,29 @@ export const Header: React.FC<HeaderProps> = ({
       };
     }
 
-    const versaceMatch =
+    const defaultEyewearMatch =
       allCatalogProducts.find(
         (p) =>
-          p.brand?.toLowerCase().includes('versace') && p.category === 'eyeglasses'
-      ) || allCatalogProducts.find((p) => p.brand?.toLowerCase().includes('versace'));
+          p.brand?.toLowerCase().includes('vogue') && p.category === 'eyeglasses'
+      ) || allCatalogProducts.find((p) => p.category === 'eyeglasses') || allCatalogProducts[0];
 
-    if (versaceMatch) {
+    if (defaultEyewearMatch) {
       return {
-        brand: versaceMatch.brand.toUpperCase(),
-        title: (versaceMatch.subtitle || versaceMatch.name || 'DESIGNED TO DOMINATE EVERY LOOK').toUpperCase(),
+        brand: defaultEyewearMatch.brand.toUpperCase(),
+        title: (defaultEyewearMatch.subtitle || defaultEyewearMatch.name || 'PRECISION OPTICAL ATELIER').toUpperCase(),
         image:
-          versaceMatch.images?.[0] ||
+          defaultEyewearMatch.images?.[0] ||
           'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80',
-        url: `/product/${versaceMatch.id}`,
+        url: `/product/${defaultEyewearMatch.id}`,
       };
     }
 
     return {
-      brand: 'VERSACE',
-      title: 'DESIGNED TO DOMINATE EVERY LOOK',
+      brand: 'VOGUE',
+      title: 'PRECISION OPTICAL ATELIER',
       image:
         'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=700&q=80',
-      url: '/shop?category=eyeglasses&brand=versace',
+      url: '/shop?category=eyeglasses&brand=vogue',
     };
   }, [activeEyewearBrand, allCatalogProducts]);
 
@@ -265,27 +256,28 @@ export const Header: React.FC<HeaderProps> = ({
       };
     }
 
-    const komonoMatch = allCatalogProducts.find((p) =>
-      p.brand?.toLowerCase().includes('komono')
-    );
+    const defaultDirectoryMatch =
+      allCatalogProducts.find((p) => p.brand?.toLowerCase().includes('carrera')) ||
+      allCatalogProducts.find((p) => p.brand?.toLowerCase().includes('ray-ban')) ||
+      allCatalogProducts[0];
 
-    if (komonoMatch) {
+    if (defaultDirectoryMatch) {
       return {
-        brand: komonoMatch.brand.toUpperCase(),
-        title: (komonoMatch.subtitle || komonoMatch.name || 'WHERE SIMPLICITY MEETS INNOVATION').toUpperCase(),
+        brand: defaultDirectoryMatch.brand.toUpperCase(),
+        title: (defaultDirectoryMatch.subtitle || defaultDirectoryMatch.name || 'TIMELESS DESIGN & CRAFTSMANSHIP').toUpperCase(),
         image:
-          komonoMatch.images?.[0] ||
+          defaultDirectoryMatch.images?.[0] ||
           'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=700&q=80',
-        url: `/product/${komonoMatch.id}`,
+        url: `/product/${defaultDirectoryMatch.id}`,
       };
     }
 
     return {
-      brand: 'KOMONO',
-      title: 'WHERE SIMPLICITY MEETS INNOVATION',
+      brand: 'CARRERA',
+      title: 'TIMELESS DESIGN & CRAFTSMANSHIP',
       image:
         'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=700&q=80',
-      url: '/shop?brand=komono',
+      url: '/shop?brand=carrera',
     };
   }, [activeDirectoryBrand, allCatalogProducts]);
 
@@ -983,40 +975,38 @@ export const Header: React.FC<HeaderProps> = ({
                     </ul>
                   </div>
 
-                  {/* 3. TOP BRANDS */}
+                  {/* 3. FEATURED HOUSES */}
                   <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
                     <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
-                      TOP BRANDS
+                      FEATURED HOUSES
                     </h4>
                     <ul className="space-y-1.5 text-xs text-stone-700">
                       {[
-                        'Gucci',
-                        'Prada',
-                        'Burberry',
-                        'Tom Ford',
-                        'Versace',
-                        'Dolce & Gabbana',
-                      ].map((brand) => {
-                        const isHovered = activeEyewearBrand === brand;
+                        { name: 'Ray-Ban', slug: 'ray-ban', count: '500+ Styles' },
+                        { name: 'Vogue Eyewear', slug: 'vogue', count: '220+ Styles' },
+                        { name: 'Carrera', slug: 'carrera', count: '70+ Styles' },
+                        { name: 'Emporio Armani', slug: 'emporio-armani', count: '25+ Styles' },
+                      ].map((item) => {
+                        const isHovered = activeEyewearBrand === item.name;
                         return (
-                          <li key={brand}>
+                          <li key={item.slug}>
                             <button
                               type="button"
                               onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
+                                onSelectBrand(item.slug);
                                 if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?category=eyeglasses&brand=${bSlug}`);
+                                router.push(`/shop?category=eyeglasses&brand=${item.slug}`);
                                 setHoveredMenu(null);
                               }}
-                              onMouseEnter={() => setActiveEyewearBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full ${
+                              onMouseEnter={() => setActiveEyewearBrand(item.name)}
+                              className={`transition-colors cursor-pointer text-left flex items-center justify-between w-full py-0.5 ${
                                 isHovered
                                   ? 'text-[#C86A28] font-bold'
                                   : 'text-stone-700 hover:text-[#C86A28]'
                               }`}
                             >
-                              {brand}
+                              <span>{item.name}</span>
+                              <span className="text-[10px] text-stone-500 font-normal">{item.count}</span>
                             </button>
                           </li>
                         );
@@ -1031,47 +1021,40 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
                         >
-                          <span>All brands</span>
+                          <span>All eyeglasses</span>
                           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </li>
                     </ul>
                   </div>
 
-                  {/* 4. EXCLUSIVE BRANDS */}
+                  {/* 4. CURATED SHAPES */}
                   <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
                     <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
-                      EXCLUSIVE BRANDS
+                      CURATED SHAPES
                     </h4>
                     <ul className="space-y-1.5 text-xs text-stone-700">
                       {[
-                        'Cartier',
-                        'Lindberg',
-                        'Maybach',
-                        'Jacques Marie Mage',
-                        'Akoni',
-                        'Balmain',
-                      ].map((brand) => {
-                        const isHovered = activeEyewearBrand === brand;
+                        'Cat Eye',
+                        'Rectangle',
+                        'Round',
+                        'Square',
+                        'Aviator',
+                        'Geometric',
+                      ].map((shape) => {
+                        const sSlug = shape.toLowerCase().replace(/\s+/g, '-');
                         return (
-                          <li key={brand}>
+                          <li key={shape}>
                             <button
                               type="button"
                               onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
                                 if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?category=eyeglasses&brand=${bSlug}`);
+                                router.push(`/shop?category=eyeglasses&shape=${sSlug}`);
                                 setHoveredMenu(null);
                               }}
-                              onMouseEnter={() => setActiveEyewearBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full ${
-                                isHovered
-                                  ? 'text-[#C86A28] font-bold'
-                                  : 'text-stone-700 hover:text-[#C86A28]'
-                              }`}
+                              className="transition-colors cursor-pointer text-left block w-full py-0.5 text-stone-700 hover:text-[#C86A28]"
                             >
-                              {brand}
+                              {shape}
                             </button>
                           </li>
                         );
@@ -1086,7 +1069,7 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
                         >
-                          <span>All exclusive</span>
+                          <span>Explore all shapes</span>
                           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </li>
@@ -1238,44 +1221,38 @@ export const Header: React.FC<HeaderProps> = ({
                     </ul>
                   </div>
 
-                  {/* 3. TOP BRANDS */}
+                  {/* 3. FEATURED HOUSES */}
                   <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
                     <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
-                      TOP BRANDS
+                      FEATURED HOUSES
                     </h4>
                     <ul className="space-y-1.5 text-xs text-stone-700">
                       {[
-                        'Gucci',
-                        'Burberry',
-                        'Prada',
-                        'Saint Laurent',
-                        'Off-White',
-                        'Tom Ford',
-                        'Dolce & Gabbana',
-                        'Montblanc',
-                        'Gast',
-                        'Versace',
-                      ].map((brand) => {
-                        const isHovered = activeSunglassesBrand === brand;
+                        { name: 'Ray-Ban', slug: 'ray-ban', count: '500+ Styles' },
+                        { name: 'Carrera', slug: 'carrera', count: '70+ Styles' },
+                        { name: 'Vogue Eyewear', slug: 'vogue', count: '220+ Styles' },
+                        { name: 'Emporio Armani', slug: 'emporio-armani', count: '25+ Styles' },
+                      ].map((item) => {
+                        const isHovered = activeSunglassesBrand === item.name;
                         return (
-                          <li key={brand}>
+                          <li key={item.slug}>
                             <button
                               type="button"
                               onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
+                                onSelectBrand(item.slug);
                                 if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?category=sunglasses&brand=${bSlug}`);
+                                router.push(`/shop?category=sunglasses&brand=${item.slug}`);
                                 setHoveredMenu(null);
                               }}
-                              onMouseEnter={() => setActiveSunglassesBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full ${
+                              onMouseEnter={() => setActiveSunglassesBrand(item.name)}
+                              className={`transition-colors cursor-pointer text-left flex items-center justify-between w-full py-0.5 ${
                                 isHovered
                                   ? 'text-[#C86A28] font-bold'
                                   : 'text-stone-700 hover:text-[#C86A28]'
                               }`}
                             >
-                              {brand}
+                              <span>{item.name}</span>
+                              <span className="text-[10px] text-stone-500 font-normal">{item.count}</span>
                             </button>
                           </li>
                         );
@@ -1290,48 +1267,40 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
                         >
-                          <span>All brands</span>
+                          <span>All sunglasses</span>
                           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </li>
                     </ul>
                   </div>
 
-                  {/* 4. EXCLUSIVE BRANDS */}
+                  {/* 4. ICONIC SILHOUETTES */}
                   <div className="col-span-2 border-r border-[#E8DCCF] pr-3">
                     <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
-                      EXCLUSIVE BRANDS
+                      ICONIC SILHOUETTES
                     </h4>
                     <ul className="space-y-1.5 text-xs text-stone-700">
                       {[
-                        'Cartier',
-                        'Maybach',
-                        'Jacques Marie Mage',
-                        'Capote',
-                        'T Henri',
-                        'Akoni',
-                        'Balmain',
-                      ].map((brand) => {
-                        const isHovered = activeSunglassesBrand === brand;
+                        'Aviator',
+                        'Wayfarer',
+                        'Round',
+                        'Rectangle',
+                        'Square',
+                        'Pilot',
+                      ].map((shape) => {
+                        const sSlug = shape.toLowerCase().replace(/\s+/g, '-');
                         return (
-                          <li key={brand}>
+                          <li key={shape}>
                             <button
                               type="button"
                               onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
                                 if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?category=sunglasses&brand=${bSlug}`);
+                                router.push(`/shop?category=sunglasses&shape=${sSlug}`);
                                 setHoveredMenu(null);
                               }}
-                              onMouseEnter={() => setActiveSunglassesBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full ${
-                                isHovered
-                                  ? 'text-[#C86A28] font-bold'
-                                  : 'text-stone-700 hover:text-[#C86A28]'
-                              }`}
+                              className="transition-colors cursor-pointer text-left block w-full py-0.5 text-stone-700 hover:text-[#C86A28]"
                             >
-                              {brand}
+                              {shape}
                             </button>
                           </li>
                         );
@@ -1346,7 +1315,7 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           className="inline-flex items-center gap-1 text-[#C86A28] hover:text-[#9A4C16] font-semibold text-[11px] tracking-wide cursor-pointer group"
                         >
-                          <span>All exclusive</span>
+                          <span>Explore all styles</span>
                           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </li>
@@ -1605,46 +1574,41 @@ export const Header: React.FC<HeaderProps> = ({
                   onMouseLeave={handleMenuLeave}
                   className="absolute top-full left-1/2 -translate-x-1/2 w-[1160px] max-w-[calc(100vw-2rem)] max-h-[min(85vh,720px)] overflow-y-auto bg-[#FAF3EB] border border-[#E8DCCF] shadow-2xl px-8 py-7 grid grid-cols-12 gap-5 text-left normal-case tracking-normal z-50 rounded-b-2xl text-xs animate-in fade-in slide-in-from-top-1.5 duration-200 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3 before:content-['']"
                 >
-                  {/* Column 1: A - C */}
-                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
-                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
-                      A - C
+                  {/* Column 1 & 2: DESIGNER EYEWEAR HOUSES */}
+                  <div className="col-span-4 border-r border-[#E8DCCF] pr-4">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      DESIGNER EYEWEAR HOUSES
                     </h4>
-                    <ul className="space-y-1 text-xs text-stone-700">
+                    <ul className="space-y-3 text-xs text-stone-700">
                       {[
-                        'Akoni',
-                        'Alaïa',
-                        'Alexander McQueen',
-                        'Balenciaga',
-                        'Balmain',
-                        'Bottega Veneta',
-                        'Bruno Chaussignand',
-                        'Bugatti',
-                        'Burberry',
-                        'Bvlgari',
-                        'Calvin Klein',
-                        'Capote',
-                      ].map((brand) => {
-                        const isHovered = activeDirectoryBrand === brand;
+                        { name: 'Ray-Ban', slug: 'ray-ban', tagline: 'Timeless Aviator & Wayfarer Icons', count: '500+ Styles' },
+                        { name: 'Vogue Eyewear', slug: 'vogue', tagline: 'Chic Modern Everyday Frames', count: '220+ Styles' },
+                        { name: 'Carrera', slug: 'carrera', tagline: 'Signature Racing & Pilot Silhouettes', count: '70+ Styles' },
+                        { name: 'Emporio Armani', slug: 'emporio-armani', tagline: 'Milanese Contemporary Luxury', count: '25+ Styles' },
+                      ].map((item) => {
+                        const isHovered = activeDirectoryBrand === item.name;
                         return (
-                          <li key={brand}>
+                          <li key={item.slug}>
                             <button
                               type="button"
                               onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
+                                onSelectBrand(item.slug);
                                 if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?brand=${bSlug}`);
+                                router.push(`/shop?brand=${item.slug}`);
                                 setHoveredMenu(null);
                               }}
-                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
+                              onMouseEnter={() => setActiveDirectoryBrand(item.name)}
+                              className={`transition-all cursor-pointer text-left block w-full p-2 rounded-lg border ${
                                 isHovered
-                                  ? 'text-[#C86A28] font-bold'
-                                  : 'text-stone-700 hover:text-[#C86A28]'
+                                  ? 'bg-white border-[#C86A28] shadow-xs'
+                                  : 'bg-[#FFFDF9]/60 border-transparent hover:border-[#E8DCCF] hover:bg-white'
                               }`}
                             >
-                              {brand}
+                              <div className="flex items-center justify-between">
+                                <span className={`font-medium ${isHovered ? 'text-[#C86A28]' : 'text-stone-900'}`}>{item.name}</span>
+                                <span className="text-[10px] text-stone-500">{item.count}</span>
+                              </div>
+                              <p className="text-[11px] text-stone-500 mt-0.5">{item.tagline}</p>
                             </button>
                           </li>
                         );
@@ -1652,140 +1616,41 @@ export const Header: React.FC<HeaderProps> = ({
                     </ul>
                   </div>
 
-                  {/* Column 2: D - J */}
-                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
-                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
-                      D - J
+                  {/* Column 3 & 4: CLINICAL CONTACT LENSES */}
+                  <div className="col-span-4 border-r border-[#E8DCCF] pr-4">
+                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-4 pb-1 border-b border-[#E8DCCF]">
+                      CLINICAL CONTACT LENSES
                     </h4>
-                    <ul className="space-y-1 text-xs text-stone-700">
+                    <ul className="space-y-3 text-xs text-stone-700">
                       {[
-                        'David Beckham',
-                        'Dolce & Gabbana',
-                        'Dunhill',
-                        'Elie Saab',
-                        'Emporio Armani',
-                        'Etnia Barcelona',
-                        'Ferragamo',
-                        'Fendi',
-                        'Fire Horn',
-                        'Fred',
-                        'Frency & Mercury',
-                        'Gast',
-                      ].map((brand) => {
-                        const isHovered = activeDirectoryBrand === brand;
+                        { name: 'Johnson & Johnson', slug: 'johnson-johnson', tagline: 'Acuvue Oasys & 1-Day Moist', count: 'Clinical Grade' },
+                        { name: 'Cooper Vision', slug: 'cooper-vision', tagline: 'Biofinity, Clariti & Proclear', count: 'Clinical Grade' },
+                        { name: 'Alcon', slug: 'alcon', tagline: 'Dailies Total 1 & Air Optix HydraGlyde', count: 'Clinical Grade' },
+                        { name: 'Bausch & Lomb', slug: 'bausch-lomb', tagline: 'Soflens 59 & PureVision HD', count: 'Clinical Grade' },
+                      ].map((item) => {
+                        const isHovered = activeDirectoryBrand === item.name;
                         return (
-                          <li key={brand}>
+                          <li key={item.slug}>
                             <button
                               type="button"
                               onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
+                                onSelectBrand(item.slug);
                                 if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?brand=${bSlug}`);
+                                router.push(`/shop?category=contact-lenses&brand=${item.slug}`);
                                 setHoveredMenu(null);
                               }}
-                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
+                              onMouseEnter={() => setActiveDirectoryBrand(item.name)}
+                              className={`transition-all cursor-pointer text-left block w-full p-2 rounded-lg border ${
                                 isHovered
-                                  ? 'text-[#C86A28] font-bold'
-                                  : 'text-stone-700 hover:text-[#C86A28]'
+                                  ? 'bg-white border-[#C86A28] shadow-xs'
+                                  : 'bg-[#FFFDF9]/60 border-transparent hover:border-[#E8DCCF] hover:bg-white'
                               }`}
                             >
-                              {brand}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  {/* Column 3: K - O */}
-                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
-                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
-                      K - O
-                    </h4>
-                    <ul className="space-y-1 text-xs text-stone-700">
-                      {[
-                        'Kate Spade',
-                        'Kenzo',
-                        'Komono',
-                        'Kuboraum',
-                        'Lapima',
-                        'Linda Farrow',
-                        'Lindberg',
-                        'Loewe',
-                        'Marc Jacobs',
-                        'Masunaga',
-                        'Maui Jim',
-                        'Matsuda',
-                      ].map((brand) => {
-                        const isHovered = activeDirectoryBrand === brand;
-                        return (
-                          <li key={brand}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
-                                if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?brand=${bSlug}`);
-                                setHoveredMenu(null);
-                              }}
-                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
-                                isHovered
-                                  ? 'text-[#C86A28] font-bold'
-                                  : 'text-stone-700 hover:text-[#C86A28]'
-                              }`}
-                            >
-                              {brand}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  {/* Column 4: P - Z */}
-                  <div className="col-span-2 border-r border-[#E8DCCF] pr-2">
-                    <h4 className="font-serif font-bold text-[11px] tracking-[0.2em] uppercase text-[#8B7355] mb-3 pb-1 border-b border-[#E8DCCF]">
-                      P - Z
-                    </h4>
-                    <ul className="space-y-1 text-xs text-stone-700">
-                      {[
-                        'Persol',
-                        'Philipp Plein',
-                        'Prada',
-                        'Prada Sports',
-                        'Pugnale Eyewear',
-                        'Rayban',
-                        'Robert La Roche',
-                        'Saint Laurent',
-                        'Seventh Street',
-                        'Silhouette',
-                        'So Ya',
-                        'Swarovski',
-                      ].map((brand) => {
-                        const isHovered = activeDirectoryBrand === brand;
-                        return (
-                          <li key={brand}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const bSlug = brand.toLowerCase().replace(/\s+/g, '-');
-                                onSelectBrand(bSlug);
-                                if (onNavigate) onNavigate('shop');
-                                router.push(`/shop?brand=${bSlug}`);
-                                setHoveredMenu(null);
-                              }}
-                              onMouseEnter={() => setActiveDirectoryBrand(brand)}
-                              className={`transition-colors cursor-pointer text-left block w-full truncate ${
-                                isHovered
-                                  ? 'text-[#C86A28] font-bold'
-                                  : 'text-stone-700 hover:text-[#C86A28]'
-                              }`}
-                            >
-                              {brand}
+                              <div className="flex items-center justify-between">
+                                <span className={`font-medium ${isHovered ? 'text-[#C86A28]' : 'text-stone-900'}`}>{item.name}</span>
+                                <span className="text-[10px] text-stone-500">{item.count}</span>
+                              </div>
+                              <p className="text-[11px] text-stone-500 mt-0.5">{item.tagline}</p>
                             </button>
                           </li>
                         );
@@ -2109,7 +1974,7 @@ export const Header: React.FC<HeaderProps> = ({
               POPULAR BRANDS
             </span>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
-              {['Cartier', 'Tom Ford', 'Maybach', 'GAST', 'Jacques Marie Mage', 'Lindberg'].map((b) => (
+              {['Ray-Ban', 'Vogue', 'Carrera', 'Emporio Armani', 'Cooper Vision', 'Johnson & Johnson'].map((b) => (
                 <button
                   key={b}
                   onClick={() => {
@@ -2119,7 +1984,7 @@ export const Header: React.FC<HeaderProps> = ({
                     router.push(`/shop?brand=${bSlug}`);
                     setMobileMenuOpen(false);
                   }}
-                  className="bg-[#FFFDF9] p-1.5 rounded-sm text-stone-800 text-left border border-[#E8DCCF] font-serif cursor-pointer"
+                  className="bg-[#FFFDF9] p-1.5 rounded-sm text-stone-800 text-left border border-[#E8DCCF] font-serif cursor-pointer hover:border-[#C86A28] hover:text-[#C86A28] transition-colors"
                 >
                   {b}
                 </button>

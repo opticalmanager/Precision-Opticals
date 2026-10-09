@@ -37,7 +37,7 @@ export const ProductCard = memo(function ProductCard({
   const originalPriceDisplay = product.originalPrice || Math.round(product.price * 1.18);
 
   // Fallback-safe image state
-  const fallbackImg = "/images/products/figma_cartier_blue_rimless.png";
+  const fallbackImg = "/images/clean_frame_1.png";
   const initialImg = product.images?.[0] || fallbackImg;
   const [imgSrc, setImgSrc] = useState<string>(initialImg);
 
@@ -125,7 +125,7 @@ export const ProductCard = memo(function ProductCard({
           {/* Product Name */}
           <Link href={`/product/${product.id}`} className="block">
             <h3 className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-1 mt-0.5 hover:text-[#C86A28] transition-colors" title={product.name}>
-              {product.name}
+              {product.name.replace(/\s+/g, ' ').trim()}
             </h3>
           </Link>
 

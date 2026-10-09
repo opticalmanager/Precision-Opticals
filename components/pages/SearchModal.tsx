@@ -33,14 +33,14 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         );
 
   const POPULAR_TERMS = [
-    'Cartier Gold',
-    'Tom Ford Dax',
-    'GAST Astro',
-    'Meta Smart Glasses',
-    'Lindberg Titanium',
-    'Jacques Marie Mage',
-    '18k Gold Plated',
-    'Aviator Polarized'
+    'Ray-Ban Aviator',
+    'Vogue Cat Eye',
+    'Carrera Navigator',
+    'Emporio Armani',
+    'Cooper Vision Biofinity',
+    'Acuvue Oasys',
+    'Alcon Dailies',
+    'Polarized Sunglasses'
   ];
 
   return (
@@ -63,7 +63,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by brand (Cartier, Tom Ford, GAST), model, or material (Titanium, Gold)..."
+            placeholder="Search by brand (Ray-Ban, Vogue, Carrera), model, or frame shape..."
             autoFocus
             className="w-full bg-white border-2 border-stone-800 px-12 py-3.5 text-xs sm:text-sm font-sans focus:outline-none focus:ring-2 focus:ring-amber-800/20"
           />
@@ -99,7 +99,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
             {filteredProducts.length === 0 ? (
               <p className="text-xs text-stone-500 italic py-4">
-                No frames matched "{query}". Try "Cartier", "Titanium", or "Sunglasses".
+                No frames matched "{query}". Try "Ray-Ban", "Vogue", or "Sunglasses".
               </p>
             ) : (
               filteredProducts.map((p) => (

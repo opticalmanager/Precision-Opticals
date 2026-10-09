@@ -60,6 +60,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     setSelectedVariantIdx(0);
   }, [product.id, product.name]);
 
+  // Reset image view to first angle whenever colorway variant changes
+  useEffect(() => {
+    setActiveImgIdx(0);
+  }, [selectedVariantIdx]);
+
   // Accordions state
   const [openAccordions, setOpenAccordions] = useState<{ [key: string]: boolean }>({
     about: false,
@@ -84,16 +89,36 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     return trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://");
   };
 
-  // Images list: collect all valid image URLs from product and variants
+  // Images list: collect valid image URLs specifically for the selected color variant
   const imagesToDisplay = useMemo(() => {
     const list: string[] = [];
 
-    // 1. Add selected variant image if valid
-    if (selectedVariant?.image && isValidImageUrl(selectedVariant.image)) {
-      list.push(selectedVariant.image.trim());
+    // 1. Check if the selected color variant has a dedicated gallery
+    const activeColorVariant = product.colorVariants?.[selectedVariantIdx];
+    if (activeColorVariant?.gallery && activeColorVariant.gallery.length > 0) {
+      activeColorVariant.gallery.forEach((img: string) => {
+        if (isValidImageUrl(img)) {
+          const trimmed = img.trim();
+          if (!list.includes(trimmed)) list.push(trimmed);
+        }
+      });
     }
 
-    // 2. Add all valid product.images
+    // 2. Add variant featuredImage if valid and not already in list
+    const featuredImg = activeColorVariant?.featuredImage || selectedVariant?.image;
+    if (featuredImg && isValidImageUrl(featuredImg)) {
+      const trimmed = featuredImg.trim();
+      if (!list.includes(trimmed)) {
+        list.unshift(trimmed);
+      }
+    }
+
+    // 3. If variant has dedicated images, return exclusively this variant's images!
+    if (list.length > 0) {
+      return list;
+    }
+
+    // 4. Fallback to product.images if single variant or no variant-specific gallery
     if (product.images && product.images.length > 0) {
       product.images.forEach((img) => {
         if (isValidImageUrl(img)) {
@@ -103,13 +128,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       });
     }
 
-    // 3. Fallback if no images found
+    // 5. Final fallback if completely empty
     if (list.length === 0) {
-      list.push("/images/products/figma_cartier_blue_rimless.png");
+      list.push("/images/clean_frame_1.png");
     }
 
     return list;
-  }, [product, selectedVariant]);
+  }, [product, selectedVariant, selectedVariantIdx]);
 
   const currentImage = imagesToDisplay[activeImgIdx] || imagesToDisplay[0];
 
@@ -292,7 +317,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   src={currentImage}
                   alt={`${product.brand} - ${product.name}`}
                   className="w-[88%] sm:w-[92%] h-auto max-h-[85%] object-contain transform transition-transform duration-500 group-hover:scale-105 select-none"
-                  fallbackSrc="/images/products/figma_cartier_blue_rimless.png"
+                  fallbackSrc={imagesToDisplay[0] || product.images?.[0] || "/images/clean_frame_1.png"}
                 />
               </div>
             </div>
@@ -315,7 +340,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       src={img}
                       alt={`${product.name} angle ${idx + 1}`}
                       className="w-full h-full object-contain"
-                      fallbackSrc="/images/products/figma_cartier_blue_rimless.png"
+                      fallbackSrc={imagesToDisplay[0] || product.images?.[0] || "/images/clean_frame_1.png"}
                     />
                   </button>
                 ))}
@@ -439,7 +464,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 {product.brand}
               </span>
               <h1 className="font-sans text-[24px] sm:text-[28px] font-normal uppercase tracking-[0.03em] text-[#2A1E17] leading-[1.25]">
-                {product.name}
+                {product.name.replace(/\s+/g, ' ').trim()}
               </h1>
             </div>
 
@@ -459,7 +484,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <span className="font-sans text-[11px] font-medium text-[#2A1E17] uppercase tracking-wider block">
                   Color:{" "}
                   <span className="font-normal text-stone-600">
-                    {product.variants[selectedVariantIdx]?.colorName}
+                    {product.variants[selectedVariantIdx]?.colorName?.replace(/\s+/g, ' ').trim()}
                   </span>
                 </span>
                 <div className="flex items-center gap-2">
@@ -476,7 +501,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           : "border-stone-300 opacity-80 hover:opacity-100"
                       }`}
                       style={{ backgroundColor: v.colorHex }}
-                      title={v.colorName}
+                      title={v.colorName?.replace(/\s+/g, ' ').trim()}
                     >
                       {selectedVariantIdx === idx && (
                         <Check className="w-3.5 h-3.5 text-white drop-shadow-sm" />

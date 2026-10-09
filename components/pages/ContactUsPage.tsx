@@ -183,7 +183,7 @@ export const ContactUsPage: React.FC<ContactUsPageProps> = ({ onNavigateHome }) 
                       <textarea
                         {...register("message")}
                         rows={4}
-                        placeholder="Inquire about Cartier availability, Zeiss Progressive options, corporate bulk orders, or clinic consultations..."
+                        placeholder="Inquire about frame availability, prescription lens options (Zeiss / Essilor / Nikon), corporate orders, or clinic consultations..."
                         className={`w-full bg-[#FAF7F2] border border-[#D5C2B1] p-2.5 rounded text-xs focus:outline-none focus:border-[#C85A1B] ${
                           errors.message ? "border-rose-500 bg-rose-50/20" : ""
                         }`}
