@@ -506,14 +506,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </button>
             )}
 
-            {/* Secondary Action: ADD PRESCRIPTION LENSES */}
-            <button
-              onClick={() => onOpenLensCustomizer(product)}
-              className="w-full bg-[#FAF3EB] hover:bg-[#F4E9DD] border border-[#E8DCCF] text-[#2A1E17] py-3 px-4 font-sans font-normal text-[11px] sm:text-[12px] uppercase tracking-[0.08em] transition-colors flex items-center justify-center gap-2 cursor-pointer text-center"
-            >
-              <Glasses className="w-4 h-4 text-[#C86A28]" />
-              <span>ADD PRESCRIPTION LENSES (NIKON • ZEISS • ESSILOR)</span>
-            </button>
+            {/* Secondary Action: ADD PRESCRIPTION LENSES (Exclusively for optical frames) */}
+            {product.category !== "contact-lenses" && (
+              <button
+                onClick={() => onOpenLensCustomizer(product)}
+                className="w-full bg-[#FAF3EB] hover:bg-[#F4E9DD] border border-[#E8DCCF] text-[#2A1E17] py-3 px-4 font-sans font-normal text-[11px] sm:text-[12px] uppercase tracking-[0.08em] transition-colors flex items-center justify-center gap-2 cursor-pointer text-center"
+              >
+                <Glasses className="w-4 h-4 text-[#C86A28]" />
+                <span>ADD PRESCRIPTION LENSES (NIKON • ZEISS • ESSILOR)</span>
+              </button>
+            )}
 
             {/* Coupon Box */}
             <div className="bg-[#FAF3EB] border border-[#E8DCCF] p-3 sm:p-3.5 flex items-center justify-between font-sans text-[12px] text-[#2A1E17]">
@@ -614,64 +616,93 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 INFORMATION
               </h2>
               <div className="border border-[#E8DCCF] bg-white divide-y divide-[#E8DCCF] font-sans text-[11px]">
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Lens Size</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {product.specs?.lensWidth || 56} mm
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Nose Bridge Length</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {product.specs?.bridgeWidth || 16} mm
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Temple Length</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {product.specs?.templeLength || 140} mm
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Gender</span>
-                  <span className="font-bold text-right text-[#2A1E17] uppercase">
-                    {product.gender || "MEN"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Material</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {formattedMaterial}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Shape</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {formattedShape}
-                  </span>
-                </div>
+                {product.contactLensSpecs ? (
+                  <>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Pack Size</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.contactLensSpecs.packSize || "30 Lenses Pack"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Wearing Schedule</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.contactLensSpecs.wearingSchedule || "Daily Disposable"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Base Curve (BC)</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.contactLensSpecs.baseCurve || "8.6 mm"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Water Content</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.contactLensSpecs.waterContent || "56%"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Material</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.contactLensSpecs.material || product.material || "Silicone Hydrogel"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Lens Size</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.specs?.lensWidth || 56} mm
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Nose Bridge Length</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.specs?.bridgeWidth || 16} mm
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Temple Length</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {product.specs?.templeLength || 140} mm
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Gender</span>
+                      <span className="font-bold text-right text-[#2A1E17] uppercase">
+                        {product.gender || "MEN"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Material</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {formattedMaterial}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 px-3.5 py-2">
+                      <span className="text-stone-500 font-normal">Shape</span>
+                      <span className="font-bold text-right text-[#2A1E17]">
+                        {formattedShape}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="grid grid-cols-2 px-3.5 py-2">
                   <span className="text-stone-500 font-normal">Country of Origin</span>
                   <span className="font-bold text-right text-[#2A1E17]">
                     {countryOfOrigin}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Front Colour</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {product.color || "Gunmetal Silver"} / Dark Grey Lens
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Temple Colour</span>
-                  <span className="font-bold text-right text-[#2A1E17]">
-                    {product.color || "Gunmetal Silver"} / Dark Grey Lens
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 px-3.5 py-2">
-                  <span className="text-stone-500 font-normal">Lens Colour</span>
-                  <span className="font-bold text-right text-[#2A1E17]">Grey</span>
-                </div>
+                {product.packageDimensions && (
+                  <div className="grid grid-cols-2 px-3.5 py-2">
+                    <span className="text-stone-500 font-normal">Package Dimensions</span>
+                    <span className="font-bold text-right text-[#2A1E17]">
+                      {product.packageDimensions.lengthCm}x{product.packageDimensions.breadthCm}x{product.packageDimensions.heightCm} cm ({product.packageDimensions.weightKg} kg)
+                    </span>
+                  </div>
+                )}
 
                 {/* Style Tip Guidance Block */}
                 <div className="px-3.5 py-2.5 bg-[#FAF7F2] text-[11px] text-stone-600 leading-relaxed font-sans">

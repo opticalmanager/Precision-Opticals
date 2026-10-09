@@ -8,9 +8,12 @@ export type FrameShape =
   | 'square'
   | 'geometric'
   | 'oval'
-  | 'wayfarer';
+  | 'wayfarer'
+  | 'hexagon'
+  | 'octagonal'
+  | string;
 
-export type RimType = 'full-rim' | 'half-rim' | 'rimless' | 'semi-rimless';
+export type RimType = 'full-rim' | 'half-rim' | 'rimless' | 'semi-rimless' | string;
 
 export type FrameMaterial =
   | 'titanium'
@@ -21,7 +24,8 @@ export type FrameMaterial =
   | 'horn-gold'
   | 'combination'
   | 'stainless-steel'
-  | 'polymer';
+  | 'polymer'
+  | string;
 
 export type LensProperty =
   | 'polarized'
@@ -39,6 +43,21 @@ export interface ProductVariant {
   inStock?: boolean;
 }
 
+export interface ShippingPackageDimensions {
+  lengthCm: number;
+  breadthCm: number;
+  heightCm: number;
+  weightKg: number;
+}
+
+export interface ContactLensSpecs {
+  packSize?: string;
+  wearingSchedule?: string;
+  baseCurve?: string;
+  waterContent?: string;
+  material?: string;
+}
+
 export interface ProductSpecs {
   lensWidth: number; // e.g. 53mm
   bridgeWidth: number; // e.g. 18mm
@@ -54,7 +73,7 @@ export interface Product {
   subtitle?: string;
   price: number; // In INR
   originalPrice?: number;
-  category: 'sunglasses' | 'eyeglasses' | 'meta-smart' | 'kids';
+  category: 'sunglasses' | 'eyeglasses' | 'contact-lenses' | 'meta-smart' | 'kids' | string;
   gender: GenderCategory;
   shape: FrameShape;
   rimType: RimType;
@@ -72,6 +91,10 @@ export interface Product {
   description: string;
   specs: ProductSpecs;
   variants?: ProductVariant[];
+  colorVariants?: any[];
+  sourceUrl?: string;
+  packageDimensions?: ShippingPackageDimensions;
+  contactLensSpecs?: ContactLensSpecs;
   tryOnEnabled?: boolean;
   tryOnModelUrl?: string;
   tryOnConfig?: import('./tryOn').TryOnConfiguration;

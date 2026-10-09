@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/adminDb";
+import { PRODUCTS } from "@/data/products";
 
 export async function GET(req: NextRequest) {
   try {
@@ -150,11 +151,78 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("Products GET error:", error);
-    return NextResponse.json(
-      { success: false, error: error?.message || "Failed to load products" },
-      { status: 500 }
-    );
+    console.warn("Products GET database offline, serving from local master catalog:", error?.message);
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search")?.trim().toLowerCase() || "";
+    const category = searchParams.get("category")?.toLowerCase() || "";
+    const brand = searchParams.get("brand")?.toLowerCase() || "";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(50, Math.max(5, parseInt(searchParams.get("limit") || "12", 10)));
+
+    let filtered = PRODUCTS;
+    if (search) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(search) ||
+          p.brand?.toLowerCase().includes(search) ||
+          p.id?.toLowerCase().includes(search)
+      );
+    }
+    if (category && category !== "all") {
+      filtered = filtered.filter((p) => p.category?.toLowerCase() === category);
+    }
+    if (brand && brand !== "all") {
+      filtered = filtered.filter((p) => p.brand?.toLowerCase() === brand);
+    }
+
+    const total = filtered.length;
+    const offset = (page - 1) * limit;
+    const paginatedItems = filtered.slice(offset, offset + limit).map((p) => ({
+      id: p.id,
+      slug: p.id,
+      name: p.name,
+      subtitle: p.subtitle,
+      gender: p.gender,
+      shape: p.shape,
+      rim_type: p.rimType,
+      material: p.material,
+      color: p.color,
+      color_hex: p.colorHex,
+      base_price: p.price,
+      original_price: p.originalPrice,
+      is_active: true,
+      is_new_arrival: p.isNewArrival,
+      is_best_seller: p.isBestSeller,
+      is_on_sale: p.isOnSale,
+      try_on_enabled: p.tryOnEnabled,
+      try_on_model_url: p.tryOnModelUrl,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      brand_name: p.brand,
+      brand_slug: p.brand?.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      category_name: p.category,
+      category_slug: p.category,
+      total_variants: p.variants?.length || 1,
+      total_stock: 12,
+      primary_image_url: p.images?.[0] || "",
+    }));
+
+    return NextResponse.json({
+      success: true,
+      products: paginatedItems,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+      counts: {
+        all: PRODUCTS.length,
+        published: PRODUCTS.length,
+        draft: 0,
+        outOfStock: 0,
+      },
+    });
   }
 }
 

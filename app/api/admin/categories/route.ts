@@ -16,11 +16,16 @@ export async function GET() {
       categories: res.rows,
     });
   } catch (error: any) {
-    console.error("Categories GET error:", error);
-    return NextResponse.json(
-      { success: false, error: error?.message || "Failed to load categories" },
-      { status: 500 }
-    );
+    console.warn("Categories GET database offline, returning standard categories:", error?.message);
+    const fallbackCategories = [
+      { id: "cat-eyeglasses", name: "Eyeglasses", slug: "eyeglasses", display_order: 1, is_active: true, product_count: 0 },
+      { id: "cat-sunglasses", name: "Sunglasses", slug: "sunglasses", display_order: 2, is_active: true, product_count: 0 },
+      { id: "cat-contact-lenses", name: "Contact Lenses", slug: "contact-lenses", display_order: 3, is_active: true, product_count: 0 },
+    ];
+    return NextResponse.json({
+      success: true,
+      categories: fallbackCategories,
+    });
   }
 }
 

@@ -36,7 +36,8 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
         product_images(*)
       `)
       .eq("is_active", true)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, 1999);
 
     if (error || !data || data.length === 0) {
       // Fallback to rich static dataset
@@ -89,6 +90,10 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
           frameWidth: 140,
           weight: "20g",
         },
+        packageDimensions: row.package_dimensions || row.specs?.packageDimensions || localMatch?.packageDimensions,
+        contactLensSpecs: row.specs?.contactLensSpecs || localMatch?.contactLensSpecs,
+        colorVariants: row.color_variants || localMatch?.colorVariants,
+        sourceUrl: row.source_url || localMatch?.sourceUrl,
         variants: row.product_variants && row.product_variants.length > 0
           ? row.product_variants.map((v: any) => {
               const variantImgObj = (row.product_images || []).find((img: any) => img.variant_id === v.id);
@@ -145,10 +150,16 @@ export function filterAndSortProducts(
       result = result.filter((p) => p.isNewArrival);
     } else if (cat === "sale") {
       result = result.filter((p) => p.isOnSale || (p.originalPrice && p.originalPrice > p.price));
-    } else if (cat === "contact-lenses" || cat === "contacts") {
-      result = result.filter((p) => (p.category as string) === "contact-lenses");
+    } else if (cat === "contact-lenses" || cat === "contacts" || cat === "contact lenses") {
+      result = result.filter((p) => {
+        const c = p.category?.toLowerCase();
+        return c === "contact-lenses" || c === "contact lenses" || c === "contact lens";
+      });
     } else {
-      result = result.filter((p) => p.category.toLowerCase() === cat);
+      result = result.filter((p) => {
+        const c = p.category?.toLowerCase();
+        return c === cat || c?.replace(/-/g, " ") === cat.replace(/-/g, " ");
+      });
     }
   }
 
@@ -200,7 +211,9 @@ export function filterAndSortProducts(
 
   // 4. Frame Shapes Filter
   if (filterState.shapes && filterState.shapes.length > 0) {
-    result = result.filter((p) => filterState.shapes.includes(p.shape));
+    result = result.filter((p) =>
+      filterState.shapes?.some((s) => s.toLowerCase() === p.shape?.toLowerCase())
+    );
   }
 
   // 5. Rim Types Filter

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, pool } from "@/lib/adminDb";
-import { AKONI_DEMO_PRODUCTS } from "@/data/akoniDemoDataset";
+import { PRODUCTS } from "@/data/products";
 import { invalidateProductsCache } from "@/lib/productsService";
 
 export async function GET() {
@@ -95,8 +95,10 @@ export async function POST() {
 
     let insertedCount = 0;
 
-    for (const item of AKONI_DEMO_PRODUCTS) {
-      const categoryId = item.categorySlug === "eyeglasses" ? defaultEyeglassesId : defaultSunglassesId;
+    for (const item of PRODUCTS) {
+      const categoryId = item.category === "eyeglasses"
+        ? defaultEyeglassesId
+        : (item.category === "contact-lenses" ? (catMap["contact-lenses"] || defaultSunglassesId) : defaultSunglassesId);
 
       // Insert product
       const prodRes = await client.query(
@@ -127,82 +129,88 @@ export async function POST() {
           try_on_enabled
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
-        ) RETURNING id`,
+        ) ON CONFLICT (slug) DO UPDATE
+        SET name = EXCLUDED.name, base_price = EXCLUDED.base_price, specs = EXCLUDED.specs
+        RETURNING id`,
         [
-          item.slug,
-          item.title,
-          "Swiss Precision Eyewear",
+          item.id,
+          item.name,
+          item.subtitle || item.name,
           brandId,
           categoryId,
-          item.gender,
-          item.shape,
-          item.rimType,
-          item.material,
-          item.color,
-          item.colorHex,
+          item.gender || "unisex",
+          item.shape || "rectangle",
+          item.rimType || "full-rim",
+          item.material || "acetate",
+          item.color || "Black",
+          item.colorHex || "#1A1A1A",
           item.price,
-          item.originalPrice,
-          ["anti-reflective", "uv-protection", "scratch-resistant"],
-          JSON.stringify(item.specs),
-          item.description,
+          item.originalPrice || null,
+          item.lensProperties || ["anti-reflective", "uv-protection"],
+          JSON.stringify({ ...item.specs, is_demo: false, packageDimensions: item.packageDimensions, contactLensSpecs: item.contactLensSpecs }),
+          item.description || "",
+          Boolean(item.isNewArrival),
+          Boolean(item.isBestSeller),
+          Boolean(item.isOnSale),
+          Boolean(item.isLimitedEdition),
           true,
-          false,
-          false,
-          false,
-          true,
-          4.9,
-          18,
-          false,
+          item.rating || 4.9,
+          item.reviewCount || 18,
+          Boolean(item.tryOnEnabled),
         ]
       );
 
       const productId = prodRes.rows[0].id;
 
-      // Insert default variant
-      const variantRes = await client.query(
-        `INSERT INTO public.product_variants (
-          product_id,
-          color_name,
-          color_hex,
-          sku,
-          stock_quantity,
-          is_default
-        ) VALUES ($1, $2, $3, $4, $5, true)
-        RETURNING id`,
-        [
-          productId,
-          item.color,
-          item.colorHex,
-          item.sku,
-          item.stockQuantity,
-        ]
-      );
+      // Insert variants and images
+      const variantsToInsert = item.variants && item.variants.length > 0 ? item.variants : [
+        { id: `VAR-${item.id}-0`, colorName: item.color || "Classic", colorHex: item.colorHex || "#1A1A1A", image: item.images?.[0] || "", inStock: true }
+      ];
 
-      const variantId = variantRes.rows[0].id;
-
-      // Insert all available images for this product (full multi-angle gallery)
-      const imagesToInsert = item.images;
-      for (let i = 0; i < imagesToInsert.length; i++) {
-        const imgUrl = imagesToInsert[i];
-        if (!imgUrl) continue;
-        await client.query(
-          `INSERT INTO public.product_images (
+      for (let vIdx = 0; vIdx < variantsToInsert.length; vIdx++) {
+        const v = variantsToInsert[vIdx];
+        const variantRes = await client.query(
+          `INSERT INTO public.product_variants (
             product_id,
-            variant_id,
-            url,
-            alt_text,
-            display_order,
-            is_primary
-          ) VALUES ($1, $2, $3, $4, $5, $6)`,
+            color_name,
+            color_hex,
+            sku,
+            stock_quantity,
+            is_default
+          ) VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING id`,
           [
             productId,
-            variantId,
-            imgUrl,
-            `${item.title} - View ${i + 1}`,
-            i,
-            i === 0,
+            v.colorName || "Classic",
+            v.colorHex || "#1A1A1A",
+            v.id || `SKU-${item.id}-${vIdx}`,
+            12,
+            vIdx === 0,
           ]
         );
+        const variantId = variantRes.rows[0].id;
+
+        const imgUrl = v.image || item.images?.[0];
+        if (imgUrl) {
+          await client.query(
+            `INSERT INTO public.product_images (
+              product_id,
+              variant_id,
+              url,
+              alt_text,
+              display_order,
+              is_primary
+            ) VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              productId,
+              variantId,
+              imgUrl,
+              `${item.name} - ${v.colorName}`,
+              vIdx,
+              vIdx === 0,
+            ]
+          );
+        }
       }
 
       insertedCount++;
@@ -214,7 +222,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       count: insertedCount,
-      message: `Successfully seeded ${insertedCount} Akoni demo products with variants and gallery images.`,
+      message: `Successfully seeded ${insertedCount} catalog products into database.`,
     });
   } catch (error: any) {
     await client.query("ROLLBACK");

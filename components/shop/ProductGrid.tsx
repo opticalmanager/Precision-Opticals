@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Check,
   SearchX,
+  Search,
 } from "lucide-react";
 import {
   Product,
@@ -39,20 +40,106 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 }) => {
   // Accordion sections state
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    category: true,
+    brand: true,
     gender: true,
     shape: true,
-    brand: true,
     rim: false,
     material: false,
+    contactLens: true,
   });
 
+  const [brandSearchQuery, setBrandSearchQuery] = useState("");
+  const [showAllBrands, setShowAllBrands] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Dynamic Brand Counts from Catalog
+  const brandCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      if (p.brand) {
+        counts[p.brand] = (counts[p.brand] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [products]);
+
+  const sortedBrands = useMemo(() => {
+    return Object.keys(brandCounts).sort((a, b) => {
+      const diff = (brandCounts[b] || 0) - (brandCounts[a] || 0);
+      if (diff !== 0) return diff;
+      return a.localeCompare(b);
+    });
+  }, [brandCounts]);
+
+  const filteredBrands = useMemo(() => {
+    if (!brandSearchQuery.trim()) return sortedBrands;
+    return sortedBrands.filter((b) =>
+      b.toLowerCase().includes(brandSearchQuery.toLowerCase().trim())
+    );
+  }, [sortedBrands, brandSearchQuery]);
+
+  const displayedBrands = useMemo(() => {
+    if (showAllBrands || brandSearchQuery.trim()) {
+      return filteredBrands;
+    }
+    return filteredBrands.slice(0, 8);
+  }, [filteredBrands, showAllBrands, brandSearchQuery]);
+
+  // Dynamic Category Counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: products.length,
+      eyeglasses: 0,
+      sunglasses: 0,
+      "contact-lenses": 0,
+    };
+    products.forEach((p) => {
+      const c = (p.category || "").toLowerCase();
+      if (c.includes("contact") || c.includes("lens")) {
+        counts["contact-lenses"] = (counts["contact-lenses"] || 0) + 1;
+      } else if (c.includes("sun")) {
+        counts.sunglasses = (counts.sunglasses || 0) + 1;
+      } else {
+        counts.eyeglasses = (counts.eyeglasses || 0) + 1;
+      }
+    });
+    return counts;
+  }, [products]);
+
+  // Dynamic Shape Counts
+  const shapeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      if (p.shape) {
+        const s = p.shape.toLowerCase();
+        counts[s] = (counts[s] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [products]);
+
+  // Dynamic Gender Counts
+  const genderCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: products.length, men: 0, women: 0, unisex: 0, kids: 0 };
+    products.forEach((p) => {
+      if (p.gender === "men") counts.men = (counts.men || 0) + 1;
+      else if (p.gender === "women") counts.women = (counts.women || 0) + 1;
+      else if (p.gender === "kids") counts.kids = (counts.kids || 0) + 1;
+      else counts.unisex = (counts.unisex || 0) + 1;
+    });
+    return counts;
+  }, [products]);
+
   // Filter Handlers
+  const handleCategorySelect = (catSlug: string) => {
+    onUpdateFilter({ category: catSlug });
+  };
+
   const handleGenderToggle = (g: "all" | GenderCategory) => {
     if (g === "all") {
       onUpdateFilter({ gender: [] });
@@ -66,8 +153,10 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
   const handleShapeToggle = (shape: FrameShape) => {
     const current = filterState.shapes || [];
-    const exists = current.includes(shape);
-    const updated = exists ? current.filter((s) => s !== shape) : [...current, shape];
+    const exists = current.some((s) => s.toLowerCase() === shape.toLowerCase());
+    const updated = exists
+      ? current.filter((s) => s.toLowerCase() !== shape.toLowerCase())
+      : [...current, shape];
     onUpdateFilter({ shapes: updated });
   };
 
@@ -94,33 +183,31 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     onUpdateFilter({ materials: updated });
   };
 
-  // Static options lists matching Figma 106:5939
-  const GENDERS: { label: string; value: "all" | GenderCategory }[] = [
-    { label: "All Silhouettes", value: "all" },
-    { label: "Men's Collection", value: "men" },
-    { label: "Women's Collection", value: "women" },
-    { label: "Kids & Teens", value: "kids" },
+  const CATEGORIES = [
+    { label: "All Collections", value: "all", count: categoryCounts.all },
+    { label: "Eyeglasses", value: "eyeglasses", count: categoryCounts.eyeglasses },
+    { label: "Sunglasses", value: "sunglasses", count: categoryCounts.sunglasses },
+    { label: "Contact Lenses", value: "contact-lenses", count: categoryCounts["contact-lenses"] },
+  ];
+
+  const GENDERS: { label: string; value: "all" | GenderCategory; count: number }[] = [
+    { label: "All Silhouettes", value: "all", count: genderCounts.all },
+    { label: "Men's Collection", value: "men", count: genderCounts.men + genderCounts.unisex },
+    { label: "Women's Collection", value: "women", count: genderCounts.women + genderCounts.unisex },
+    { label: "Unisex Exclusive", value: "unisex", count: genderCounts.unisex },
   ];
 
   const SHAPES: { label: string; value: FrameShape }[] = [
-    { label: "Aviator", value: "aviator" },
-    { label: "Cat Eye", value: "cat-eye" },
     { label: "Rectangle", value: "rectangle" },
-    { label: "Round", value: "round" },
-    { label: "Square", value: "square" },
-    { label: "Geometric", value: "geometric" },
+    { label: "Aviator", value: "aviator" },
     { label: "Wayfarer", value: "wayfarer" },
-  ];
-
-  const BRANDS = [
-    "Cartier",
-    "Tom Ford",
-    "GAST",
-    "Ray-Ban",
-    "Jacques Marie Mage",
-    "Lindberg",
-    "Prada",
-    "Gucci",
+    { label: "Square", value: "square" },
+    { label: "Cat Eye", value: "cat-eye" },
+    { label: "Round", value: "round" },
+    { label: "Geometric", value: "geometric" },
+    { label: "Hexagon", value: "hexagon" },
+    { label: "Octagonal", value: "octagonal" },
+    { label: "Oval", value: "oval" },
   ];
 
   const RIMS: { label: string; value: RimType }[] = [
@@ -130,11 +217,14 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   ];
 
   const MATERIALS: { label: string; value: FrameMaterial }[] = [
-    { label: "Japanese Titanium", value: "titanium" },
     { label: "Italian Block Acetate", value: "acetate" },
-    { label: "18k Gold Plated", value: "18k-gold-plated" },
-    { label: "Lightweight Alloy", value: "metal" },
+    { label: "Titanium Precision", value: "titanium" },
+    { label: "Stainless Metal", value: "metal" },
+    { label: "Silicone Hydrogel", value: "silicone-hydrogel" },
   ];
+
+  const isContactLensCategory =
+    filterState.category === "contact-lenses" || filterState.category === "contacts";
 
   // Active filter count
   const activeFilterCount =
@@ -161,7 +251,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
     if (filterState.onlySale && !filterState.minDiscount) {
       pills.push({
-        label: "Sale / Special Offers",
+        label: "Sale / Offers",
         onRemove: () => onUpdateFilter({ onlySale: false }),
       });
     }
@@ -174,15 +264,16 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     }
 
     if (filterState.category && filterState.category !== "all") {
+      const catLabel = CATEGORIES.find((c) => c.value === filterState.category)?.label || filterState.category;
       pills.push({
-        label: `Category: ${filterState.category.replace("-", " ")}`,
+        label: `Category: ${catLabel}`,
         onRemove: () => onUpdateFilter({ category: "all" }),
       });
     }
 
     filterState.gender?.forEach((g) => {
       pills.push({
-        label: g === "men" ? "Men's" : g === "women" ? "Women's" : "Kids & Teens",
+        label: g === "men" ? "Men's" : g === "women" ? "Women's" : g === "unisex" ? "Unisex" : "Kids",
         onRemove: () => handleGenderToggle(g),
       });
     });
@@ -242,7 +333,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           </button>
 
           <span className="text-xs font-medium text-[#786C62]">
-            Showing <strong className="text-[#2A1E17]">{products.length}</strong> silhouettes
+            Showing <strong className="text-[#2A1E17]">{products.length}</strong> items in atelier
           </span>
         </div>
 
@@ -286,7 +377,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             onClick={onResetFilters}
             className="text-[11px] font-bold text-[#C86A28] hover:text-[#9A4C16] ml-2 flex items-center gap-1 uppercase tracking-wider cursor-pointer"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset All</span>
           </button>
         </div>
@@ -295,7 +386,149 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       {/* 2-Column Main Layout: Sidebar (Desktop) + 4-Column Product Grid */}
       <div className="flex flex-col md:flex-row gap-8 items-start">
         {/* Left Sidebar Filters (Desktop Only) */}
-        <aside className="hidden md:block w-56 lg:w-60 shrink-0 select-none">
+        <aside className="hidden md:block w-56 lg:w-64 shrink-0 select-none">
+          {/* CATEGORY Filter Accordion */}
+          <div className="border-b border-[#E8E1D9] pb-4 mb-4">
+            <button
+              onClick={() => toggleSection("category")}
+              className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
+            >
+              <span>CATEGORY</span>
+              {openSections.category ? (
+                <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+              )}
+            </button>
+            {openSections.category && (
+              <div className="space-y-2 pt-1">
+                {CATEGORIES.map((item) => {
+                  const isChecked =
+                    item.value === "all"
+                      ? !filterState.category || filterState.category === "all"
+                      : filterState.category === item.value;
+                  return (
+                    <label
+                      key={item.value}
+                      onClick={() => handleCategorySelect(item.value)}
+                      className="flex items-center justify-between text-[13px] text-[#333333] hover:text-black cursor-pointer group py-0.5"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-4 h-4 rounded-full flex items-center justify-center transition-all ${
+                            isChecked
+                              ? "bg-[#007AFF] border border-[#007AFF]"
+                              : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
+                          }`}
+                        >
+                          {isChecked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                          {item.label}
+                        </span>
+                      </div>
+                      {item.count > 0 && (
+                        <span className="text-[11px] font-sans text-[#8C7D73] font-medium">
+                          {item.count}
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* LUXURY BRANDS Filter Accordion */}
+          <div className="border-b border-[#E8E1D9] pb-4 mb-4">
+            <button
+              onClick={() => toggleSection("brand")}
+              className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
+            >
+              <div className="flex items-center gap-1.5">
+                <span>LUXURY BRANDS</span>
+                <span className="text-[11px] font-sans font-normal text-[#8C7D73]">
+                  ({sortedBrands.length})
+                </span>
+              </div>
+              {openSections.brand ? (
+                <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+              )}
+            </button>
+            {openSections.brand && (
+              <div className="space-y-2 pt-1">
+                {/* Brand Search Filter Bar */}
+                {sortedBrands.length > 6 && (
+                  <div className="relative mb-2.5">
+                    <Search className="w-3.5 h-3.5 text-[#8C7D73] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search brands..."
+                      value={brandSearchQuery}
+                      onChange={(e) => setBrandSearchQuery(e.target.value)}
+                      className="w-full bg-[#FAF7F2] border border-[#E8E1D9] rounded-md pl-8 pr-2.5 py-1.5 text-xs text-[#2A1E17] placeholder-[#8C7D73] focus:outline-none focus:border-[#C86A28]"
+                    />
+                    {brandSearchQuery && (
+                      <button
+                        onClick={() => setBrandSearchQuery("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8C7D73] hover:text-black"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {displayedBrands.map((brand) => {
+                    const isChecked = Boolean(
+                      filterState.brands?.some((b) => b.toLowerCase() === brand.toLowerCase())
+                    );
+                    const count = brandCounts[brand] || 0;
+                    return (
+                      <label
+                        key={brand}
+                        onClick={() => handleBrandToggle(brand)}
+                        className="flex items-center justify-between text-[13px] text-[#333333] hover:text-black cursor-pointer group py-0.5"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                              isChecked
+                                ? "bg-[#007AFF] border border-[#007AFF]"
+                                : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                          </div>
+                          <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                            {brand}
+                          </span>
+                        </div>
+                        {count > 0 && (
+                          <span className="text-[11px] font-sans text-[#8C7D73] font-medium">
+                            {count}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {filteredBrands.length > 8 && !brandSearchQuery && (
+                  <button
+                    onClick={() => setShowAllBrands(!showAllBrands)}
+                    className="text-[11px] font-semibold text-[#C86A28] hover:text-[#9A4C16] pt-1 block cursor-pointer uppercase tracking-wider"
+                  >
+                    {showAllBrands ? "Show Fewer Brands" : `+ View All ${filteredBrands.length} Brands`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* GENDER Filter Accordion */}
           <div className="border-b border-[#E8E1D9] pb-4 mb-4">
             <button
@@ -310,7 +543,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               )}
             </button>
             {openSections.gender && (
-              <div className="space-y-2.5 pt-1">
+              <div className="space-y-2 pt-1">
                 {GENDERS.map((item) => {
                   const isChecked =
                     item.value === "all"
@@ -320,20 +553,27 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                     <label
                       key={item.value}
                       onClick={() => handleGenderToggle(item.value)}
-                      className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group"
+                      className="flex items-center justify-between text-[13px] text-[#333333] hover:text-black cursor-pointer group py-0.5"
                     >
-                      <div
-                        className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                          isChecked
-                            ? "bg-[#007AFF] border border-[#007AFF]"
-                            : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                            isChecked
+                              ? "bg-[#007AFF] border border-[#007AFF]"
+                              : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                        </div>
+                        <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                          {item.label}
+                        </span>
                       </div>
-                      <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                        {item.label}
-                      </span>
+                      {item.count > 0 && (
+                        <span className="text-[11px] font-sans text-[#8C7D73] font-medium">
+                          {item.count}
+                        </span>
+                      )}
                     </label>
                   );
                 })}
@@ -341,141 +581,111 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             )}
           </div>
 
-          {/* FRAME SHAPE Filter Accordion */}
-          <div className="border-b border-[#E8E1D9] pb-4 mb-4">
-            <button
-              onClick={() => toggleSection("shape")}
-              className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
-            >
-              <span>FRAME SHAPE</span>
-              {openSections.shape ? (
-                <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
-              )}
-            </button>
-            {openSections.shape && (
-              <div className="space-y-2.5 pt-1">
-                {SHAPES.map((shape) => {
-                  const isChecked = Boolean(filterState.shapes?.includes(shape.value));
-                  return (
-                    <label
-                      key={shape.value}
-                      onClick={() => handleShapeToggle(shape.value)}
-                      className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group"
-                    >
-                      <div
-                        className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                          isChecked
-                            ? "bg-[#007AFF] border border-[#007AFF]"
-                            : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
-                        }`}
+          {/* FRAME SHAPE Filter Accordion (Hidden when exclusively viewing Contact Lenses) */}
+          {!isContactLensCategory && (
+            <div className="border-b border-[#E8E1D9] pb-4 mb-4">
+              <button
+                onClick={() => toggleSection("shape")}
+                className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
+              >
+                <span>FRAME SHAPE</span>
+                {openSections.shape ? (
+                  <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+                )}
+              </button>
+              {openSections.shape && (
+                <div className="space-y-2 pt-1">
+                  {SHAPES.map((shape) => {
+                    const isChecked = Boolean(
+                      filterState.shapes?.some((s) => s.toLowerCase() === shape.value.toLowerCase())
+                    );
+                    const count = shapeCounts[shape.value] || 0;
+                    return (
+                      <label
+                        key={shape.value}
+                        onClick={() => handleShapeToggle(shape.value)}
+                        className="flex items-center justify-between text-[13px] text-[#333333] hover:text-black cursor-pointer group py-0.5"
                       >
-                        {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                      </div>
-                      <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                        {shape.label}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* LUXURY BRAND Filter Accordion */}
-          <div className="border-b border-[#E8E1D9] pb-4 mb-4">
-            <button
-              onClick={() => toggleSection("brand")}
-              className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
-            >
-              <span>LUXURY BRAND</span>
-              {openSections.brand ? (
-                <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                              isChecked
+                                ? "bg-[#007AFF] border border-[#007AFF]"
+                                : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                          </div>
+                          <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                            {shape.label}
+                          </span>
+                        </div>
+                        {count > 0 && (
+                          <span className="text-[11px] font-sans text-[#8C7D73] font-medium">
+                            {count}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
               )}
-            </button>
-            {openSections.brand && (
-              <div className="space-y-2.5 pt-1">
-                {BRANDS.map((brand) => {
-                  const isChecked = Boolean(
-                    filterState.brands?.some((b) => b.toLowerCase() === brand.toLowerCase())
-                  );
-                  return (
-                    <label
-                      key={brand}
-                      onClick={() => handleBrandToggle(brand)}
-                      className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group"
-                    >
-                      <div
-                        className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                          isChecked
-                            ? "bg-[#007AFF] border border-[#007AFF]"
-                            : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                      </div>
-                      <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                        {brand}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* RIM CONSTRUCTION Filter Accordion */}
-          <div className="border-b border-[#E8E1D9] pb-4 mb-4">
-            <button
-              onClick={() => toggleSection("rim")}
-              className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
-            >
-              <span>RIM CONSTRUCTION</span>
-              {openSections.rim ? (
-                <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
-              )}
-            </button>
-            {openSections.rim && (
-              <div className="space-y-2.5 pt-1">
-                {RIMS.map((rim) => {
-                  const isChecked = Boolean(filterState.rimTypes?.includes(rim.value));
-                  return (
-                    <label
-                      key={rim.value}
-                      onClick={() => handleRimToggle(rim.value)}
-                      className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group"
-                    >
-                      <div
-                        className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                          isChecked
-                            ? "bg-[#007AFF] border border-[#007AFF]"
-                            : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
-                        }`}
+          {!isContactLensCategory && (
+            <div className="border-b border-[#E8E1D9] pb-4 mb-4">
+              <button
+                onClick={() => toggleSection("rim")}
+                className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
+              >
+                <span>RIM CONSTRUCTION</span>
+                {openSections.rim ? (
+                  <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-[#786C62] group-hover:text-black" />
+                )}
+              </button>
+              {openSections.rim && (
+                <div className="space-y-2 pt-1">
+                  {RIMS.map((rim) => {
+                    const isChecked = Boolean(filterState.rimTypes?.includes(rim.value));
+                    return (
+                      <label
+                        key={rim.value}
+                        onClick={() => handleRimToggle(rim.value)}
+                        className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group py-0.5"
                       >
-                        {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                      </div>
-                      <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                        {rim.label}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                        <div
+                          className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                            isChecked
+                              ? "bg-[#007AFF] border border-[#007AFF]"
+                              : "bg-white border border-[#C4B8AB] group-hover:border-[#786C62]"
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                        </div>
+                        <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                          {rim.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* FRAME MATERIAL Filter Accordion */}
+          {/* MATERIAL Filter Accordion */}
           <div className="border-b border-[#E8E1D9] pb-4 mb-4">
             <button
               onClick={() => toggleSection("material")}
               className="w-full flex items-center justify-between font-serif font-bold uppercase tracking-wider text-[13px] text-[#1A1A1A] mb-3 cursor-pointer group"
             >
-              <span>FRAME MATERIAL</span>
+              <span>MATERIAL</span>
               {openSections.material ? (
                 <ChevronUp className="w-4 h-4 text-[#786C62] group-hover:text-black" />
               ) : (
@@ -483,14 +693,14 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               )}
             </button>
             {openSections.material && (
-              <div className="space-y-2.5 pt-1">
+              <div className="space-y-2 pt-1">
                 {MATERIALS.map((mat) => {
                   const isChecked = Boolean(filterState.materials?.includes(mat.value));
                   return (
                     <label
                       key={mat.value}
                       onClick={() => handleMaterialToggle(mat.value)}
-                      className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group"
+                      className="flex items-center gap-2.5 text-[13px] text-[#333333] hover:text-black cursor-pointer group py-0.5"
                     >
                       <div
                         className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
@@ -501,7 +711,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                       >
                         {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
                       </div>
-                      <span className={isChecked ? "font-medium text-black" : "font-normal"}>
+                      <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
                         {mat.label}
                       </span>
                     </label>
@@ -535,7 +745,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 No Silhouettes Match Your Criteria
               </h3>
               <p className="text-sm font-sans text-[#786C62] leading-relaxed max-w-md mx-auto mb-6">
-                We couldn&apos;t find any optical frames matching your selected filters. Try broadening
+                We couldn&apos;t find any optical items matching your selected filters. Try broadening
                 your search or resetting your filters to discover our full luxury catalog.
               </p>
               <button
@@ -583,67 +793,40 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 </button>
               </div>
 
-              {/* Mobile Gender */}
+              {/* Mobile Category */}
               <div className="mb-6">
                 <h4 className="font-serif font-bold uppercase text-xs tracking-wider text-[#1A1A1A] mb-3">
-                  GENDER
+                  CATEGORY
                 </h4>
-                <div className="space-y-2.5">
-                  {GENDERS.map((item) => {
+                <div className="space-y-2">
+                  {CATEGORIES.map((item) => {
                     const isChecked =
                       item.value === "all"
-                        ? !filterState.gender || filterState.gender.length === 0
-                        : Boolean(filterState.gender?.includes(item.value as GenderCategory));
+                        ? !filterState.category || filterState.category === "all"
+                        : filterState.category === item.value;
                     return (
                       <label
                         key={item.value}
-                        onClick={() => handleGenderToggle(item.value)}
-                        className="flex items-center gap-2.5 text-xs text-[#333333] cursor-pointer"
+                        onClick={() => handleCategorySelect(item.value)}
+                        className="flex items-center justify-between text-xs text-[#333333] cursor-pointer py-0.5"
                       >
-                        <div
-                          className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                            isChecked
-                              ? "bg-[#007AFF] border border-[#007AFF]"
-                              : "bg-white border border-[#C4B8AB]"
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-4 h-4 rounded-full flex items-center justify-center transition-all ${
+                              isChecked
+                                ? "bg-[#007AFF] border border-[#007AFF]"
+                                : "bg-white border border-[#C4B8AB]"
+                            }`}
+                          >
+                            {isChecked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                            {item.label}
+                          </span>
                         </div>
-                        <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                          {item.label}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Mobile Shapes */}
-              <div className="mb-6">
-                <h4 className="font-serif font-bold uppercase text-xs tracking-wider text-[#1A1A1A] mb-3">
-                  FRAME SHAPE
-                </h4>
-                <div className="space-y-2.5">
-                  {SHAPES.map((shape) => {
-                    const isChecked = Boolean(filterState.shapes?.includes(shape.value));
-                    return (
-                      <label
-                        key={shape.value}
-                        onClick={() => handleShapeToggle(shape.value)}
-                        className="flex items-center gap-2.5 text-xs text-[#333333] cursor-pointer"
-                      >
-                        <div
-                          className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                            isChecked
-                              ? "bg-[#007AFF] border border-[#007AFF]"
-                              : "bg-white border border-[#C4B8AB]"
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                        </div>
-                        <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                          {shape.label}
-                        </span>
+                        {item.count > 0 && (
+                          <span className="text-[10px] text-[#8C7D73] font-medium">{item.count}</span>
+                        )}
                       </label>
                     );
                   })}
@@ -653,36 +836,124 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               {/* Mobile Brands */}
               <div className="mb-6">
                 <h4 className="font-serif font-bold uppercase text-xs tracking-wider text-[#1A1A1A] mb-3">
-                  LUXURY BRAND
+                  LUXURY BRANDS ({sortedBrands.length})
                 </h4>
-                <div className="space-y-2.5 max-h-48 overflow-y-auto pr-2">
-                  {BRANDS.map((brand) => {
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                  {sortedBrands.map((brand) => {
                     const isChecked = Boolean(
                       filterState.brands?.some((b) => b.toLowerCase() === brand.toLowerCase())
                     );
+                    const count = brandCounts[brand] || 0;
                     return (
                       <label
                         key={brand}
                         onClick={() => handleBrandToggle(brand)}
-                        className="flex items-center gap-2.5 text-xs text-[#333333] cursor-pointer"
+                        className="flex items-center justify-between text-xs text-[#333333] cursor-pointer py-0.5"
                       >
-                        <div
-                          className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
-                            isChecked
-                              ? "bg-[#007AFF] border border-[#007AFF]"
-                              : "bg-white border border-[#C4B8AB]"
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                              isChecked
+                                ? "bg-[#007AFF] border border-[#007AFF]"
+                                : "bg-white border border-[#C4B8AB]"
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                          </div>
+                          <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                            {brand}
+                          </span>
                         </div>
-                        <span className={isChecked ? "font-medium text-black" : "font-normal"}>
-                          {brand}
-                        </span>
+                        {count > 0 && (
+                          <span className="text-[10px] text-[#8C7D73] font-medium">{count}</span>
+                        )}
                       </label>
                     );
                   })}
                 </div>
               </div>
+
+              {/* Mobile Gender */}
+              <div className="mb-6">
+                <h4 className="font-serif font-bold uppercase text-xs tracking-wider text-[#1A1A1A] mb-3">
+                  GENDER
+                </h4>
+                <div className="space-y-2">
+                  {GENDERS.map((item) => {
+                    const isChecked =
+                      item.value === "all"
+                        ? !filterState.gender || filterState.gender.length === 0
+                        : Boolean(filterState.gender?.includes(item.value as GenderCategory));
+                    return (
+                      <label
+                        key={item.value}
+                        onClick={() => handleGenderToggle(item.value)}
+                        className="flex items-center justify-between text-xs text-[#333333] cursor-pointer py-0.5"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                              isChecked
+                                ? "bg-[#007AFF] border border-[#007AFF]"
+                                : "bg-white border border-[#C4B8AB]"
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                          </div>
+                          <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                            {item.label}
+                          </span>
+                        </div>
+                        {item.count > 0 && (
+                          <span className="text-[10px] text-[#8C7D73] font-medium">{item.count}</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Mobile Shapes */}
+              {!isContactLensCategory && (
+                <div className="mb-6">
+                  <h4 className="font-serif font-bold uppercase text-xs tracking-wider text-[#1A1A1A] mb-3">
+                    FRAME SHAPE
+                  </h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                    {SHAPES.map((shape) => {
+                      const isChecked = Boolean(
+                        filterState.shapes?.some((s) => s.toLowerCase() === shape.value.toLowerCase())
+                      );
+                      const count = shapeCounts[shape.value] || 0;
+                      return (
+                        <label
+                          key={shape.value}
+                          onClick={() => handleShapeToggle(shape.value)}
+                          className="flex items-center justify-between text-xs text-[#333333] cursor-pointer py-0.5"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`w-4 h-4 rounded-[3px] flex items-center justify-center transition-all ${
+                                isChecked
+                                  ? "bg-[#007AFF] border border-[#007AFF]"
+                                  : "bg-white border border-[#C4B8AB]"
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                            </div>
+                            <span className={isChecked ? "font-semibold text-black" : "font-normal"}>
+                              {shape.label}
+                            </span>
+                          </div>
+                          {count > 0 && (
+                            <span className="text-[10px] text-[#8C7D73] font-medium">{count}</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Mobile Actions */}

@@ -43,20 +43,30 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingModel, setUploadingModel] = useState(false);
 
+  // Dynamic Brand & Category Lists
+  const [brandList, setBrandList] = useState(brands);
+  const [categoryList, setCategoryList] = useState(categories);
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [newBrand, setNewBrand] = useState({ name: "", origin: "", tagline: "" });
+  const [newCat, setNewCat] = useState({ name: "", description: "" });
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [creatingCat, setCreatingCat] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     slug: initialData?.slug || "",
     subtitle: initialData?.subtitle || "",
-    brand: initialData?.brand_slug || initialData?.brand_name || (brands[0]?.slug || "cartier"),
-    category: initialData?.category_slug || (categories[0]?.slug || "sunglasses"),
+    brand: initialData?.brand_slug || initialData?.brand_name || (brands[0]?.slug || "ray-ban"),
+    category: initialData?.category_slug || (categories[0]?.slug || "eyeglasses"),
     gender: initialData?.gender || "unisex",
     shape: initialData?.shape || "rectangle",
     rimType: initialData?.rim_type || "rimless",
-    material: initialData?.material || "titanium",
-    color: initialData?.color || "Gold",
-    colorHex: initialData?.color_hex || "#D4AF37",
-    basePrice: initialData?.base_price || 24900,
+    material: initialData?.material || "acetate",
+    color: initialData?.color || "Black",
+    colorHex: initialData?.color_hex || "#1A1A1A",
+    basePrice: initialData?.base_price || 5490,
     originalPrice: initialData?.original_price || "",
     stock: initialData?.total_stock || 12,
     description: initialData?.description || "",
@@ -72,7 +82,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       bridgeWidth: 18,
       templeLength: 145,
       frameWidth: 140,
-      weight: "20g",
+      weight: "22g",
+    },
+    packageDimensions: initialData?.package_dimensions || initialData?.packageDimensions || {
+      lengthCm: 18,
+      breadthCm: 9,
+      heightCm: 7,
+      weightKg: 0.25,
     },
   });
 
@@ -198,6 +214,68 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
   const handleRemoveVariant = (idx: number) => {
     setVariants((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleCreateBrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBrand.name.trim()) {
+      toast.error("Brand name is required");
+      return;
+    }
+    setCreatingBrand(true);
+    try {
+      const res = await fetch("/api/admin/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newBrand),
+      });
+      const data = await res.json();
+      if (data.success && data.brand) {
+        const created = data.brand;
+        setBrandList((prev) => [...prev, created]);
+        setFormData((prev) => ({ ...prev, brand: created.slug }));
+        setShowBrandModal(false);
+        setNewBrand({ name: "", origin: "", tagline: "" });
+        toast.success(`Brand "${created.name}" created and selected`);
+      } else {
+        toast.error("Failed to create brand", { description: data.error });
+      }
+    } catch (err: any) {
+      toast.error("Error creating brand", { description: err.message });
+    } finally {
+      setCreatingBrand(false);
+    }
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCat.name.trim()) {
+      toast.error("Category name is required");
+      return;
+    }
+    setCreatingCat(true);
+    try {
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCat),
+      });
+      const data = await res.json();
+      if (data.success && data.category) {
+        const created = data.category;
+        setCategoryList((prev) => [...prev, created]);
+        setFormData((prev) => ({ ...prev, category: created.slug }));
+        setShowCatModal(false);
+        setNewCat({ name: "", description: "" });
+        toast.success(`Category "${created.name}" created and selected`);
+      } else {
+        toast.error("Failed to create category", { description: data.error });
+      }
+    } catch (err: any) {
+      toast.error("Error creating category", { description: err.message });
+    } finally {
+      setCreatingCat(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -367,15 +445,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">
-                Luxury Brand *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-stone-700">
+                  Luxury Brand *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowBrandModal(true)}
+                  className="text-[11px] font-semibold text-[#C86A28] hover:text-[#9A4C16] flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ New Brand</span>
+                </button>
+              </div>
               <select
                 value={formData.brand}
                 onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                 className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
               >
-                {brands.map((b) => (
+                {brandList.map((b) => (
                   <option key={b.slug} value={b.slug}>
                     {b.name}
                   </option>
@@ -384,15 +472,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">
-                Eyewear Category *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-stone-700">
+                  Category *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowCatModal(true)}
+                  className="text-[11px] font-semibold text-[#C86A28] hover:text-[#9A4C16] flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ New Category</span>
+                </button>
+              </div>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
               >
-                {categories.map((c) => (
+                {categoryList.map((c) => (
                   <option key={c.slug} value={c.slug}>
                     {c.name}
                   </option>
@@ -931,6 +1029,101 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               />
             </div>
           </div>
+
+          {/* Shiprocket Logistics Package Dimensions */}
+          <div className="pt-4 border-t border-[#E8DCCF]">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-1">
+              Shiprocket Logistics & Shipping Dimensions
+            </h3>
+            <p className="text-xs text-stone-500 mb-3">
+              Automated package dimensions sent to Shiprocket API for courier routing and dead-weight calculation.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Length (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.packageDimensions?.lengthCm || 18}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      packageDimensions: {
+                        ...formData.packageDimensions,
+                        lengthCm: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Breadth (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.packageDimensions?.breadthCm || 9}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      packageDimensions: {
+                        ...formData.packageDimensions,
+                        breadthCm: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Height (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.packageDimensions?.heightCm || 7}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      packageDimensions: {
+                        ...formData.packageDimensions,
+                        heightCm: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Dead Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.packageDimensions?.weightKg || 0.25}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      packageDimensions: {
+                        ...formData.packageDimensions,
+                        weightKg: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1025,6 +1218,161 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* INLINE BRAND CREATION MODAL */}
+      {showBrandModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-[#E8DCCF] max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8DCCF]">
+              <h3 className="text-sm font-bold text-[#2A1E17] uppercase tracking-wider">
+                Register New Luxury Brand
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowBrandModal(false)}
+                className="text-stone-400 hover:text-stone-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Brand Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newBrand.name}
+                  onChange={(e) => setNewBrand({ ...newBrand, name: e.target.value })}
+                  placeholder="e.g. Persol, GAST, Oliver Peoples"
+                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Origin (Country / Atelier City)
+                </label>
+                <input
+                  type="text"
+                  value={newBrand.origin}
+                  onChange={(e) => setNewBrand({ ...newBrand, origin: e.target.value })}
+                  placeholder="e.g. Turin, Italy or Japan"
+                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Brand Tagline
+                </label>
+                <input
+                  type="text"
+                  value={newBrand.tagline}
+                  onChange={(e) => setNewBrand({ ...newBrand, tagline: e.target.value })}
+                  placeholder="e.g. Haute Lunetterie & Avant-Garde Optics"
+                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E8DCCF]">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBrandModal(false)}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={creatingBrand}
+                onClick={handleCreateBrand}
+                className="text-xs bg-[#2A1E17] hover:bg-[#C86A28] text-white"
+              >
+                {creatingBrand ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+                <span>Create &amp; Select</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INLINE CATEGORY CREATION MODAL */}
+      {showCatModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-[#E8DCCF] max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8DCCF]">
+              <h3 className="text-sm font-bold text-[#2A1E17] uppercase tracking-wider">
+                Create New Category
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCatModal(false)}
+                className="text-stone-400 hover:text-stone-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCat.name}
+                  onChange={(e) => setNewCat({ ...newCat, name: e.target.value })}
+                  placeholder="e.g. Sports Performance, Clip-On Optics"
+                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Category Description
+                </label>
+                <input
+                  type="text"
+                  value={newCat.description}
+                  onChange={(e) => setNewCat({ ...newCat, description: e.target.value })}
+                  placeholder="e.g. Ergonomic frames for active high-motion lifestyle"
+                  className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] focus:outline-hidden focus:border-[#C86A28]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E8DCCF]">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCatModal(false)}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={creatingCat}
+                onClick={handleCreateCategory}
+                className="text-xs bg-[#2A1E17] hover:bg-[#C86A28] text-white"
+              >
+                {creatingCat ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+                <span>Create &amp; Select</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}

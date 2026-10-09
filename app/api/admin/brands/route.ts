@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/adminDb";
+import { LUXURY_BRANDS } from "@/data/brands";
 
 export async function GET() {
   try {
@@ -16,11 +17,22 @@ export async function GET() {
       brands: res.rows,
     });
   } catch (error: any) {
-    console.error("Brands GET error:", error);
-    return NextResponse.json(
-      { success: false, error: error?.message || "Failed to load brands" },
-      { status: 500 }
-    );
+    console.warn("Brands GET database offline, returning LUXURY_BRANDS:", error?.message);
+    const fallbackBrands = LUXURY_BRANDS.map((b, idx) => ({
+      id: b.id,
+      slug: b.id,
+      name: b.name,
+      origin: b.origin,
+      tagline: b.tagline,
+      description: b.description,
+      is_featured: idx < 6,
+      is_active: true,
+      product_count: 0,
+    }));
+    return NextResponse.json({
+      success: true,
+      brands: fallbackBrands,
+    });
   }
 }
 

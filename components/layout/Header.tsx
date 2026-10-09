@@ -101,25 +101,25 @@ export const Header: React.FC<HeaderProps> = ({
       }
     }
 
-    // Default primary showcase: Lindberg Titanium or latest new arrival
-    const lindbergMatch = newArrivalProducts.find(
-      (p) => p.brand?.toLowerCase().includes('lindberg')
+    // Default primary showcase: Ray-Ban or latest new arrival
+    const defaultNewArrival = newArrivalProducts.find(
+      (p) => p.brand?.toLowerCase().includes('ray-ban')
     ) || newArrivalProducts[0];
 
-    if (lindbergMatch) {
+    if (defaultNewArrival) {
       return {
-        brand: lindbergMatch.brand?.toUpperCase() || 'LINDBERG',
-        title: (lindbergMatch.subtitle || lindbergMatch.name || 'VISIONARY BY DESIGN BLOK TITANIUM').toUpperCase(),
-        image: lindbergMatch.images?.[0] || 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80',
-        url: `/product/${lindbergMatch.id}`,
+        brand: defaultNewArrival.brand?.toUpperCase() || 'RAY-BAN',
+        title: (defaultNewArrival.subtitle || defaultNewArrival.name || 'TIMELESS ICONIC EYEWEAR').toUpperCase(),
+        image: defaultNewArrival.images?.[0] || 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80',
+        url: `/product/${defaultNewArrival.id}`,
       };
     }
 
     return {
-      brand: 'LINDBERG',
-      title: 'VISIONARY BY DESIGN BLOK TITANIUM',
+      brand: 'RAY-BAN',
+      title: 'TIMELESS ICONIC EYEWEAR',
       image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80',
-      url: '/shop?brand=lindberg',
+      url: '/shop?brand=ray-ban',
     };
   }, [activeBrandPreview, newArrivalProducts]);
 
@@ -155,29 +155,29 @@ export const Header: React.FC<HeaderProps> = ({
       };
     }
 
-    const akoniMatch =
+    const defaultSunMatch =
       allCatalogProducts.find(
         (p) =>
-          p.brand?.toLowerCase().includes('akoni') && p.category === 'sunglasses'
-      ) || allCatalogProducts.find((p) => p.brand?.toLowerCase().includes('akoni'));
+          p.brand?.toLowerCase().includes('ray-ban') && p.category === 'sunglasses'
+      ) || allCatalogProducts.find((p) => p.category === 'sunglasses') || allCatalogProducts[0];
 
-    if (akoniMatch) {
+    if (defaultSunMatch) {
       return {
-        brand: akoniMatch.brand.toUpperCase(),
-        title: (akoniMatch.subtitle || akoniMatch.name || 'A STATEMENT OF TRUE CRAFTSMANSHIP').toUpperCase(),
+        brand: defaultSunMatch.brand.toUpperCase(),
+        title: (defaultSunMatch.subtitle || defaultSunMatch.name || 'A STATEMENT OF TRUE CRAFTSMANSHIP').toUpperCase(),
         image:
-          akoniMatch.images?.[0] ||
+          defaultSunMatch.images?.[0] ||
           'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
-        url: `/product/${akoniMatch.id}`,
+        url: `/product/${defaultSunMatch.id}`,
       };
     }
 
     return {
-      brand: 'AKONI',
+      brand: 'RAY-BAN',
       title: 'A STATEMENT OF TRUE CRAFTSMANSHIP',
       image:
         'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
-      url: '/shop?category=sunglasses&brand=akoni',
+      url: '/shop?category=sunglasses&brand=ray-ban',
     };
   }, [activeSunglassesBrand, allCatalogProducts]);
 
