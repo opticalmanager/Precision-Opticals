@@ -44,8 +44,16 @@ async function run() {
     console.log("Vogue sample:", sample.rows);
     if (sample.rows.length > 0) {
       const prodId = sample.rows[0].id;
-      const imgs = await pool.query("SELECT id, url, is_primary FROM public.product_images WHERE product_id = $1 LIMIT 5", [prodId]);
-      console.log("Vogue images:", imgs.rows);
+      const cvRes = await pool.query("SELECT color_variants FROM public.products WHERE id = $1", [prodId]);
+      console.log("DB color_variants count:", cvRes.rows[0].color_variants?.length);
+      console.log("DB color_variants sample:", JSON.stringify(cvRes.rows[0].color_variants, null, 2));
+
+      const pvRes = await pool.query("SELECT id, color_name, sku FROM public.product_variants WHERE product_id = $1", [prodId]);
+      console.log("DB product_variants:", pvRes.rows);
+
+      const imgs = await pool.query("SELECT id, variant_id, url, is_primary FROM public.product_images WHERE product_id = $1", [prodId]);
+      console.log("DB product_images count:", imgs.rows.length);
+      console.log("DB product_images:", imgs.rows);
     }
   } catch (err) {
     console.error("DB check error:", err.message);

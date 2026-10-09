@@ -60,3 +60,31 @@
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Luxury horizontal thumbnail scrollbar */
+.thumbnail-scrollbar {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #C86A28 #FAF3EB;
+  -webkit-overflow-scrolling: touch;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar-track {
+  background: #FAF3EB;
+  border-radius: 9999px;
+  margin: 0 4px;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar-thumb {
+  background: #C86A28;
+  border-radius: 9999px;
+}
+
+.thumbnail-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #A8551E;
+}
+

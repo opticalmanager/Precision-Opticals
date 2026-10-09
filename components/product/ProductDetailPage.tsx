@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   Heart,
   Glasses,
@@ -89,54 +89,101 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     return trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://");
   };
 
+  // Thumbnail container reference for smooth programmatic and gesture scrolling
+  const thumbnailContainerRef = useRef<HTMLDivElement>(null);
+
   // Images list: collect valid image URLs specifically for the selected color variant
   const imagesToDisplay = useMemo(() => {
     const list: string[] = [];
 
-    // 1. Check if the selected color variant has a dedicated gallery
+    const addImg = (url?: string) => {
+      if (!url || !isValidImageUrl(url)) return;
+      const clean = url.trim();
+      if (!list.includes(clean)) {
+        list.push(clean);
+      }
+    };
+
+    // 1. Identify active color variant
     const activeColorVariant = product.colorVariants?.[selectedVariantIdx];
-    if (activeColorVariant?.gallery && activeColorVariant.gallery.length > 0) {
-      activeColorVariant.gallery.forEach((img: string) => {
-        if (isValidImageUrl(img)) {
-          const trimmed = img.trim();
-          if (!list.includes(trimmed)) list.push(trimmed);
-        }
-      });
+    const activeVariant = product.variants?.[selectedVariantIdx];
+    const featuredImg = activeColorVariant?.featuredImage || activeVariant?.image;
+
+    // 2. Add the primary featured image of this variant first
+    if (featuredImg) {
+      addImg(featuredImg);
     }
 
-    // 2. Add variant featuredImage if valid and not already in list
-    const featuredImg = activeColorVariant?.featuredImage || selectedVariant?.image;
-    if (featuredImg && isValidImageUrl(featuredImg)) {
-      const trimmed = featuredImg.trim();
-      if (!list.includes(trimmed)) {
-        list.unshift(trimmed);
+    // 3. Add dedicated gallery images for this color variant
+    if (activeColorVariant?.gallery && Array.isArray(activeColorVariant.gallery)) {
+      activeColorVariant.gallery.forEach(addImg);
+    }
+
+    // 4. Barcode / unique identifier prefix matching:
+    // If variant has only 1 image so far, search product.images for other view angles
+    // sharing the same barcode or unique identifier prefix
+    if (featuredImg && product.images && product.images.length > 0) {
+      const cleanFeatured = featuredImg.split("?")[0];
+      const filename = cleanFeatured.split("/").pop() || "";
+
+      // Match numeric barcode (e.g., 8053672837087 from 8053672837087_2.jpg)
+      const barcodeMatch = filename.match(/(\d{8,14})/);
+      const barcode = barcodeMatch ? barcodeMatch[1] : null;
+
+      if (barcode) {
+        product.images.forEach((img) => {
+          if (isValidImageUrl(img) && img.includes(barcode)) {
+            addImg(img);
+          }
+        });
       }
     }
 
-    // 3. If variant has dedicated images, return exclusively this variant's images!
-    if (list.length > 0) {
-      return list;
+    // 5. If this product only has 1 color variant in total, all product.images belong to it
+    const totalVariants = Math.max(
+      product.colorVariants?.length || 0,
+      product.variants?.length || 0
+    );
+    if (totalVariants <= 1 && product.images && product.images.length > 0) {
+      product.images.forEach(addImg);
     }
 
-    // 4. Fallback to product.images if single variant or no variant-specific gallery
-    if (product.images && product.images.length > 0) {
-      product.images.forEach((img) => {
-        if (isValidImageUrl(img)) {
-          const trimmed = img.trim();
-          if (!list.includes(trimmed)) list.push(trimmed);
-        }
-      });
+    // 6. Absolute safety fallback if no images were found
+    if (list.length === 0) {
+      if (product.images && product.images.length > 0) {
+        product.images.forEach(addImg);
+      }
     }
 
-    // 5. Final fallback if completely empty
     if (list.length === 0) {
       list.push("/images/clean_frame_1.png");
     }
 
     return list;
-  }, [product, selectedVariant, selectedVariantIdx]);
+  }, [product, selectedVariantIdx]);
 
   const currentImage = imagesToDisplay[activeImgIdx] || imagesToDisplay[0];
+
+  // Auto-scroll active thumbnail into view when index changes
+  useEffect(() => {
+    if (thumbnailContainerRef.current) {
+      const activeEl = thumbnailContainerRef.current.children[activeImgIdx] as HTMLElement;
+      if (activeEl) {
+        activeEl.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }
+    }
+  }, [activeImgIdx]);
+
+  // Support horizontal wheel scrolling on desktop
+  const handleThumbnailWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (thumbnailContainerRef.current && Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+      thumbnailContainerRef.current.scrollLeft += e.deltaY;
+    }
+  };
 
   const handlePrevImage = useCallback(() => {
     setActiveImgIdx((prev) => (prev > 0 ? prev - 1 : imagesToDisplay.length - 1));
@@ -322,64 +369,70 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Thumbnail Gallery Strip */}
-            {imagesToDisplay.length > 1 && (
-              <div className="flex items-center justify-center gap-2 overflow-x-auto py-1 px-2 scrollbar-none no-scrollbar">
-                {imagesToDisplay.map((img, idx) => (
-                  <button
-                    key={`${img}-${idx}`}
-                    onClick={() => setActiveImgIdx(idx)}
-                    className={`w-14 h-14 sm:w-16 sm:h-16 rounded-lg border-2 bg-white p-1 transition-all cursor-pointer shrink-0 flex items-center justify-center overflow-hidden ${
-                      activeImgIdx === idx
-                        ? "border-[#C86A28] ring-2 ring-[#C86A28]/20 shadow-xs"
-                        : "border-[#E8DCCF] hover:border-stone-400 opacity-70 hover:opacity-100"
-                    }`}
-                    aria-label={`View angle ${idx + 1}`}
-                  >
-                    <ImageWithFallback
-                      src={img}
-                      alt={`${product.name} angle ${idx + 1}`}
-                      className="w-full h-full object-contain"
-                      fallbackSrc={imagesToDisplay[0] || product.images?.[0] || "/images/clean_frame_1.png"}
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Pagination Controls: Chevrons & Dots */}
-            {imagesToDisplay.length > 1 && (
-              <div className="flex items-center justify-center gap-6 py-0.5 select-none">
-                <button
-                  onClick={handlePrevImage}
-                  className="p-1.5 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
-                  aria-label="Previous view"
+            {/* Thumbnail Gallery Strip & Scrollbar */}
+            {imagesToDisplay.length > 0 && (
+              <div className="w-full flex flex-col items-center space-y-2 mt-1">
+                <div
+                  ref={thumbnailContainerRef}
+                  onWheel={handleThumbnailWheel}
+                  className="flex items-center gap-2 sm:gap-3 overflow-x-auto max-w-full py-2 px-2 thumbnail-scrollbar select-none"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {imagesToDisplay.map((_, idx) => (
+                  {imagesToDisplay.map((img, idx) => (
                     <button
-                      key={idx}
+                      key={`${img}-${idx}`}
                       onClick={() => setActiveImgIdx(idx)}
-                      className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 bg-white p-1.5 transition-all cursor-pointer shrink-0 flex items-center justify-center overflow-hidden ${
                         activeImgIdx === idx
-                          ? "bg-[#2A1E17] scale-110"
-                          : "border border-stone-400 bg-transparent hover:border-stone-700"
+                          ? "border-[#C86A28] ring-2 ring-[#C86A28]/25 shadow-xs scale-105"
+                          : "border-[#E8DCCF] hover:border-stone-400 opacity-70 hover:opacity-100"
                       }`}
-                      aria-label={`Go to slide ${idx + 1}`}
-                    />
+                      aria-label={`View angle ${idx + 1}`}
+                    >
+                      <ImageWithFallback
+                        src={img}
+                        alt={`${product.name} angle ${idx + 1}`}
+                        className="w-full h-full object-contain"
+                        fallbackSrc={imagesToDisplay[0] || product.images?.[0] || "/images/clean_frame_1.png"}
+                      />
+                    </button>
                   ))}
                 </div>
 
-                <button
-                  onClick={handleNextImage}
-                  className="p-1.5 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
-                  aria-label="Next view"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                {/* Pagination Controls: Chevrons & Dots */}
+                {imagesToDisplay.length > 1 && (
+                  <div className="flex items-center justify-center gap-6 py-0.5 select-none">
+                    <button
+                      onClick={handlePrevImage}
+                      className="p-1.5 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
+                      aria-label="Previous view angle"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {imagesToDisplay.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveImgIdx(idx)}
+                          className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                            activeImgIdx === idx
+                              ? "bg-[#2A1E17] scale-125"
+                              : "border border-stone-400 bg-transparent hover:border-stone-700"
+                          }`}
+                          aria-label={`Go to slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleNextImage}
+                      className="p-1.5 text-stone-600 hover:text-[#2A1E17] transition-colors cursor-pointer"
+                      aria-label="Next view angle"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
