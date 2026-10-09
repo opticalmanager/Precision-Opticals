@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "scrape:dayal": "node scripts/scrape_dayal.js",
     "sync:r2": "node scripts/sync_images_to_r2.js"
   },
   "dependencies": {

@@ -25,28 +25,46 @@ export async function getCatalogProducts(forceRefresh = false): Promise<Product[
   }
 
   try {
-    // Attempt to load from Supabase if online
-    const { data, error } = await supabase
-      .from("products")
-      .select(`
-        *,
-        brand:brands(name, slug),
-        category:categories(name, slug),
-        product_variants(*),
-        product_images(*)
-      `)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .range(0, 1999);
+    // Attempt to load from Supabase if online (paginate through 1,000-row PostgREST ceiling)
+    let allRows: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (error || !data || data.length === 0) {
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          *,
+          brand:brands(name, slug),
+          category:categories(name, slug),
+          product_variants(*),
+          product_images(*)
+        `)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (error || !data || data.length === 0) {
+        break;
+      }
+
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        from += pageSize;
+      }
+    }
+
+    if (allRows.length === 0) {
       // Fallback to rich static dataset
       cachedProducts = ALL_FALLBACK_PRODUCTS;
       return ALL_FALLBACK_PRODUCTS;
     }
 
     // Map database rows to frontend Product interface
-    const mapped: Product[] = data.map(mapRowToProduct);
+    const mapped: Product[] = allRows.map(mapRowToProduct);
 
     cachedProducts = mapped;
     return mapped;
@@ -275,13 +293,24 @@ export function filterAndSortProducts(
 
   // 3. Luxury Brands Filter
   if (filterState.brands && filterState.brands.length > 0) {
-    result = result.filter((p) =>
-      filterState.brands.some(
-        (brand) =>
-          p.brand?.toLowerCase().includes(brand.toLowerCase()) ||
-          p.id.toLowerCase().includes(brand.toLowerCase())
-      )
-    );
+    result = result.filter((p) => {
+      const pBrand = (p.brand || '').toLowerCase().trim();
+      return filterState.brands.some((brand) => {
+        const target = brand.toLowerCase().trim();
+        if ((target === 'ray-ban' || target === 'ray ban') && pBrand.includes('meta')) {
+          return false; // Ray-Ban filter must not match Ray-Ban Meta
+        }
+        if (target === 'ray-ban-meta' || target === 'ray ban meta') {
+          return pBrand.includes('meta');
+        }
+        return (
+          pBrand === target ||
+          pBrand.replace(/[^a-z0-9]+/g, '-') === target ||
+          pBrand.includes(target) ||
+          p.id.toLowerCase().includes(target)
+        );
+      });
+    });
   }
 
   // 4. Frame Shapes Filter
@@ -293,7 +322,16 @@ export function filterAndSortProducts(
 
   // 5. Rim Types Filter
   if (filterState.rimTypes && filterState.rimTypes.length > 0) {
-    result = result.filter((p) => filterState.rimTypes.includes(p.rimType));
+    result = result.filter((p) => {
+      const r = (p.rimType || '').toLowerCase().replace(/[\s_]+/g, '-');
+      return filterState.rimTypes.some((targetRim) => {
+        const normTarget = targetRim.toLowerCase().replace(/[\s_]+/g, '-');
+        if (normTarget === 'half-rim' || normTarget === 'semi-rimless') {
+          return r === 'half-rim' || r === 'semi-rimless';
+        }
+        return r === normTarget;
+      });
+    });
   }
 
   // 6. Materials Filter

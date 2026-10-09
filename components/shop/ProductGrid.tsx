@@ -23,6 +23,7 @@ import { ProductCard } from "./ProductCard";
 
 interface ProductGridProps {
   products: Product[];
+  allProducts?: Product[];
   filterState: FilterState;
   onUpdateFilter: (updated: Partial<FilterState>) => void;
   onResetFilters: () => void;
@@ -32,6 +33,7 @@ interface ProductGridProps {
 
 export const ProductGrid: React.FC<ProductGridProps> = ({
   products,
+  allProducts,
   filterState,
   onUpdateFilter,
   onResetFilters,
@@ -50,24 +52,48 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   });
 
   const [brandSearchQuery, setBrandSearchQuery] = useState("");
-  const [showAllBrands, setShowAllBrands] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Dynamic Brand Counts from Catalog
+  // Master catalog pool for filter counts to ensure filters never vanish when one is selected
+  const catalogPool = allProducts && allProducts.length > 0 ? allProducts : products;
+
+  // Filter pool scoped by active category
+  const categoryScopedPool = useMemo(() => {
+    if (!filterState.category || filterState.category === "all") {
+      return catalogPool;
+    }
+    const cat = filterState.category.toLowerCase();
+    if (cat === "sunglasses") return catalogPool.filter((p) => p.category === "sunglasses");
+    if (cat === "eyeglasses") return catalogPool.filter((p) => p.category === "eyeglasses");
+    if (cat === "meta-smart" || cat === "smart-glasses") return catalogPool.filter((p) => p.category === "meta-smart");
+    if (cat === "contact-lenses" || cat === "contacts" || cat === "contact lenses") {
+      return catalogPool.filter((p) => {
+        const c = p.category?.toLowerCase();
+        return c === "contact-lenses" || c === "contact lenses" || c === "contact lens";
+      });
+    }
+    if (cat === "kids") return catalogPool.filter((p) => p.category === "kids" || p.gender === "kids");
+    if (cat === "new" || cat === "new-arrivals") return catalogPool.filter((p) => p.isNewArrival);
+    if (cat === "sale") return catalogPool.filter((p) => p.isOnSale || (p.originalPrice && p.originalPrice > p.price));
+    return catalogPool;
+  }, [catalogPool, filterState.category]);
+
+  // Dynamic Brand Counts from Category Scoped Catalog
   const brandCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    products.forEach((p) => {
+    categoryScopedPool.forEach((p) => {
       if (p.brand) {
         counts[p.brand] = (counts[p.brand] || 0) + 1;
       }
     });
     return counts;
-  }, [products]);
+  }, [categoryScopedPool]);
 
+  // All available brands dynamically sorted by count descending, then alphabetically
   const sortedBrands = useMemo(() => {
     return Object.keys(brandCounts).sort((a, b) => {
       const diff = (brandCounts[b] || 0) - (brandCounts[a] || 0);
@@ -76,6 +102,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     });
   }, [brandCounts]);
 
+  // Instant brand search filtering
   const filteredBrands = useMemo(() => {
     if (!brandSearchQuery.trim()) return sortedBrands;
     return sortedBrands.filter((b) =>
@@ -83,24 +110,20 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     );
   }, [sortedBrands, brandSearchQuery]);
 
-  const displayedBrands = useMemo(() => {
-    if (showAllBrands || brandSearchQuery.trim()) {
-      return filteredBrands;
-    }
-    return filteredBrands.slice(0, 8);
-  }, [filteredBrands, showAllBrands, brandSearchQuery]);
-
   // Dynamic Category Counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      all: products.length,
+      all: catalogPool.length,
       eyeglasses: 0,
       sunglasses: 0,
+      "meta-smart": 0,
       "contact-lenses": 0,
     };
-    products.forEach((p) => {
+    catalogPool.forEach((p) => {
       const c = (p.category || "").toLowerCase();
-      if (c.includes("contact") || c.includes("lens")) {
+      if (c.includes("meta") || c.includes("smart")) {
+        counts["meta-smart"] = (counts["meta-smart"] || 0) + 1;
+      } else if (c.includes("contact") || c.includes("lens")) {
         counts["contact-lenses"] = (counts["contact-lenses"] || 0) + 1;
       } else if (c.includes("sun")) {
         counts.sunglasses = (counts.sunglasses || 0) + 1;
@@ -109,31 +132,31 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       }
     });
     return counts;
-  }, [products]);
+  }, [catalogPool]);
 
   // Dynamic Shape Counts
   const shapeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    products.forEach((p) => {
+    categoryScopedPool.forEach((p) => {
       if (p.shape) {
         const s = p.shape.toLowerCase();
         counts[s] = (counts[s] || 0) + 1;
       }
     });
     return counts;
-  }, [products]);
+  }, [categoryScopedPool]);
 
   // Dynamic Gender Counts
   const genderCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: products.length, men: 0, women: 0, unisex: 0, kids: 0 };
-    products.forEach((p) => {
+    const counts: Record<string, number> = { all: categoryScopedPool.length, men: 0, women: 0, unisex: 0, kids: 0 };
+    categoryScopedPool.forEach((p) => {
       if (p.gender === "men") counts.men = (counts.men || 0) + 1;
       else if (p.gender === "women") counts.women = (counts.women || 0) + 1;
       else if (p.gender === "kids") counts.kids = (counts.kids || 0) + 1;
       else counts.unisex = (counts.unisex || 0) + 1;
     });
     return counts;
-  }, [products]);
+  }, [categoryScopedPool]);
 
   // Filter Handlers
   const handleCategorySelect = (catSlug: string) => {
@@ -187,6 +210,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     { label: "All Collections", value: "all", count: categoryCounts.all },
     { label: "Eyeglasses", value: "eyeglasses", count: categoryCounts.eyeglasses },
     { label: "Sunglasses", value: "sunglasses", count: categoryCounts.sunglasses },
+    { label: "Smart Glasses", value: "meta-smart", count: categoryCounts["meta-smart"] || 0 },
     { label: "Contact Lenses", value: "contact-lenses", count: categoryCounts["contact-lenses"] },
   ];
 
@@ -481,8 +505,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                   </div>
                 )}
 
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {displayedBrands.map((brand) => {
+                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                  {filteredBrands.map((brand) => {
                     const isChecked = Boolean(
                       filterState.brands?.some((b) => b.toLowerCase() === brand.toLowerCase())
                     );
@@ -516,15 +540,6 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                     );
                   })}
                 </div>
-
-                {filteredBrands.length > 8 && !brandSearchQuery && (
-                  <button
-                    onClick={() => setShowAllBrands(!showAllBrands)}
-                    className="text-[11px] font-semibold text-[#C86A28] hover:text-[#9A4C16] pt-1 block cursor-pointer uppercase tracking-wider"
-                  >
-                    {showAllBrands ? "Show Fewer Brands" : `+ View All ${filteredBrands.length} Brands`}
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -838,8 +853,28 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 <h4 className="font-serif font-bold uppercase text-xs tracking-wider text-[#1A1A1A] mb-3">
                   LUXURY BRANDS ({sortedBrands.length})
                 </h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                  {sortedBrands.map((brand) => {
+                {sortedBrands.length > 5 && (
+                  <div className="relative mb-2.5">
+                    <Search className="w-3.5 h-3.5 text-[#8C7D73] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search brands..."
+                      value={brandSearchQuery}
+                      onChange={(e) => setBrandSearchQuery(e.target.value)}
+                      className="w-full bg-[#FAF7F2] border border-[#E8E1D9] rounded-md pl-8 pr-2.5 py-1.5 text-xs text-[#2A1E17] placeholder-[#8C7D73] focus:outline-none focus:border-[#C86A28]"
+                    />
+                    {brandSearchQuery && (
+                      <button
+                        onClick={() => setBrandSearchQuery("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8C7D73] hover:text-black"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-2">
+                  {filteredBrands.map((brand) => {
                     const isChecked = Boolean(
                       filterState.brands?.some((b) => b.toLowerCase() === brand.toLowerCase())
                     );

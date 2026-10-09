@@ -19,8 +19,9 @@ function normalizeShape(rawShape: string): FrameShape {
   return s.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function normalizeCategory(rawCat: string, rawType?: string): 'sunglasses' | 'eyeglasses' | 'contact-lenses' {
+function normalizeCategory(rawCat: string, rawType?: string): 'sunglasses' | 'eyeglasses' | 'contact-lenses' | 'meta-smart' {
   const c = (rawCat || rawType || '').toLowerCase();
+  if (c.includes('meta') || c.includes('smart')) return 'meta-smart';
   if (c.includes('contact') || c.includes('lens')) return 'contact-lenses';
   if (c.includes('sun')) return 'sunglasses';
   return 'eyeglasses';
@@ -28,7 +29,7 @@ function normalizeCategory(rawCat: string, rawType?: string): 'sunglasses' | 'ey
 
 /**
  * Precision Optics - Active Fallback & Master Catalog
- * Cleanly mapped from the 864 live scraped designer eyewear & contact lens products.
+ * Cleanly mapped from the 902 authentic scraped & curated designer eyewear & contact lens products.
  */
 export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx) => {
   const category = normalizeCategory(item.category, item.type);
@@ -68,7 +69,7 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
     category,
     gender: (item.gender || 'unisex') as GenderCategory,
     shape: normalizeShape(item.shape),
-    rimType: isContactLens ? 'contact-lens' : (item.rimType || 'full-rim'),
+    rimType: isContactLens ? 'rimless' : (item.rimType || 'full-rim'),
     material: item.material || (isContactLens ? 'silicone-hydrogel' : 'acetate'),
     color: variants[0]?.colorName || (isContactLens ? 'Clear' : 'Black'),
     colorHex: variants[0]?.colorHex || '#1A1A1A',
@@ -89,6 +90,11 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
       templeLength: item.measurements?.templeLength || (isContactLens ? 0 : 145),
       frameWidth: isContactLens ? 0 : 140,
       weight: item.measurements?.weight || (isContactLens ? '0.08g' : '22g'),
+      countryOfOrigin: item.specs?.countryOfOrigin,
+      frontColor: item.specs?.frontColor,
+      templeColor: item.specs?.templeColor,
+      lensColor: item.specs?.lensColor,
+      styleTip: item.specs?.styleTip,
     },
     variants,
     colorVariants: (item.colorVariants || []).map((cv: any) => ({

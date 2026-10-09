@@ -250,6 +250,7 @@ function ShopPageContent() {
         {/* Product Catalog Grid */}
         <ProductGrid
           products={filteredProducts}
+          allProducts={products}
           filterState={filterState}
           onUpdateFilter={handleUpdateFilter}
           onResetFilters={handleResetFilters}

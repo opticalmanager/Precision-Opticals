@@ -819,12 +819,12 @@ export const Header: React.FC<HeaderProps> = ({
                         type="button"
                         onClick={() => {
                           handleNavClick('meta-smart', 'shop');
-                          router.push('/shop?category=meta-smart&brand=ray-ban');
+                          router.push('/shop?category=meta-smart&brand=ray-ban-meta');
                           setHoveredMenu(null);
                         }}
                         className="w-full text-left text-stone-800 hover:text-[#C86A28] font-medium transition-colors cursor-pointer py-1.5 px-2 rounded-lg hover:bg-[#F2E8DC] block"
                       >
-                        Ray-ban X Meta
+                        Ray-Ban Meta
                       </button>
                     </li>
                     <li>

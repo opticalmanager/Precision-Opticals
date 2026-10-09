@@ -277,6 +277,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     ? product.shape.charAt(0).toUpperCase() + product.shape.slice(1)
     : "Aviator";
 
+  const formattedRimType = useMemo(() => {
+    if (product.category === 'contact-lenses') return null;
+    const r = (product.rimType || '').toLowerCase().replace(/[\s_]+/g, '-');
+    if (r.includes('half') || r.includes('semi')) return 'Half Rim';
+    if (r.includes('less') || r.includes('no-rim')) return 'Rimless';
+    return 'Full Rim';
+  }, [product.rimType, product.category]);
+
   const countryOfOrigin =
     product.brand.toLowerCase() === "cartier" || product.brand.toLowerCase() === "lindberg"
       ? "Japan / France"
@@ -765,6 +773,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         {product.specs?.templeLength || 140} mm
                       </span>
                     </div>
+                    {formattedRimType && (
+                      <div className="grid grid-cols-2 px-3.5 py-2">
+                        <span className="text-stone-500 font-normal">Rim Construction</span>
+                        <span className="font-bold text-right text-[#2A1E17]">
+                          {formattedRimType}
+                        </span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 px-3.5 py-2">
                       <span className="text-stone-500 font-normal">Gender</span>
                       <span className="font-bold text-right text-[#2A1E17] uppercase">
@@ -788,9 +804,33 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="grid grid-cols-2 px-3.5 py-2">
                   <span className="text-stone-500 font-normal">Country of Origin</span>
                   <span className="font-bold text-right text-[#2A1E17]">
-                    {countryOfOrigin}
+                    {product.specs?.countryOfOrigin || countryOfOrigin}
                   </span>
                 </div>
+                {product.specs?.frontColor && (
+                  <div className="grid grid-cols-2 px-3.5 py-2">
+                    <span className="text-stone-500 font-normal">Front Colour</span>
+                    <span className="font-bold text-right text-[#2A1E17]">
+                      {product.specs.frontColor}
+                    </span>
+                  </div>
+                )}
+                {product.specs?.templeColor && (
+                  <div className="grid grid-cols-2 px-3.5 py-2">
+                    <span className="text-stone-500 font-normal">Temple Colour</span>
+                    <span className="font-bold text-right text-[#2A1E17]">
+                      {product.specs.templeColor}
+                    </span>
+                  </div>
+                )}
+                {product.specs?.lensColor && (
+                  <div className="grid grid-cols-2 px-3.5 py-2">
+                    <span className="text-stone-500 font-normal">Lens Tint / Colour</span>
+                    <span className="font-bold text-right text-[#2A1E17]">
+                      {product.specs.lensColor}
+                    </span>
+                  </div>
+                )}
                 {product.packageDimensions && (
                   <div className="grid grid-cols-2 px-3.5 py-2">
                     <span className="text-stone-500 font-normal">Package Dimensions</span>
@@ -803,16 +843,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 {/* Style Tip Guidance Block */}
                 <div className="px-3.5 py-2.5 bg-[#FAF7F2] text-[11px] text-stone-600 leading-relaxed font-sans">
                   <span className="font-bold text-[#2A1E17]">Style Tip: </span>
-                  This shape is best suited for an{" "}
-                  {product.shape === "aviator"
-                    ? "oval or round"
-                    : product.shape === "round"
-                    ? "angular or square"
-                    : product.shape === "cat-eye"
-                    ? "oval or diamond"
-                    : "oval or round"}{" "}
-                  face while it goes well with most face shapes. To learn more, please refer to our
-                  shape and style guide.
+                  {product.specs?.styleTip ? (
+                    <span>{product.specs.styleTip}</span>
+                  ) : (
+                    <span>
+                      This shape is best suited for an{" "}
+                      {product.shape === "aviator"
+                        ? "oval or round"
+                        : product.shape === "round"
+                        ? "angular or square"
+                        : product.shape === "cat-eye"
+                        ? "oval or diamond"
+                        : "oval or round"}{" "}
+                      face while it goes well with most face shapes. To learn more, please refer to our
+                      shape and style guide.
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

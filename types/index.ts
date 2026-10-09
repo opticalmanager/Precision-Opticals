@@ -64,6 +64,11 @@ export interface ProductSpecs {
   templeLength: number; // e.g. 145mm
   frameWidth: number; // e.g. 140mm
   weight?: string;
+  countryOfOrigin?: string;
+  frontColor?: string;
+  templeColor?: string;
+  lensColor?: string;
+  styleTip?: string;
 }
 
 export interface Product {
