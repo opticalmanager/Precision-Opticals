@@ -2,7 +2,20 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, ShieldCheck, Mail, Phone, ArrowRight, RotateCcw, Lock, Check } from "lucide-react";
+import {
+  X,
+  ShieldCheck,
+  Mail,
+  Phone,
+  ArrowRight,
+  RotateCcw,
+  Lock,
+  Check,
+  MessageSquare,
+  Smartphone,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -39,10 +52,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [name, setName] = useState(user.name || "");
 
   const [isOtpSent, setIsOtpSent] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const [resendTimer, setResendTimer] = useState(30);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [activeChannel, setActiveChannel] = useState<"whatsapp" | "sms">("whatsapp");
+  const [resendTimer, setResendTimer] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoadingOtp, setIsLoadingOtp] = useState(false);
+  const [isSendingFallback, setIsSendingFallback] = useState(false);
 
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -69,7 +84,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isModalVisible) return null;
 
-  const handleSendOtp = async (e?: React.FormEvent) => {
+  const handleSendOtp = async (channelPreference: "whatsapp" | "sms" = "whatsapp", e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (mode === "phone") {
@@ -80,23 +95,55 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       setIsLoadingOtp(true);
       try {
-        await fetch("/api/auth/send-otp", {
+        const res = await fetch("/api/auth/send-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: cleanPhone, mode: "phone" }),
+          body: JSON.stringify({
+            phone: cleanPhone,
+            channel: channelPreference,
+          }),
         });
-      } catch (err) {
-        console.warn("send-otp error:", err);
-      } finally {
-        setIsLoadingOtp(false);
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          toast.error("Unable to send verification code", {
+            description: data.error || "Please check your mobile number and try again.",
+          });
+          if (data.cooldownRemaining) {
+            setResendTimer(data.cooldownRemaining);
+          }
+          return;
+        }
+
+        setActiveChannel(data.channel || channelPreference);
         setIsOtpSent(true);
-        setResendTimer(30);
-        toast.success("Verification code sent!", {
-          description: `4-digit OTP sent to +91 ${cleanPhone}. (Use demo code: 1234)`,
-        });
+        setOtp(["", "", "", "", "", ""]);
+        setResendTimer(data.cooldown || 60);
+
+        if (data.fallbackUsed) {
+          toast.info("WhatsApp delivery unavailable", {
+            description: `Verification code dispatched via SMS fallback to +91 ${cleanPhone.slice(-10)}.`,
+          });
+        } else if (data.channel === "whatsapp") {
+          toast.success("WhatsApp verification code sent", {
+            description: `Check your WhatsApp for the 6-digit atelier code sent to +91 ${cleanPhone.slice(-10)}.`,
+          });
+        } else {
+          toast.success("SMS verification code sent", {
+            description: `6-digit code dispatched to +91 ${cleanPhone.slice(-10)}.`,
+          });
+        }
+
         setTimeout(() => {
           otpInputsRef.current[0]?.focus();
         }, 150);
+      } catch (err: any) {
+        toast.error("Network error sending verification code", {
+          description: err?.message || "Please check your connection.",
+        });
+      } finally {
+        setIsLoadingOtp(false);
       }
     } else {
       if (!email || !email.includes("@")) {
@@ -105,43 +152,95 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       setIsLoadingOtp(true);
       try {
-        await fetch("/api/auth/send-otp", {
+        const res = await fetch("/api/auth/send-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, mode: "email" }),
         });
-      } catch (err) {
-        console.warn("send-otp error:", err);
-      } finally {
-        setIsLoadingOtp(false);
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          toast.error(data.error || "Failed to send code");
+          return;
+        }
         setIsOtpSent(true);
-        setResendTimer(30);
+        setResendTimer(60);
         toast.success("Verification code sent!", {
-          description: `4-digit OTP sent to ${email}. (Use demo code: 1234)`,
+          description: `Code sent to ${email}`,
         });
         setTimeout(() => {
           otpInputsRef.current[0]?.focus();
         }, 150);
+      } catch (err: any) {
+        toast.error("Failed to send verification code");
+      } finally {
+        setIsLoadingOtp(false);
       }
     }
   };
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      value = value.slice(-1);
+  const handleSendSmsFallback = async () => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    setIsSendingFallback(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone, channel: "sms" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Failed to deliver SMS verification code");
+        if (data.cooldownRemaining) {
+          setResendTimer(data.cooldownRemaining);
+        }
+        return;
+      }
+      setActiveChannel("sms");
+      setResendTimer(data.cooldown || 60);
+      toast.success("SMS verification code dispatched", {
+        description: `6-digit OTP sent via SMS to +91 ${cleanPhone.slice(-10)}`,
+      });
+    } catch (err: any) {
+      toast.error("Unable to connect to SMS gateway");
+    } finally {
+      setIsSendingFallback(false);
     }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    const cleaned = value.replace(/\D/g, "");
+
+    // Multi-digit paste or autofill
+    if (cleaned.length > 1) {
+      const digits = cleaned.slice(0, 6).split("");
+      const newOtp = [...otp];
+      for (let i = 0; i < digits.length; i++) {
+        newOtp[i] = digits[i];
+      }
+      setOtp(newOtp);
+      if (digits.length === 6) {
+        verifyOtp(newOtp.join(""));
+      } else {
+        otpInputsRef.current[Math.min(digits.length, 5)]?.focus();
+      }
+      return;
+    }
+
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = cleaned;
     setOtp(newOtp);
 
     // Auto focus next input
-    if (value && index < 3) {
+    if (cleaned && index < 5) {
       otpInputsRef.current[index + 1]?.focus();
     }
 
-    // Auto verify when 4 digits are entered
-    if (newOtp.every((digit) => digit !== "")) {
-      verifyOtp(newOtp.join(""));
+    // Auto verify when all 6 digits are entered
+    if (cleaned && index === 5) {
+      const full = newOtp.join("");
+      if (full.length === 6) {
+        verifyOtp(full);
+      }
     }
   };
 
@@ -151,46 +250,68 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+
+    const digits = pasted.split("");
+    const newOtp = [...otp];
+    for (let i = 0; i < digits.length; i++) {
+      newOtp[i] = digits[i];
+    }
+    setOtp(newOtp);
+
+    if (pasted.length === 6) {
+      verifyOtp(pasted);
+    } else {
+      otpInputsRef.current[Math.min(pasted.length, 5)]?.focus();
+    }
+  };
+
   const verifyOtp = async (codeString?: string) => {
-    const fullCode = codeString || otp.join("");
-    if (fullCode.length !== 4) {
-      toast.error("Please enter all 4 digits of the OTP");
+    const fullCode = (codeString || otp.join("")).trim();
+    if (fullCode.length !== 6) {
+      toast.error("Please enter the full 6-digit verification code");
       return;
     }
 
     setIsVerifying(true);
     try {
+      const cleanPhone = phone.replace(/\D/g, "");
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone,
+          phone: cleanPhone,
           email,
           otp: fullCode,
           mode,
           name: name || undefined,
         }),
       });
+
       const data = await res.json();
+
       if (!res.ok || !data.success) {
-        toast.error(data.error || "Invalid verification code. Use demo code 1234.");
+        toast.error("Verification failed", {
+          description: data.error || "Invalid code. Please check the code and try again.",
+        });
         setIsVerifying(false);
         return;
       }
-    } catch (err) {
-      console.warn("verify-otp error:", err);
-    }
 
-    setTimeout(() => {
-      setIsVerifying(false);
+      // Authentication succeeded
       if (mode === "phone") {
-        loginWithPhone(phone, name || undefined);
+        loginWithPhone(cleanPhone, data.user, data.orders);
       } else {
         loginWithEmail(email, name || undefined);
       }
-      toast.success("Welcome to Precision Optics", {
-        description: `Signed in as ${name || (mode === "phone" ? `+91 ${phone}` : email)}`,
+
+      toast.success("Welcome to Precision Optics Atelier", {
+        description: `Signed in as ${data.user?.name || `+91 ${cleanPhone.slice(-10)}`}`,
       });
+
       handleClose();
 
       if (onSuccess) {
@@ -198,7 +319,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else if (targetReturnUrl) {
         router.push(targetReturnUrl);
       }
-    }, 400);
+    } catch (err: any) {
+      console.warn("verify-otp error:", err);
+      toast.error("Connection error during verification. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -225,14 +351,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Modal Title */}
         <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 tracking-tight mb-2">
-          {mode === "phone" ? "Sign In with Mobile OTP" : "Sign In with Email"}
+          {mode === "phone" ? "Sign In with Mobile" : "Sign In with Email"}
         </h2>
         <p className="text-xs text-stone-500 mb-6 font-normal">
-          Access your bespoke order history, certified lens prescriptions, and atelier privileges.
+          Instant passwordless access via WhatsApp OTP. Access your bespoke orders, Zeiss lens prescriptions, and atelier privileges.
         </p>
 
         {!isOtpSent ? (
-          <form onSubmit={handleSendOtp} className="space-y-4">
+          <form onSubmit={(e) => handleSendOtp("whatsapp", e)} className="space-y-4">
             {/* Optional Full Name Input for Personalization */}
             <div className="border border-[#E8DCCF] rounded-xl px-4 py-2 focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white relative">
               <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block">
@@ -251,12 +377,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div>
                 {/* Phone Input Box matching Figma Reference */}
                 <div className="flex items-center border border-[#E8DCCF] rounded-xl overflow-hidden focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white">
-                  <div className="px-4 py-3 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none">
-                    +91
+                  <div className="px-4 py-3 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none flex items-center gap-1.5">
+                    <span>+91</span>
                   </div>
                   <div className="flex-1 px-3.5 py-1.5 flex flex-col justify-center relative">
                     <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500">
-                      PHONE NUMBER
+                      MOBILE NUMBER
                     </label>
                     <input
                       type="tel"
@@ -264,7 +390,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       maxLength={10}
                       onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                       placeholder="98100 12345"
-                      className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal"
+                      className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal font-mono"
                       autoFocus
                     />
                     {phone && (
@@ -278,9 +404,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     )}
                   </div>
                 </div>
-                <p className="text-[11px] text-stone-500 mt-2 font-normal">
-                  We will send an SMS with a 4-digit verification code to this mobile number.
-                </p>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Primary verification code delivered instantly to WhatsApp</span>
+                </div>
               </div>
             ) : (
               <div>
@@ -308,7 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   )}
                 </div>
                 <p className="text-[11px] text-stone-500 mt-2 font-normal">
-                  We will send a 4-digit verification code to your email inbox.
+                  We will send a 6-digit verification code to your email inbox.
                 </p>
               </div>
             )}
@@ -322,12 +450,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               >
                 {isLoadingOtp ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     Sending...
                   </span>
                 ) : (
                   <>
-                    <span>Get OTP</span>
+                    <span>Get WhatsApp OTP</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -348,7 +476,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 ) : (
                   <>
                     <Phone className="w-3.5 h-3.5 text-stone-600" />
-                    <span>Use Phone</span>
+                    <span>Use Mobile</span>
                   </>
                 )}
               </button>
@@ -359,16 +487,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="space-y-5">
             <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-2xl p-3.5 flex items-center justify-between">
               <div>
-                <span className="text-[11px] text-stone-500 block">Verification code sent to</span>
-                <span className="font-bold text-stone-900 text-sm">
-                  {mode === "phone" ? `+91 ${phone}` : email}
+                <span className="text-[11px] text-stone-500 block">
+                  {activeChannel === "whatsapp"
+                    ? "WhatsApp verification sent to"
+                    : "SMS verification sent to"}
+                </span>
+                <span className="font-bold text-stone-900 text-sm font-mono flex items-center gap-1.5 mt-0.5">
+                  {activeChannel === "whatsapp" ? (
+                    <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      WhatsApp
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                      SMS
+                    </span>
+                  )}
+                  <span>{mode === "phone" ? `+91 ${phone}` : email}</span>
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setIsOtpSent(false);
-                  setOtp(["", "", "", ""]);
+                  setOtp(["", "", "", "", "", ""]);
                 }}
                 className="text-xs font-bold text-[#C86A28] hover:underline cursor-pointer"
               >
@@ -376,12 +517,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
 
-            {/* 4 Digit Verification Boxes */}
+            {/* 6-Digit Verification Input Boxes */}
             <div>
               <label className="text-xs font-extrabold uppercase tracking-wider text-stone-700 block mb-3 text-center">
-                ENTER 4-DIGIT VERIFICATION CODE
+                ENTER 6-DIGIT ATELIER CODE
               </label>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2 sm:gap-2.5" onPaste={handlePaste}>
                 {otp.map((digit, idx) => (
                   <input
                     key={idx}
@@ -395,14 +536,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className="w-12 h-14 text-center text-xl font-bold text-stone-900 bg-white border-2 border-[#E8DCCF] rounded-xl focus:border-[#C86A28] focus:ring-4 focus:ring-[#C86A28]/20 outline-none transition-all"
+                    className="w-10 sm:w-12 h-13 sm:h-14 text-center text-xl font-bold text-stone-900 bg-white border-2 border-[#E8DCCF] rounded-xl focus:border-[#C86A28] focus:ring-4 focus:ring-[#C86A28]/20 outline-none transition-all font-mono"
                   />
                 ))}
               </div>
               <p className="text-[11px] text-stone-500 text-center mt-3">
-                Demo Code: Enter <span className="font-bold text-[#C86A28]">1234</span> or any 4 digits to sign in instantly.
+                Tap the &quot;Copy Code&quot; button in your WhatsApp message and paste here.
               </p>
             </div>
+
+            {/* Fallback to SMS if on WhatsApp channel */}
+            {mode === "phone" && activeChannel === "whatsapp" && (
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={handleSendSmsFallback}
+                  disabled={isSendingFallback}
+                  className="text-xs text-stone-600 hover:text-[#C86A28] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isSendingFallback ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Smartphone className="w-3.5 h-3.5" />
+                  )}
+                  <span>Didn&apos;t receive on WhatsApp? Get OTP via SMS</span>
+                </button>
+              </div>
+            )}
 
             {/* Verify Button & Resend Countdown */}
             <div className="space-y-3 pt-1">
@@ -414,7 +574,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               >
                 {isVerifying ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     Verifying...
                   </span>
                 ) : (
@@ -428,16 +588,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="flex justify-center items-center text-xs text-stone-600">
                 {resendTimer > 0 ? (
                   <span>
-                    Resend OTP in <strong className="text-stone-900">{resendTimer}s</strong>
+                    Resend code in <strong className="text-stone-900">{resendTimer}s</strong>
                   </span>
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleSendOtp()}
+                    onClick={() => handleSendOtp(activeChannel)}
                     className="text-[#C86A28] font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    Resend OTP
+                    Resend {activeChannel === "whatsapp" ? "WhatsApp" : "SMS"} code
                   </button>
                 )}
               </div>

@@ -13,6 +13,8 @@ import {
   Loader2,
   Clock,
   Lock,
+  CheckCircle2,
+  MessageSquare,
 } from "lucide-react";
 import { ShippingAddress, PaymentMethod } from "@/types";
 import { useAuth } from "@/context/AuthContext";
@@ -169,44 +171,66 @@ export const UnifiedCheckoutForm: React.FC<UnifiedCheckoutFormProps> = ({
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-200">
-      {/* 1. Patron Identity Bar Matching Reference [G] gaurav... */}
-      <div className="flex items-center justify-between p-3.5 sm:p-4 bg-white border border-stone-200/90 rounded-2xl shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#FAF3EB] border border-[#E8DCCF] flex items-center justify-center font-serif font-bold text-sm text-[#2A1E17]">
-            {isLoggedIn && user.name
-              ? user.name.charAt(0).toUpperCase()
-              : "P"}
-          </div>
-          <div>
-            <div className="text-xs sm:text-sm font-semibold text-stone-900 font-sans">
-              {isLoggedIn
-                ? user.email || user.phone || user.name
-                : "Guest Patron"}
+      {/* 1. Patron Identity Bar */}
+      <div className={`p-4 rounded-2xl border transition-all ${
+        isLoggedIn
+          ? "bg-white border-stone-200/90 shadow-2xs"
+          : "bg-amber-50/60 border-amber-200"
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-full border flex items-center justify-center font-serif font-bold text-sm ${
+              isLoggedIn
+                ? "bg-[#FAF3EB] border-[#E8DCCF] text-[#2A1E17]"
+                : "bg-amber-100 border-amber-300 text-amber-900"
+            }`}>
+              {isLoggedIn && user.name
+                ? user.name.charAt(0).toUpperCase()
+                : "P"}
             </div>
-            <div className="text-[11px] text-stone-500">
-              {isLoggedIn ? "Authenticated VIP Patron" : "Checking out as guest"}
+            <div>
+              <div className="text-xs sm:text-sm font-semibold text-stone-900 font-sans flex items-center gap-2">
+                <span>{isLoggedIn ? user.name || "Authenticated Patron" : "Sign In Required for Atelier Checkout"}</span>
+                {isLoggedIn && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Verified Mobile</span>
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-stone-500 font-mono mt-0.5">
+                {isLoggedIn ? (
+                  <span>
+                    {user.phone || "+91 Mobile"} • {user.email || "Atelier Account"}
+                  </span>
+                ) : (
+                  <span className="text-amber-800 font-sans">
+                    Orders must be linked to a verified mobile number for WhatsApp laboratory updates.
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {isLoggedIn ? (
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="text-stone-400 hover:text-stone-700 p-1.5 transition-colors cursor-pointer"
-            title="Sign out of patron account"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => openAuthModal("/checkout")}
-            className="text-xs font-bold text-[#C86A28] hover:underline cursor-pointer"
-          >
-            Sign in
-          </button>
-        )}
+          {isLoggedIn ? (
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="text-stone-400 hover:text-stone-700 p-1.5 transition-colors cursor-pointer"
+              title="Sign out of patron account"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal("/checkout")}
+              className="px-3.5 py-1.5 bg-[#1C1917] hover:bg-black text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
+            >
+              Sign In via WhatsApp
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 2. Delivery Section */}
@@ -348,24 +372,24 @@ export const UnifiedCheckoutForm: React.FC<UnifiedCheckoutFormProps> = ({
             </div>
           </div>
 
-          {/* Phone with Country Prefix Indicator */}
-          <div className="relative">
-            <input
-              type="tel"
-              placeholder="Phone"
-              value={shippingAddress.phone || ""}
-              onChange={(e) => handleFieldChange("phone", e.target.value)}
-              className="w-full pl-4 pr-16 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 outline-none focus:border-stone-800 transition-colors font-mono"
-              required
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none text-xs text-stone-400 font-bold">
-              <span>+91</span>
-              <span className="w-4 h-3 bg-stone-100 border border-stone-300 rounded-xs flex flex-col justify-between overflow-hidden">
-                <span className="h-1 bg-amber-500" />
-                <span className="h-1 bg-white" />
-                <span className="h-1 bg-emerald-600" />
-              </span>
+          {/* Delivery Contact Phone with Country Prefix Indicator */}
+          <div>
+            <div className="relative">
+              <input
+                type="tel"
+                placeholder="Delivery Contact Phone"
+                value={shippingAddress.phone || ""}
+                onChange={(e) => handleFieldChange("phone", e.target.value)}
+                className="w-full pl-4 pr-16 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 outline-none focus:border-stone-800 transition-colors font-mono"
+                required
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none text-xs text-stone-400 font-bold">
+                <span>+91</span>
+              </div>
             </div>
+            <p className="text-[11px] text-stone-500 mt-1">
+              Delivery contact number for courier dispatch (can differ from your verified WhatsApp account).
+            </p>
           </div>
         </div>
 
@@ -677,8 +701,13 @@ export const UnifiedCheckoutForm: React.FC<UnifiedCheckoutFormProps> = ({
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Connecting to Razorpay Secure...</span>
             </span>
+          ) : !isLoggedIn ? (
+            <span className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
+              <span>Sign In with WhatsApp to Place Order ({formatCurrency(totalPayable)})</span>
+            </span>
           ) : (
-            <span>Pay now</span>
+            <span>Pay {formatCurrency(totalPayable)}</span>
           )}
         </button>
       </div>

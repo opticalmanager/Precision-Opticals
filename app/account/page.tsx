@@ -26,6 +26,9 @@ import {
   ArrowRight,
   RotateCcw,
   X,
+  MessageSquare,
+  Smartphone,
+  Loader2,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -96,10 +99,13 @@ function AccountDashboardContent() {
 
   // Inline Sign-In Gate State (when not logged in)
   const [gatePhone, setGatePhone] = useState("");
-  const [gateOtp, setGateOtp] = useState(["", "", "", ""]);
+  const [gateOtp, setGateOtp] = useState(["", "", "", "", "", ""]);
   const [gateOtpSent, setGateOtpSent] = useState(false);
-  const [gateResendTimer, setGateResendTimer] = useState(30);
+  const [gateActiveChannel, setGateActiveChannel] = useState<"whatsapp" | "sms">("whatsapp");
+  const [gateResendTimer, setGateResendTimer] = useState(60);
+  const [gateIsLoading, setGateIsLoading] = useState(false);
   const [gateIsVerifying, setGateIsVerifying] = useState(false);
+  const [gateIsSendingFallback, setGateIsSendingFallback] = useState(false);
   const gateOtpInputs = React.useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -110,47 +116,130 @@ function AccountDashboardContent() {
     return () => clearInterval(timer);
   }, [gateOtpSent, gateResendTimer]);
 
-  const handleSendGateOtp = (e?: React.FormEvent) => {
+  const handleSendGateOtp = async (channelPreference: "whatsapp" | "sms" = "whatsapp", e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = gatePhone.replace(/\D/g, "");
     if (clean.length < 10) {
       toast.error("Please enter a valid 10-digit mobile number");
       return;
     }
-    setGateOtpSent(true);
-    setGateResendTimer(30);
-    toast.success("Verification code sent!", {
-      description: `4-digit OTP sent to +91 ${clean}. (Use demo code: 1234)`,
-    });
-    setTimeout(() => gateOtpInputs.current[0]?.focus(), 150);
+    setGateIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: clean, channel: channelPreference }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Unable to send verification code");
+        if (data.cooldownRemaining) setGateResendTimer(data.cooldownRemaining);
+        return;
+      }
+      setGateActiveChannel(data.channel || channelPreference);
+      setGateOtpSent(true);
+      setGateOtp(["", "", "", "", "", ""]);
+      setGateResendTimer(data.cooldown || 60);
+
+      if (data.fallbackUsed) {
+        toast.info("WhatsApp delivery unavailable", {
+          description: `Verification code sent via SMS to +91 ${clean.slice(-10)}`,
+        });
+      } else if (data.channel === "whatsapp") {
+        toast.success("WhatsApp verification code sent", {
+          description: `6-digit code delivered to +91 ${clean.slice(-10)}`,
+        });
+      } else {
+        toast.success("SMS verification code sent", {
+          description: `6-digit code delivered to +91 ${clean.slice(-10)}`,
+        });
+      }
+      setTimeout(() => gateOtpInputs.current[0]?.focus(), 150);
+    } catch {
+      toast.error("Failed to connect to authentication service");
+    } finally {
+      setGateIsLoading(false);
+    }
+  };
+
+  const handleSendGateSmsFallback = async () => {
+    const clean = gatePhone.replace(/\D/g, "");
+    setGateIsSendingFallback(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: clean, channel: "sms" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Failed to deliver SMS verification code");
+        if (data.cooldownRemaining) setGateResendTimer(data.cooldownRemaining);
+        return;
+      }
+      setGateActiveChannel("sms");
+      setGateResendTimer(data.cooldown || 60);
+      toast.success("SMS verification code dispatched", {
+        description: `6-digit OTP sent via SMS to +91 ${clean.slice(-10)}`,
+      });
+    } catch {
+      toast.error("Unable to connect to SMS gateway");
+    } finally {
+      setGateIsSendingFallback(false);
+    }
   };
 
   const handleGateOtpChange = (index: number, val: string) => {
-    if (val.length > 1) val = val.slice(-1);
+    const cleaned = val.replace(/\D/g, "");
+    if (cleaned.length > 1) {
+      const digits = cleaned.slice(0, 6).split("");
+      const updated = [...gateOtp];
+      for (let i = 0; i < digits.length; i++) updated[i] = digits[i];
+      setGateOtp(updated);
+      if (digits.length === 6) verifyGateOtp(updated.join(""));
+      else gateOtpInputs.current[Math.min(digits.length, 5)]?.focus();
+      return;
+    }
+
     const updated = [...gateOtp];
-    updated[index] = val;
+    updated[index] = cleaned;
     setGateOtp(updated);
 
-    if (val && index < 3) {
+    if (cleaned && index < 5) {
       gateOtpInputs.current[index + 1]?.focus();
     }
-    if (updated.every((d) => d !== "")) {
+    if (cleaned && index === 5 && updated.slice(0, 5).every((d) => d !== "")) {
       verifyGateOtp(updated.join(""));
     }
   };
 
-  const verifyGateOtp = (code?: string) => {
-    const full = code || gateOtp.join("");
-    if (full.length !== 4) {
-      toast.error("Please enter all 4 digits of the OTP");
+  const verifyGateOtp = async (code?: string) => {
+    const full = (code || gateOtp.join("")).trim();
+    if (full.length !== 6) {
+      toast.error("Please enter all 6 digits of the verification code");
       return;
     }
     setGateIsVerifying(true);
-    setTimeout(() => {
-      setGateIsVerifying(false);
-      loginWithPhone(gatePhone, "Alexander Sterling");
+    try {
+      const clean = gatePhone.replace(/\D/g, "");
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: clean, otp: full }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Invalid verification code");
+        setGateIsVerifying(false);
+        return;
+      }
+      loginWithPhone(clean, data.user, data.orders);
       toast.success("Welcome back to Precision Optics Atelier");
-    }, 500);
+    } catch {
+      toast.error("Failed to verify code");
+    } finally {
+      setGateIsVerifying(false);
+    }
   };
 
   // Profile Save
@@ -234,7 +323,7 @@ function AccountDashboardContent() {
           </p>
 
           {!gateOtpSent ? (
-            <form onSubmit={handleSendGateOtp} className="space-y-4 text-left">
+            <form onSubmit={(e) => handleSendGateOtp("whatsapp", e)} className="space-y-4 text-left">
               <div className="flex items-center border border-[#E8DCCF] rounded-xl overflow-hidden focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white">
                 <div className="px-4 py-3.5 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none">
                   +91
@@ -264,12 +353,27 @@ function AccountDashboardContent() {
                 </div>
               </div>
 
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2">
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Verification code delivered instantly to WhatsApp</span>
+              </div>
+
               <button
                 type="submit"
-                className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-6 rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                disabled={gateIsLoading}
+                className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-6 rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <span>Get OTP</span>
-                <ArrowRight className="w-4 h-4" />
+                {gateIsLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </span>
+                ) : (
+                  <>
+                    <span>Get WhatsApp OTP</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
 
               <div className="text-center pt-2">
@@ -285,16 +389,29 @@ function AccountDashboardContent() {
             <div className="space-y-5 text-left">
               <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-2xl p-3 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-stone-500 block text-[11px]">OTP sent to</span>
-                  <span className="font-bold text-stone-900">+91 {gatePhone}</span>
+                  <span className="text-stone-500 block text-[11px]">
+                    {gateActiveChannel === "whatsapp" ? "WhatsApp code sent to" : "SMS code sent to"}
+                  </span>
+                  <span className="font-bold text-stone-900 font-mono flex items-center gap-1.5 mt-0.5">
+                    {gateActiveChannel === "whatsapp" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        WhatsApp
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                        SMS
+                      </span>
+                    )}
+                    <span>+91 {gatePhone}</span>
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
                     setGateOtpSent(false);
-                    setGateOtp(["", "", "", ""]);
+                    setGateOtp(["", "", "", "", "", ""]);
                   }}
-                  className="text-[#C86A28] font-bold hover:underline"
+                  className="text-[#C86A28] font-bold hover:underline cursor-pointer"
                 >
                   Change
                 </button>
@@ -302,9 +419,9 @@ function AccountDashboardContent() {
 
               <div className="text-center">
                 <label className="text-xs font-extrabold uppercase tracking-wider text-stone-700 block mb-3">
-                  ENTER 4-DIGIT VERIFICATION CODE
+                  ENTER 6-DIGIT VERIFICATION CODE
                 </label>
-                <div className="flex justify-center gap-3">
+                <div className="flex justify-center gap-2">
                   {gateOtp.map((d, i) => (
                     <input
                       key={i}
@@ -322,14 +439,32 @@ function AccountDashboardContent() {
                           gateOtpInputs.current[i - 1]?.focus();
                         }
                       }}
-                      className="w-12 h-14 text-center text-xl font-bold text-stone-900 bg-white border-2 border-[#E8DCCF] rounded-xl focus:border-[#C86A28] focus:ring-4 focus:ring-[#C86A28]/20 outline-none transition-all"
+                      className="w-10 sm:w-11 h-12 sm:h-13 text-center text-lg sm:text-xl font-bold text-stone-900 bg-white border-2 border-[#E8DCCF] rounded-xl focus:border-[#C86A28] focus:ring-4 focus:ring-[#C86A28]/20 outline-none transition-all font-mono"
                     />
                   ))}
                 </div>
-                <p className="text-[11px] text-stone-500 mt-3">
-                  Demo Code: Enter <span className="font-bold text-[#C86A28]">1234</span> to unlock portal.
+                <p className="text-[11px] text-stone-500 mt-2.5">
+                  Tap &quot;Copy Code&quot; in WhatsApp and paste into the boxes above.
                 </p>
               </div>
+
+              {gateActiveChannel === "whatsapp" && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleSendGateSmsFallback}
+                    disabled={gateIsSendingFallback}
+                    className="text-xs text-stone-600 hover:text-[#C86A28] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {gateIsSendingFallback ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Smartphone className="w-3.5 h-3.5" />
+                    )}
+                    <span>Didn&apos;t receive on WhatsApp? Get OTP via SMS</span>
+                  </button>
+                </div>
+              )}
 
               <button
                 type="button"
@@ -337,7 +472,14 @@ function AccountDashboardContent() {
                 disabled={gateIsVerifying}
                 className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-6 rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {gateIsVerifying ? "Verifying..." : "Verify & Unlock Profile"}
+                {gateIsVerifying ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Verifying...
+                  </span>
+                ) : (
+                  <span>Verify & Unlock Profile</span>
+                )}
               </button>
 
               <div className="text-center text-xs text-stone-600">
@@ -346,10 +488,10 @@ function AccountDashboardContent() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleSendGateOtp()}
+                    onClick={() => handleSendGateOtp(gateActiveChannel)}
                     className="text-[#C86A28] font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" /> Resend OTP
+                    <RotateCcw className="w-3.5 h-3.5" /> Resend {gateActiveChannel === "whatsapp" ? "WhatsApp" : "SMS"} code
                   </button>
                 )}
               </div>

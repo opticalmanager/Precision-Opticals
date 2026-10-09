@@ -251,8 +251,10 @@ export interface AppointmentBooking {
 export interface UserProfile {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   phone: string;
+  phoneVerified?: boolean;
+  phoneVerificationChannel?: 'whatsapp' | 'sms';
   role?: 'customer' | 'optician' | 'admin';
   joinedDate?: string;
   gemPoints: number;

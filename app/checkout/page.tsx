@@ -25,7 +25,7 @@ function CheckoutContent() {
     includeCleaningKit,
     clearCart,
   } = useCart();
-  const { user, isLoggedIn, saveOrder } = useAuth();
+  const { user, isLoggedIn, saveOrder, openAuthModal } = useAuth();
 
   // Delivery Address State
   const initialAddress: ShippingAddress = user.savedAddresses?.[0] || {
@@ -106,6 +106,7 @@ function CheckoutContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...finalOrder,
+          customerId: user?.id || null,
           shippingFee: currentShippingFee,
           totalAmount: totalPayable,
         }),
@@ -132,6 +133,14 @@ function CheckoutContent() {
 
   // Primary Action: Pay Now (Direct Razorpay Standard Checkout)
   const handlePayNow = async () => {
+    if (!isLoggedIn) {
+      openAuthModal("/checkout");
+      toast.info("Authentication Required", {
+        description: "Please sign in with your verified mobile number via WhatsApp OTP to place your order.",
+      });
+      return;
+    }
+
     if (items.length === 0) {
       toast.error("Your cart is empty");
       return;

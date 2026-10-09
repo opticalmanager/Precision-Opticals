@@ -8,7 +8,11 @@ interface AuthContextType {
   isLoggedIn: boolean;
   isGuest: boolean;
   setGuestCheckout: (val: boolean) => void;
-  loginWithPhone: (phone: string, name?: string) => void;
+  loginWithPhone: (
+    phone: string,
+    profileOrName?: string | Partial<UserProfile>,
+    ordersList?: Order[]
+  ) => void;
   loginWithEmail: (email: string, name?: string) => void;
   logout: () => void;
   updateUserProfile: (data: Partial<UserProfile>) => void;
@@ -141,16 +145,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [orders, isLoaded]);
 
-  const loginWithPhone = useCallback((phone: string, name?: string) => {
-    setUser((prev) => ({
-      ...prev,
-      phone: phone.startsWith("+91") ? phone : `+91 ${phone}`,
-      name: name || prev.name || "Precision Member",
-    }));
-    setIsLoggedIn(true);
-    setIsGuest(false);
-    setIsAuthModalOpen(false);
-  }, []);
+  const loginWithPhone = useCallback(
+    (
+      phone: string,
+      profileOrName?: string | Partial<UserProfile>,
+      ordersList?: Order[]
+    ) => {
+      setUser((prev) => {
+        const extraProfile =
+          typeof profileOrName === "object"
+            ? profileOrName
+            : typeof profileOrName === "string"
+            ? { name: profileOrName }
+            : {};
+
+        return {
+          ...prev,
+          ...extraProfile,
+          phone: phone.startsWith("+91") ? phone : `+91 ${phone}`,
+          phoneVerified: true,
+          name:
+            extraProfile.name ||
+            (typeof profileOrName === "string" ? profileOrName : "") ||
+            prev.name ||
+            "Valued Patron",
+        };
+      });
+
+      if (ordersList && Array.isArray(ordersList)) {
+        setOrders(ordersList);
+      }
+
+      setIsLoggedIn(true);
+      setIsGuest(false);
+      setIsAuthModalOpen(false);
+    },
+    []
+  );
 
   const loginWithEmail = useCallback((email: string, name?: string) => {
     setUser((prev) => ({

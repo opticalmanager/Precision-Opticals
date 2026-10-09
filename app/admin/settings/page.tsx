@@ -18,6 +18,10 @@ import {
   Trash2,
   X,
   UserCheck,
+  Smartphone,
+  Eye,
+  EyeOff,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -64,6 +68,20 @@ function AdminSettingsContent() {
     lowStockStaffAlert: true,
   });
 
+  // WhatsApp & SMS Auth State
+  const [whatsappAuthConfig, setWhatsappAuthConfig] = useState({
+    wacrmApiUrl: "http://localhost:3000",
+    wacrmApiKey: "",
+    templateName: "wa_otp",
+    templateLanguage: "en_US",
+    whatsappEnabled: true,
+    smsFallbackEnabled: true,
+    msg91AuthKey: "",
+    msg91TemplateId: "",
+  });
+  const [showWacrmKey, setShowWacrmKey] = useState(false);
+  const [showMsg91Key, setShowMsg91Key] = useState(false);
+
   // Roles state
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
@@ -88,8 +106,9 @@ function AdminSettingsContent() {
       fetch("/api/admin/settings?key=store").then((r) => r.json()),
       fetch("/api/admin/settings?key=notifications").then((r) => r.json()),
       fetch("/api/admin/settings?key=roles").then((r) => r.json()),
+      fetch("/api/admin/settings?key=whatsapp_auth").then((r) => r.json()),
     ])
-      .then(([genData, storeData, notifData, rolesData]) => {
+      .then(([genData, storeData, notifData, rolesData, waData]) => {
         if (genData.success && genData.value) {
           setGeneralConfig((prev) => ({ ...prev, ...genData.value }));
         }
@@ -98,6 +117,9 @@ function AdminSettingsContent() {
         }
         if (notifData.success && notifData.value) {
           setNotificationsConfig((prev) => ({ ...prev, ...notifData.value }));
+        }
+        if (waData.success && waData.value) {
+          setWhatsappAuthConfig((prev) => ({ ...prev, ...waData.value }));
         }
         if (rolesData.success && Array.isArray(rolesData.value) && rolesData.value.length > 0) {
           setRoles(rolesData.value);
@@ -172,6 +194,14 @@ function AdminSettingsContent() {
     saveSetting("notifications", notificationsConfig, "Notification channel preferences saved");
   };
 
+  const handleSaveWhatsAppAuth = () => {
+    saveSetting(
+      "whatsapp_auth",
+      whatsappAuthConfig,
+      "WhatsApp OTP & SMS Fallback configuration saved"
+    );
+  };
+
   const handleSaveRoles = (updatedRoles: StaffRole[]) => {
     setRoles(updatedRoles);
     saveSetting("roles", updatedRoles, "Staff directory updated successfully");
@@ -203,6 +233,7 @@ function AdminSettingsContent() {
 
   const navItems = [
     { id: "general", label: "General Settings", icon: Sliders },
+    { id: "whatsapp_auth", label: "WhatsApp & Auth OTP", icon: Smartphone },
     { id: "store", label: "Store & Atelier Policy", icon: Store },
     { id: "payments", label: "Payment Methods", icon: CreditCard, externalHref: "/admin/payments" },
     { id: "shipping", label: "Shipping & Transit", icon: Truck, externalHref: "/admin/shipping" },
@@ -385,6 +416,274 @@ function AdminSettingsContent() {
                     className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "whatsapp_auth" && (
+            <div className="space-y-6">
+              {/* Card 1: WhatsApp Primary Channel via WACRM */}
+              <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-[#2A1E17]">
+                        WhatsApp Authentication (WACRM Companion)
+                      </h2>
+                      <p className="text-xs text-stone-500">
+                        Primary passwordless OTP channel powered by Meta WhatsApp Cloud API via WACRM
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleSaveWhatsAppAuth}
+                    disabled={savingKey === "whatsapp_auth"}
+                    className="text-xs bg-[#C86A28] hover:bg-[#b0581e] text-white"
+                  >
+                    {savingKey === "whatsapp_auth" ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Save className="w-3.5 h-3.5 mr-1" />
+                    )}
+                    <span>Save Config</span>
+                  </Button>
+                </div>
+
+                {/* WhatsApp Channel Enable Switch */}
+                <div className="flex items-center justify-between p-3.5 rounded-lg bg-[#FAF7F2] border border-[#E8DCCF]">
+                  <div>
+                    <label className="text-xs font-bold text-[#2A1E17] block">
+                      Enable WhatsApp OTP Channel
+                    </label>
+                    <span className="text-[11px] text-stone-500">
+                      Dispatches 6-digit verification codes using Meta pre-approved authentication templates
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={whatsappAuthConfig.whatsappEnabled}
+                    onChange={(e) =>
+                      setWhatsappAuthConfig({
+                        ...whatsappAuthConfig,
+                        whatsappEnabled: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 accent-[#007AFF] cursor-pointer"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">
+                      WACRM API Base URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={whatsappAuthConfig.wacrmApiUrl}
+                      onChange={(e) =>
+                        setWhatsappAuthConfig({
+                          ...whatsappAuthConfig,
+                          wacrmApiUrl: e.target.value,
+                        })
+                      }
+                      placeholder="http://localhost:3000"
+                      className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                    />
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      Calls <code className="text-stone-600">/api/v1/messages</code> server-to-server. Never exposed to browser.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">
+                      WACRM API Secret Key *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showWacrmKey ? "text" : "password"}
+                        value={whatsappAuthConfig.wacrmApiKey}
+                        onChange={(e) =>
+                          setWhatsappAuthConfig({
+                            ...whatsappAuthConfig,
+                            wacrmApiKey: e.target.value,
+                          })
+                        }
+                        placeholder="wacrm_live_..."
+                        className="w-full pl-3 pr-9 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowWacrmKey(!showWacrmKey)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
+                        title={showWacrmKey ? "Mask key" : "Reveal key"}
+                      >
+                        {showWacrmKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      Bearer token with <code className="text-stone-600">messages:send</code> scope. Stored securely in database.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">
+                      Approved Meta Template Name
+                    </label>
+                    <input
+                      type="text"
+                      value={whatsappAuthConfig.templateName}
+                      onChange={(e) =>
+                        setWhatsappAuthConfig({
+                          ...whatsappAuthConfig,
+                          templateName: e.target.value,
+                        })
+                      }
+                      placeholder="wa_otp"
+                      className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                    />
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      Authentication template registered in Meta Business Manager with one-tap copy button.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">
+                      Template Language Code
+                    </label>
+                    <input
+                      type="text"
+                      value={whatsappAuthConfig.templateLanguage}
+                      onChange={(e) =>
+                        setWhatsappAuthConfig({
+                          ...whatsappAuthConfig,
+                          templateLanguage: e.target.value,
+                        })
+                      }
+                      placeholder="en_US"
+                      className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                    />
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      Must match the approved language in WACRM (e.g. en_US).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: SMS Fallback Gateway (MSG91) */}
+              <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-[#2A1E17]">
+                        SMS Fallback Gateway (MSG91 SendOTP)
+                      </h2>
+                      <p className="text-xs text-stone-500">
+                        Automatic fallback when WhatsApp delivery fails or customer clicks &apos;Get OTP via SMS&apos;
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SMS Channel Enable Switch */}
+                <div className="flex items-center justify-between p-3.5 rounded-lg bg-[#FAF7F2] border border-[#E8DCCF]">
+                  <div>
+                    <label className="text-xs font-bold text-[#2A1E17] block">
+                      Enable SMS OTP Fallback
+                    </label>
+                    <span className="text-[11px] text-stone-500">
+                      Permits automatic failover and customer-requested SMS dispatch
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={whatsappAuthConfig.smsFallbackEnabled}
+                    onChange={(e) =>
+                      setWhatsappAuthConfig({
+                        ...whatsappAuthConfig,
+                        smsFallbackEnabled: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 accent-[#007AFF] cursor-pointer"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">
+                      MSG91 Auth Key
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showMsg91Key ? "text" : "password"}
+                        value={whatsappAuthConfig.msg91AuthKey}
+                        onChange={(e) =>
+                          setWhatsappAuthConfig({
+                            ...whatsappAuthConfig,
+                            msg91AuthKey: e.target.value,
+                          })
+                        }
+                        placeholder="Leave empty for development simulation..."
+                        className="w-full pl-3 pr-9 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowMsg91Key(!showMsg91Key)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
+                        title={showMsg91Key ? "Mask key" : "Reveal key"}
+                      >
+                        {showMsg91Key ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      When left empty, safe development simulation mode outputs the OTP to server logs.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">
+                      MSG91 Flow / Template ID
+                    </label>
+                    <input
+                      type="text"
+                      value={whatsappAuthConfig.msg91TemplateId}
+                      onChange={(e) =>
+                        setWhatsappAuthConfig({
+                          ...whatsappAuthConfig,
+                          msg91TemplateId: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. 642e8..."
+                      className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                    />
+                    <p className="text-[10px] text-stone-400 mt-1">
+                      Pre-approved DLT-compliant SMS template ID in MSG91 console.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Security & Rate Limiting Specifications */}
+              <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-xl p-4 text-xs space-y-2 text-stone-600">
+                <div className="flex items-center gap-2 font-bold text-[#2A1E17]">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Enforced Security & Compliance Guardrails</span>
+                </div>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] list-disc list-inside text-stone-600 pt-1">
+                  <li>6-digit cryptographically generated OTP (100,000 - 999,999)</li>
+                  <li>Salted SHA-256 storage (zero plaintext OTP in database)</li>
+                  <li>60-second cooldown per telephone number</li>
+                  <li>Hourly limit: Maximum 6 verification attempts per mobile</li>
+                  <li>5-minute expiration with 5 maximum failure attempts</li>
+                  <li>Timing-safe equality comparisons against brute-force attacks</li>
+                </ul>
               </div>
             </div>
           )}

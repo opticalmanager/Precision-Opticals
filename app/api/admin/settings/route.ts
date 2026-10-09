@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/adminDb";
+import { invalidateWhatsAppAuthConfig } from "@/lib/authSettings";
 
 function parseSettingValue(rawVal: any) {
   if (rawVal === null || rawVal === undefined) return null;
@@ -89,6 +90,10 @@ export async function PUT(req: NextRequest) {
        RETURNING *;`,
       [key, valParam]
     );
+
+    if (key === "whatsapp_auth") {
+      invalidateWhatsAppAuthConfig();
+    }
 
     const parsed = parseSettingValue(res.rows[0]?.value);
 

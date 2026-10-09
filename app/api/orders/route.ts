@@ -31,16 +31,19 @@ export async function POST(req: Request) {
     const shippingAddress = JSON.stringify(body.shippingAddress || {});
     const estDelivery = estimatedDate.toISOString().split("T")[0];
 
+    const customerId = body.customerId || body.customer_id || null;
+
     // 1. Insert order into public.orders table directly via PostgreSQL
     const orderRes = await query(
       `INSERT INTO public.orders (
-        order_number, guest_email, guest_phone, status, payment_status,
+        order_number, customer_id, guest_email, guest_phone, status, payment_status,
         payment_method, payment_id, payment_details, subtotal, discount_amount, coupon_code, shipping_fee,
         total_amount, shipping_address, tracking_number, estimated_delivery, created_at
-      ) VALUES ($1, $2, $3, 'confirmed', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+      ) VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
       RETURNING id, order_number, tracking_number;`,
       [
         orderNumber,
+        customerId,
         guestEmail,
         guestPhone,
         paymentStatus,
