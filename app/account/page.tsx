@@ -90,11 +90,11 @@ function AccountDashboardContent() {
   // Prescription Modal State
   const [isRxModalOpen, setIsRxModalOpen] = useState(false);
   const [rxTitle, setRxTitle] = useState("Bespoke Clinical Rx");
-  const [rxDoctor, setRxDoctor] = useState("Dr. R. K. Malhotra (Precision Optometry)");
+  const [rxDoctor, setRxDoctor] = useState("Certified Optometrist");
   const [rxData, setRxData] = useState<PrescriptionData>({
-    rightEye: { sph: "-1.25", cyl: "-0.50", axis: "90", add: "+1.50" },
-    leftEye: { sph: "-1.50", cyl: "-0.50", axis: "85", add: "+1.50" },
-    pd: "64",
+    rightEye: { sph: "0.00", cyl: "0.00", axis: "0", add: "0.00" },
+    leftEye: { sph: "0.00", cyl: "0.00", axis: "0", add: "0.00" },
+    pd: "62",
   });
 
   // Inline Sign-In Gate State (when not logged in)
@@ -530,7 +530,7 @@ function AccountDashboardContent() {
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-serif font-bold text-stone-900 tracking-tight">
-                  {user.name || "Alexander Sterling"}
+                  {user.name || "Valued Patron"}
                 </h1>
                 <span className="inline-flex items-center gap-1 bg-[#FAF3EB] border border-[#E8DCCF] text-[#C86A28] text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full">
                   <Award className="w-3 h-3 text-[#C86A28]" /> VIP Platinum Patron
@@ -538,17 +538,21 @@ function AccountDashboardContent() {
               </div>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600">
-                <span className="flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-stone-400" />
-                  {user.phone || "+91 98100 12345"}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-stone-400" />
-                  {user.email || "patron@precisionoptics.com"}
-                </span>
+                {user.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-stone-400" />
+                    {user.phone}
+                  </span>
+                )}
+                {user.email && (
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-stone-400" />
+                    {user.email}
+                  </span>
+                )}
                 <span className="text-stone-400">•</span>
                 <span className="text-stone-500">
-                  Member since {user.joinedDate || "October 2024"}
+                  Member since {user.joinedDate || "Atelier Founding Member"}
                 </span>
               </div>
             </div>

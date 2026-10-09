@@ -154,7 +154,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </label>
                 <Input
                   {...register("fullName")}
-                  placeholder="e.g. Alexander Sterling"
+                  placeholder="Recipient's full name"
                   className={errors.fullName ? "border-rose-500 bg-rose-50/20" : ""}
                 />
                 {errors.fullName && (

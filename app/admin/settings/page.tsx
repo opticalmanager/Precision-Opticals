@@ -128,8 +128,8 @@ function AdminSettingsContent() {
           setRoles([
             {
               id: "role-01",
-              name: "Alexander Sterling",
-              email: "a.sterling@precisionoptics.com",
+              name: "Principal Executive",
+              email: "executive@precisionoptics.com",
               role: "Super Admin",
               status: "Active",
             },

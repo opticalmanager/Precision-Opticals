@@ -9,6 +9,8 @@ export interface WhatsAppAuthConfig {
   smsFallbackEnabled: boolean;
   msg91AuthKey: string;
   msg91TemplateId: string;
+  metaPhoneNumberId?: string;
+  metaAccessToken?: string;
 }
 
 const DEFAULT_AUTH_CONFIG: WhatsAppAuthConfig = {
@@ -20,6 +22,8 @@ const DEFAULT_AUTH_CONFIG: WhatsAppAuthConfig = {
   smsFallbackEnabled: true,
   msg91AuthKey: process.env.MSG91_AUTH_KEY || "",
   msg91TemplateId: process.env.MSG91_TEMPLATE_ID || "",
+  metaPhoneNumberId: "1319587451232385",
+  metaAccessToken: "",
 };
 
 let cachedConfig: WhatsAppAuthConfig | null = null;
@@ -54,6 +58,8 @@ export async function getWhatsAppAuthConfig(): Promise<WhatsAppAuthConfig> {
         smsFallbackEnabled: parsed.smsFallbackEnabled ?? DEFAULT_AUTH_CONFIG.smsFallbackEnabled,
         msg91AuthKey: parsed.msg91AuthKey || DEFAULT_AUTH_CONFIG.msg91AuthKey,
         msg91TemplateId: parsed.msg91TemplateId || DEFAULT_AUTH_CONFIG.msg91TemplateId,
+        metaPhoneNumberId: parsed.metaPhoneNumberId || DEFAULT_AUTH_CONFIG.metaPhoneNumberId,
+        metaAccessToken: parsed.metaAccessToken || DEFAULT_AUTH_CONFIG.metaAccessToken,
       };
       lastFetchTime = now;
       return cachedConfig;

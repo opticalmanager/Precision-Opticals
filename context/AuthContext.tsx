@@ -40,38 +40,15 @@ const USER_STORAGE_KEY = "precision_optics_user_v2";
 const AUTH_STATUS_KEY = "precision_optics_auth_status_v2";
 
 const INITIAL_USER: UserProfile = {
-  id: "usr-precision-01",
-  name: "Alexander Sterling",
-  email: "a.sterling@precisionoptics.com",
-  phone: "+91 98100 12345",
+  id: "",
+  name: "",
+  email: "",
+  phone: "",
   role: "customer",
-  joinedDate: "October 2024",
-  gemPoints: 850,
-  savedAddresses: [
-    {
-      fullName: "Alexander Sterling",
-      phone: "+91 98100 12345",
-      email: "a.sterling@precisionoptics.com",
-      streetAddress: "Villa 42, Magnolias Boulevard, Golf Course Road",
-      city: "Gurugram",
-      state: "Haryana",
-      pincode: "122002",
-      country: "India",
-    },
-  ],
-  savedPrescriptions: [
-    {
-      id: "rx-01",
-      title: "Current Progressive Vision",
-      date: "2026-01-15",
-      doctorName: "Dr. R. K. Malhotra (Precision Optometry)",
-      data: {
-        rightEye: { sph: "-1.50", cyl: "-0.75", axis: "90", add: "+1.50" },
-        leftEye: { sph: "-1.75", cyl: "-0.50", axis: "85", add: "+1.50" },
-        pd: "64",
-      },
-    },
-  ],
+  joinedDate: "",
+  gemPoints: 0,
+  savedAddresses: [],
+  savedPrescriptions: [],
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,11 +79,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (savedUser) setUser(JSON.parse(savedUser));
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        // Automatically purge stale dummy user data from past sessions
+        if (
+          parsed.name === "Alexander Sterling" ||
+          parsed.id === "usr-precision-01" ||
+          parsed.phone === "+91 98100 12345"
+        ) {
+          localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(AUTH_STATUS_KEY);
+          setUser(INITIAL_USER);
+          setIsLoggedIn(false);
+        } else {
+          setUser(parsed);
+        }
+      }
 
       const savedAuth = localStorage.getItem(AUTH_STATUS_KEY);
-      if (savedAuth !== null) {
-        setIsLoggedIn(savedAuth === "true");
+      if (savedAuth !== null && savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed.name !== "Alexander Sterling") {
+          setIsLoggedIn(savedAuth === "true");
+        }
       }
 
       const savedOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
@@ -197,6 +192,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(() => {
     setIsLoggedIn(false);
     setIsGuest(false);
+    setUser(INITIAL_USER);
+    try {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.setItem(AUTH_STATUS_KEY, "false");
+    } catch (e) {
+      console.warn("Failed to clear auth storage:", e);
+    }
   }, []);
 
   const setGuestCheckout = useCallback((val: boolean) => {

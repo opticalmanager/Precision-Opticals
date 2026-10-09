@@ -1,60 +1,36 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
-  X,
-  ShieldCheck,
-  Mail,
-  ArrowRight,
-  RotateCcw,
   Lock,
   MessageSquare,
   Smartphone,
+  Mail,
+  ArrowRight,
+  RotateCcw,
+  ShieldCheck,
   Loader2,
+  X,
   Sparkles,
-  User,
-  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-interface AuthModalProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-  onSuccess?: () => void;
-  returnUrl?: string | null;
-  initialMode?: "signin" | "signup";
-}
-
-export const AuthModal: React.FC<AuthModalProps> = ({
-  isOpen: propIsOpen,
-  onClose: propOnClose,
-  onSuccess,
-  returnUrl: propReturnUrl,
-  initialMode = "signin",
-}) => {
+function LoginContent() {
   const router = useRouter();
-  const {
-    isAuthModalOpen,
-    closeAuthModal,
-    loginWithPhone,
-    loginWithEmail,
-    authReturnUrl,
-  } = useAuth();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl") || searchParams.get("redirect") || "/account";
 
-  const isModalVisible = propIsOpen !== undefined ? propIsOpen : isAuthModalOpen;
-  const handleClose = propOnClose || closeAuthModal;
-  const targetReturnUrl = propReturnUrl || authReturnUrl;
+  const { loginWithPhone, loginWithEmail, isLoggedIn } = useAuth();
 
-  const [authType, setAuthType] = useState<"signin" | "signup">(initialMode);
   const [method, setMethod] = useState<"phone" | "email">("phone");
   const [channel, setChannel] = useState<"whatsapp" | "sms">("whatsapp");
 
-  // Zero hardcoded dummy data: start with pristine empty strings
+  // Zero dummy data
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
 
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -66,14 +42,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Reset fields when modal closes or changes
+  // If already logged in, redirect to target
   useEffect(() => {
-    if (!isModalVisible) {
-      setIsOtpSent(false);
-      setOtp(["", "", "", "", "", ""]);
-      setResendTimer(60);
+    if (isLoggedIn) {
+      router.push(returnUrl);
     }
-  }, [isModalVisible]);
+  }, [isLoggedIn, returnUrl, router]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -85,19 +59,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     return () => clearInterval(interval);
   }, [isOtpSent, resendTimer]);
 
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isModalVisible) {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isModalVisible, handleClose]);
-
-  if (!isModalVisible) return null;
-
   const handleSendOtp = async (channelPreference: "whatsapp" | "sms" = channel, e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -105,11 +66,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const cleanPhone = phone.replace(/\D/g, "");
       if (cleanPhone.length < 10) {
         toast.error("Please enter a valid 10-digit mobile number");
-        return;
-      }
-
-      if (authType === "signup" && !name.trim()) {
-        toast.error("Please provide your full name to create an account");
         return;
       }
 
@@ -144,11 +100,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         if (data.fallbackUsed) {
           toast.info("WhatsApp delivery fallback active", {
-            description: `Verification code delivered via SMS to +91 ${cleanPhone.slice(-10)}.`,
+            description: `Verification code dispatched via SMS to +91 ${cleanPhone.slice(-10)}.`,
           });
         } else if (deliveredChannel === "whatsapp") {
           toast.success("WhatsApp verification code sent", {
-            description: `6-digit atelier code sent to your WhatsApp at +91 ${cleanPhone.slice(-10)}.`,
+            description: `Check your WhatsApp for the 6-digit atelier code sent to +91 ${cleanPhone.slice(-10)}.`,
           });
         } else {
           toast.success("SMS verification code sent", {
@@ -161,7 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }, 150);
       } catch (err: any) {
         toast.error("Network error sending verification code", {
-          description: err?.message || "Please check your connection.",
+          description: err?.message || "Please check your internet connection.",
         });
       } finally {
         setIsLoadingOtp(false);
@@ -180,13 +136,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          toast.error(data.error || "Failed to send code");
+          toast.error(data.error || "Failed to dispatch email verification code");
           return;
         }
         setIsOtpSent(true);
         setResendTimer(60);
         toast.success("Verification code sent!", {
-          description: `Code sent to ${email}`,
+          description: `Code dispatched to ${email}`,
         });
         setTimeout(() => {
           otpInputsRef.current[0]?.focus();
@@ -231,7 +187,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleOtpChange = (index: number, value: string) => {
     const cleaned = value.replace(/\D/g, "");
 
-    // Multi-digit paste or autofill
     if (cleaned.length > 1) {
       const digits = cleaned.slice(0, 6).split("");
       const newOtp = [...otp];
@@ -251,12 +206,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     newOtp[index] = cleaned;
     setOtp(newOtp);
 
-    // Auto focus next input
     if (cleaned && index < 5) {
       otpInputsRef.current[index + 1]?.focus();
     }
 
-    // Auto verify when all 6 digits are entered
     if (cleaned && index === 5) {
       const full = newOtp.join("");
       if (full.length === 6) {
@@ -308,7 +261,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           email,
           otp: fullCode,
           mode: method,
-          name: name.trim() || undefined,
         }),
       });
 
@@ -322,24 +274,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      // Authentication succeeded
       if (method === "phone") {
         loginWithPhone(cleanPhone, data.user, data.orders);
       } else {
-        loginWithEmail(email, name || undefined);
+        loginWithEmail(email);
       }
 
       toast.success("Welcome to Precision Optics Atelier", {
         description: `Signed in as ${data.user?.name || `+91 ${cleanPhone.slice(-10)}`}`,
       });
 
-      handleClose();
-
-      if (onSuccess) {
-        onSuccess();
-      } else if (targetReturnUrl) {
-        router.push(targetReturnUrl);
-      }
+      router.push(returnUrl);
     } catch {
       toast.error("Connection error during verification. Please try again.");
     } finally {
@@ -348,78 +293,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
-      <div
-        className="w-full max-w-md bg-white border border-[#EBE6DF] rounded-[24px] p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={handleClose}
-          className="absolute right-5 top-5 p-1.5 text-stone-400 hover:text-stone-800 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
-          aria-label="Close dialog"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
+    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#FAF7F2]">
+      <div className="w-full max-w-md bg-white border border-[#EBE6DF] rounded-[28px] p-7 sm:p-9 shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
         {/* Atelier Crest Pill */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF3EB] border border-[#E8DCCF] text-[10px] font-extrabold uppercase tracking-widest text-[#C86A28] mb-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF3EB] border border-[#E8DCCF] text-[10px] font-extrabold uppercase tracking-widest text-[#C86A28] mb-4">
           <Lock className="w-3 h-3 text-[#C86A28]" />
           <span>ESTD. 1969 • BESPOKE ATELIER ACCESS</span>
         </div>
 
-        {/* Title & Description */}
-        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 tracking-tight mb-1.5">
-          {authType === "signin" ? "Sign In to Atelier" : "Join Precision Optics"}
-        </h2>
-        <p className="text-xs text-stone-500 mb-5 font-normal leading-relaxed">
-          {authType === "signin"
-            ? "Instant passwordless authentication via OTP. Access your bespoke orders, Zeiss lens prescriptions, and privileges."
-            : "Create your personal atelier profile to preserve clinical optical prescriptions and unlock welcome rewards."}
+        {/* Title */}
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#2A1E17] tracking-tight mb-2">
+          Sign In to Atelier
+        </h1>
+        <p className="text-xs text-stone-500 mb-6 font-normal leading-relaxed">
+          Instant passwordless access via mobile OTP. Access your custom orders, Zeiss lens prescriptions, and privileges.
         </p>
 
         {!isOtpSent ? (
           <div className="space-y-4">
-            {/* Mode Switcher: Sign In vs Create Account */}
-            <div className="flex rounded-xl bg-stone-100/80 p-1 border border-stone-200/60">
-              <button
-                type="button"
-                onClick={() => setAuthType("signin")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  authType === "signin"
-                    ? "bg-white text-stone-900 shadow-xs"
-                    : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthType("signup")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  authType === "signup"
-                    ? "bg-white text-stone-900 shadow-xs"
-                    : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
-
             {method === "phone" ? (
-              <form onSubmit={(e) => handleSendOtp(channel, e)} className="space-y-3.5">
+              <form onSubmit={(e) => handleSendOtp(channel, e)} className="space-y-4">
                 {/* Channel Selector: WhatsApp OTP (Default/Recommended) vs SMS OTP */}
                 <div>
                   <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block mb-1.5">
                     VERIFICATION CHANNEL
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {/* WhatsApp Option (Primary & Pre-selected) */}
                     <button
                       type="button"
                       onClick={() => setChannel("whatsapp")}
-                      className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
+                      className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
                         channel === "whatsapp"
                           ? "bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-2xs"
                           : "bg-white border-[#E8DCCF] text-stone-600 hover:bg-stone-50"
@@ -435,9 +339,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         <MessageSquare className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-bold truncate">WhatsApp</span>
-                        </div>
+                        <span className="text-xs font-bold truncate block">WhatsApp</span>
                         <span className="text-[10px] font-semibold text-emerald-700 block truncate">
                           Primary / Instant
                         </span>
@@ -451,7 +353,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setChannel("sms")}
-                      className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
+                      className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer relative ${
                         channel === "sms"
                           ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-950 shadow-2xs"
                           : "bg-white border-[#E8DCCF] text-stone-600 hover:bg-stone-50"
@@ -479,27 +381,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 </div>
 
-                {/* Full Name Input (Required for Signup, Optional for Signin) */}
-                {authType === "signup" && (
-                  <div className="border border-[#E8DCCF] rounded-xl px-4 py-2 focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white relative">
-                    <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block">
-                      FULL NAME *
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Aarav Sharma"
-                      required
-                      className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-0.5"
-                    />
-                  </div>
-                )}
-
                 {/* Mobile Number Input */}
                 <div>
                   <div className="flex items-center border border-[#E8DCCF] rounded-xl overflow-hidden focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white">
-                    <div className="px-4 py-3 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none flex items-center gap-1.5">
+                    <div className="px-4 py-3.5 bg-stone-50 border-r border-[#E8DCCF] text-stone-700 font-bold text-sm select-none flex items-center gap-1.5">
                       <span>+91</span>
                     </div>
                     <div className="flex-1 px-3.5 py-1.5 flex flex-col justify-center relative">
@@ -540,19 +425,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   )}
                 </div>
 
-                {/* Signup Perk Card */}
-                {authType === "signup" && (
-                  <div className="p-2.5 rounded-xl bg-[#FAF3EB] border border-[#E8DCCF] flex items-center gap-2 text-[11px] text-stone-700">
-                    <Sparkles className="w-4 h-4 text-[#C86A28] shrink-0" />
-                    <span>Includes 500 Gem Loyalty Points & Bespoke Prescription Vault.</span>
-                  </div>
-                )}
-
-                {/* Primary CTA Button */}
+                {/* Primary CTA */}
                 <button
                   type="submit"
                   disabled={isLoadingOtp}
-                  className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer active:scale-95 text-center flex items-center justify-center gap-2 disabled:opacity-50 mt-1"
+                  className="w-full bg-[#1C1917] hover:bg-black text-white font-bold text-sm py-3.5 px-4 rounded-xl shadow-sm transition-all duration-200 cursor-pointer active:scale-95 text-center flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isLoadingOtp ? (
                     <span className="flex items-center gap-2">
@@ -576,8 +453,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </form>
             ) : (
               /* Email Auth Form */
-              <form onSubmit={(e) => handleSendOtp("whatsapp", e)} className="space-y-3.5">
-                <div className="border border-[#E8DCCF] rounded-xl px-4 py-2 focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white relative">
+              <form onSubmit={(e) => handleSendOtp("whatsapp", e)} className="space-y-4">
+                <div className="border border-[#E8DCCF] rounded-xl px-4 py-2.5 focus-within:border-[#C86A28] focus-within:ring-2 focus-within:ring-[#C86A28]/20 transition-all bg-white relative">
                   <label className="text-[10px] font-extrabold uppercase tracking-wider text-stone-500 block">
                     EMAIL ADDRESS *
                   </label>
@@ -620,7 +497,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </form>
             )}
 
-            {/* Toggle between Phone & Email */}
+            {/* Switch to Email option */}
             <div className="pt-2 text-center">
               <button
                 type="button"
@@ -642,6 +519,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </>
                 )}
               </button>
+            </div>
+
+            {/* Switch to Sign Up */}
+            <div className="pt-4 border-t border-[#E8DCCF]/80 text-center">
+              <p className="text-xs text-stone-600">
+                New to Precision Optics?{" "}
+                <Link
+                  href={`/signup?returnUrl=${encodeURIComponent(returnUrl)}`}
+                  className="font-bold text-[#C86A28] hover:underline"
+                >
+                  Create an Atelier Account
+                </Link>
+              </p>
             </div>
           </div>
         ) : (
@@ -759,7 +649,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </span>
                 ) : (
                   <>
-                    <span>Verify & Continue</span>
+                    <span>Verify & Enter Atelier</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -786,7 +676,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Security Reassurance Notice */}
-        <div className="flex items-start gap-2.5 pt-5 mt-5 border-t border-[#E8DCCF]/60 text-stone-500 text-[11px] leading-relaxed">
+        <div className="flex items-start gap-2.5 pt-5 mt-6 border-t border-[#E8DCCF]/60 text-stone-500 text-[11px] leading-relaxed">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <p>
             Precision Optics uses 256-bit SSL encryption. Your credentials and prescription data remain strictly confidential.
@@ -795,4 +685,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       </div>
     </div>
   );
-};
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#C86A28]" />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
+  );
+}

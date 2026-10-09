@@ -62,7 +62,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
 
   const [addressTag, setAddressTag] = useState<AddressTag>("home");
   const [pincode, setPincode] = useState(
-    user.savedAddresses[0]?.pincode || "122002"
+    user.savedAddresses[0]?.pincode || ""
   );
   const [houseNo, setHouseNo] = useState(
     user.savedAddresses[0]?.streetAddress.split(",")[0] || ""
@@ -76,8 +76,8 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
     user.savedAddresses[0]?.phone?.replace("+91 ", "") || user.phone?.replace("+91 ", "") || ""
   );
   const [email, setEmail] = useState(user.savedAddresses[0]?.email || user.email || "");
-  const [city, setCity] = useState(user.savedAddresses[0]?.city || "Gurugram");
-  const [state, setState] = useState(user.savedAddresses[0]?.state || "Haryana");
+  const [city, setCity] = useState(user.savedAddresses[0]?.city || "");
+  const [state, setState] = useState(user.savedAddresses[0]?.state || "");
 
   // Auto-detect City and State on PIN code change
   useEffect(() => {
@@ -302,7 +302,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
                 maxLength={6}
                 value={pincode}
                 onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-                placeholder="122002"
+                placeholder="6-digit Pincode (e.g. 110001)"
                 className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-0.5"
                 required
               />
@@ -323,7 +323,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
               type="text"
               value={houseNo}
               onChange={(e) => setHouseNo(e.target.value)}
-              placeholder="Villa 42, Magnolias Boulevard"
+              placeholder="Flat / House / Suite, Building name"
               className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-0.5"
               required
             />
@@ -338,7 +338,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
               type="text"
               value={area}
               onChange={(e) => setArea(e.target.value)}
-              placeholder="Golf Course Road, Sector 42"
+              placeholder="Street, Sector or Locality"
               className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-0.5"
               required
             />
@@ -353,7 +353,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
               type="text"
               value={landmark}
               onChange={(e) => setLandmark(e.target.value)}
-              placeholder="Near Club Magnolias"
+              placeholder="Nearby landmark or prominent spot"
               className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-0.5"
             />
           </div>
@@ -367,7 +367,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Alexander Sterling"
+              placeholder="Recipient's Full Name"
               className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal py-0.5"
               required
             />
@@ -388,7 +388,7 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
                   maxLength={10}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                  placeholder="98100 98765"
+                  placeholder="10-digit mobile number"
                   className="w-full text-stone-900 font-semibold text-sm outline-none bg-transparent placeholder:text-stone-400 placeholder:font-normal"
                   required
                 />

@@ -563,7 +563,7 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 className="text-xs font-bold text-stone-900 truncate">
-                          {user.name || "Alexander Sterling"}
+                          {user.name || "Valued Patron"}
                         </h4>
                         <p className="text-[10px] text-stone-500 truncate">
                           {user.phone || user.email}
@@ -1815,7 +1815,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {user.name ? user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "PO"}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-stone-900 leading-tight">{user.name || "Alexander Sterling"}</h4>
+                    <h4 className="text-xs font-bold text-stone-900 leading-tight">{user.name || "Valued Patron"}</h4>
                     <span className="text-[10px] text-stone-500 block">{user.phone || user.email}</span>
                   </div>
                 </div>

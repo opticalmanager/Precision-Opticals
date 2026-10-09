@@ -29,16 +29,16 @@ function CheckoutContent() {
 
   // Delivery Address State
   const initialAddress: ShippingAddress = user.savedAddresses?.[0] || {
-    fullName: user.name || "Alexander Sterling",
-    firstName: user.name?.split(" ")[0] || "Alexander",
-    lastName: user.name?.split(" ").slice(1).join(" ") || "Sterling",
-    phone: user.phone || "+91 98100 12345",
-    email: user.email || "a.sterling@precisionoptics.com",
-    streetAddress: "Villa 42, Magnolias Boulevard, Golf Course Road",
-    apartment: "Tower 2, Suite 401",
-    city: "Gurugram",
-    state: "Haryana",
-    pincode: "122002",
+    fullName: user.name || "",
+    firstName: user.name?.split(" ")[0] || "",
+    lastName: user.name?.split(" ").slice(1).join(" ") || "",
+    phone: user.phone || "",
+    email: user.email || "",
+    streetAddress: "",
+    apartment: "",
+    city: "",
+    state: "Delhi",
+    pincode: "",
     country: "India",
   };
 

@@ -114,8 +114,8 @@ export const UnifiedCheckoutForm: React.FC<UnifiedCheckoutFormProps> = ({
         ...defaultAddr,
         firstName,
         lastName,
-        email: defaultAddr.email || user.email || "patron@precisionoptics.com",
-        phone: defaultAddr.phone || user.phone || "+91 98100 12345",
+        email: defaultAddr.email || user.email || "",
+        phone: defaultAddr.phone || user.phone || "",
       });
       setActiveSavedAddressIdx(0);
     }
