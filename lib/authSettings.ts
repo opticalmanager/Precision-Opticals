@@ -14,8 +14,8 @@ export interface WhatsAppAuthConfig {
 }
 
 const DEFAULT_AUTH_CONFIG: WhatsAppAuthConfig = {
-  wacrmApiUrl: process.env.WACRM_API_URL || "http://localhost:3000",
-  wacrmApiKey: process.env.WACRM_API_KEY || "",
+  wacrmApiUrl: process.env.WACRM_API_URL || "https://broadcast.opticalmanager.in",
+  wacrmApiKey: process.env.WACRM_API_KEY || "wacrm_live_irqKga1W1Z_6U9Rhh_OOGN-FQ91kRqO-GaLgZulu7to",
   templateName: "wa_otp",
   templateLanguage: "en_US",
   whatsappEnabled: true,

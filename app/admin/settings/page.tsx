@@ -70,7 +70,7 @@ function AdminSettingsContent() {
 
   // WhatsApp & SMS Auth State
   const [whatsappAuthConfig, setWhatsappAuthConfig] = useState({
-    wacrmApiUrl: "http://localhost:3000",
+    wacrmApiUrl: "https://broadcast.opticalmanager.in",
     wacrmApiKey: "",
     templateName: "wa_otp",
     templateLanguage: "en_US",
@@ -491,7 +491,7 @@ function AdminSettingsContent() {
                           wacrmApiUrl: e.target.value,
                         })
                       }
-                      placeholder="http://localhost:3000"
+                      placeholder="https://broadcast.opticalmanager.in"
                       className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
                     />
                     <p className="text-[10px] text-stone-400 mt-1">

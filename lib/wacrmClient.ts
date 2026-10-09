@@ -32,7 +32,7 @@ export async function sendWhatsAppOtp(e164Phone: string, otpCode: string): Promi
     };
   }
 
-  const apiUrl = (config.wacrmApiUrl || "http://localhost:3000").replace(/\/+$/, "");
+  const apiUrl = (config.wacrmApiUrl || "https://broadcast.opticalmanager.in").replace(/\/+$/, "");
   const apiKey = config.wacrmApiKey?.trim();
 
   if (!apiKey) {
