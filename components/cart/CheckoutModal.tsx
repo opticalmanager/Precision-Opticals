@@ -25,7 +25,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onOrderSuccess,
 }) => {
   const { items, grandTotal, rawSubtotal, discountAmount, appliedCoupon, includeCleaningKit, clearCart } = useCart();
-  const { user, saveOrder } = useAuth();
+  const { user, isLoggedIn, saveOrder, openAuthModal } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -54,6 +54,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   if (!isOpen) return null;
 
   const onFormSubmit = async (data: CheckoutFormValues) => {
+    if (!isLoggedIn) {
+      onClose();
+      openAuthModal("/cart");
+      toast.info("Authentication Required", {
+        description: "Please sign in with your verified mobile number via WhatsApp OTP to place your bespoke order.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     const trackingNumber = generateTrackingId();
 
@@ -61,6 +70,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       id: trackingNumber,
       trackingNumber,
       createdAt: new Date().toISOString(),
+      customerId: user?.id || null,
       items: [...items],
       shippingAddress: {
         fullName: data.fullName,
@@ -306,6 +316,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             >
               {isSubmitting ? (
                 <span>COMMUNICATING WITH LABORATORY...</span>
+              ) : !isLoggedIn ? (
+                <>
+                  <span>SIGN IN WITH WHATSAPP TO PLACE ORDER ({formatCurrency(grandTotal)})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
               ) : (
                 <>
                   <span>CONFIRM & PLACE ORDER ({formatCurrency(grandTotal)})</span>

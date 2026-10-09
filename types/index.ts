@@ -188,6 +188,7 @@ export type PaymentMethod = 'razorpay' | 'upi' | 'card' | 'netbanking' | 'cod';
 export interface Order {
   id: string;
   trackingNumber: string;
+  customerId?: string;
   createdAt: string;
   items: CartItem[];
   shippingAddress: ShippingAddress;
