@@ -35,8 +35,8 @@ export default function AdminShippingPage() {
     trialDepositAmount: 3000,
 
     // Shiprocket Settings
-    shiprocketEmail: "pprecisionoptics7@gmail.com",
-    shiprocketPassword: "KKN5PG8deK&e!vPEDVQShqh^2Vgd%",
+    shiprocketEmail: "precisionoptics7@gmail.com",
+    shiprocketPassword: "Precision@2026",
     shiprocketPickupLocation: "precision optics",
     shiprocketPickupAddress: "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
     shiprocketPickupCity: "Noida",
