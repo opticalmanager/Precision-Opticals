@@ -54,14 +54,14 @@ export default function AdminOrderDetailPage() {
 
   // Consignment Origin / Pickup Point details
   const [pickupDetails, setPickupDetails] = useState({
-    location: "precision optics",
+    location: "work",
     address: "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
     city: "Noida",
     state: "Uttar Pradesh",
     pincode: "201316",
   });
   const [isEditingPickup, setIsEditingPickup] = useState(false);
-  const [editLocationName, setEditLocationName] = useState("precision optics");
+  const [editLocationName, setEditLocationName] = useState("work");
   const [editAddress, setEditAddress] = useState("GF-45D, Spectrum metro mall, Phase-1, Sector 75");
   const [editCity, setEditCity] = useState("Noida");
   const [editState, setEditState] = useState("Uttar Pradesh");
@@ -114,7 +114,7 @@ export default function AdminOrderDetailPage() {
 
   const handleUpdatePickupPoint = async () => {
     const updated = {
-      location: editLocationName.trim() || "precision optics",
+      location: editLocationName.trim() || "work",
       address: editAddress.trim(),
       city: editCity.trim() || "Noida",
       state: editState.trim() || "Uttar Pradesh",

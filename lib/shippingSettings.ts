@@ -44,9 +44,9 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   enableWhiteGloveHomeTrial: true,
   trialDepositAmount: 3000,
 
-  shiprocketEmail: process.env.SHIPROCKET_EMAIL || "precisionoptics7@gmail.com",
-  shiprocketPassword: process.env.SHIPROCKET_PASSWORD || "Precision@2026",
-  shiprocketPickupLocation: process.env.SHIPROCKET_PICKUP_LOCATION || "precision optics",
+  shiprocketEmail: process.env.SHIPROCKET_EMAIL || "service.viralnest@gmail.com",
+  shiprocketPassword: process.env.SHIPROCKET_PASSWORD || "ou6wb4ob*JiuAl6zW5^KM7DWX*Ln#wpx",
+  shiprocketPickupLocation: process.env.SHIPROCKET_PICKUP_LOCATION || "work",
   shiprocketPickupAddress:
     process.env.SHIPROCKET_PICKUP_ADDRESS ||
     "GF-45D, Spectrum metro mall, Phase-1, Sector 75",

@@ -35,9 +35,9 @@ export default function AdminShippingPage() {
     trialDepositAmount: 3000,
 
     // Shiprocket Settings
-    shiprocketEmail: "precisionoptics7@gmail.com",
-    shiprocketPassword: "Precision@2026",
-    shiprocketPickupLocation: "precision optics",
+    shiprocketEmail: "service.viralnest@gmail.com",
+    shiprocketPassword: "ou6wb4ob*JiuAl6zW5^KM7DWX*Ln#wpx",
+    shiprocketPickupLocation: "work",
     shiprocketPickupAddress: "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
     shiprocketPickupCity: "Noida",
     shiprocketPickupState: "Uttar Pradesh",
