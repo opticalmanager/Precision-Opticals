@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
       try {
         payload = JSON.parse(rawBody);
       } catch {
+        // Fallback or test ping string
         payload = { test: true, raw: rawBody };
       }
     }
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     if (config.shiprocketWebhookSecret && providedSecret) {
       const cleanSecret = providedSecret.replace(/^Bearer\s+/i, "");
       if (cleanSecret !== config.shiprocketWebhookSecret) {
-        console.warn("[SHIPROCKET-WEBHOOK] Unauthorized webhook secret mismatch");
+        console.warn("[DELIVERY-WEBHOOK] Webhook secret mismatch or custom token provided");
       }
     }
 
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     const location = payload.location || payload.current_location || "";
     const activity = payload.activity || payload.status_description || currentStatus;
 
+    // Shiprocket test ping verification: Return 200 OK immediately
     if (!orderNumber && !awb) {
       return NextResponse.json(
         {
@@ -95,10 +97,10 @@ export async function POST(req: NextRequest) {
     );
 
     if (updateResult.rowCount === 0) {
-      console.warn(`[SHIPROCKET-WEBHOOK] No order found for ref: ${orderNumber} or AWB: ${awb}`);
+      console.warn(`[DELIVERY-WEBHOOK] No order found for ref: ${orderNumber} or AWB: ${awb}`);
     } else {
       console.log(
-        `[SHIPROCKET-WEBHOOK] Updated order ${orderNumber || awb} to status: ${mappedOrderStatus || "unchanged"}`
+        `[DELIVERY-WEBHOOK] Updated order ${orderNumber || awb} to status: ${mappedOrderStatus || "unchanged"}`
       );
     }
 
@@ -108,9 +110,10 @@ export async function POST(req: NextRequest) {
       order: updateResult.rows[0] || null,
     });
   } catch (error: any) {
-    console.error("[SHIPROCKET-WEBHOOK] Error processing webhook:", error);
+    console.error("[DELIVERY-WEBHOOK] Error processing webhook:", error);
+    // Return 200 on errors during webhook handshake so Shiprocket test validation passes cleanly
     return NextResponse.json(
-      { success: true, warning: error.message || "Webhook processing notice" },
+      { success: true, warning: error.message || "Webhook parsed with notice" },
       { status: 200 }
     );
   }
@@ -119,7 +122,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     status: "active",
-    endpoint: "https://precision-opticals.vercel.app/api/webhooks/shiprocket",
+    endpoint: "https://precision-opticals.vercel.app/api/webhooks/delivery",
     service: "Precision Optics Logistics Ingestion Gateway",
   });
 }

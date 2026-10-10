@@ -66,7 +66,7 @@ export default function AdminShippingPage() {
     connected: false,
   });
 
-  const webhookUrl = "https://precision-opticals.vercel.app/api/webhooks/shiprocket";
+  const webhookUrl = "https://precision-opticals.vercel.app/api/webhooks/delivery";
 
   useEffect(() => {
     fetch("/api/admin/settings?key=shipping")
@@ -563,7 +563,7 @@ export default function AdminShippingPage() {
         </div>
 
         {/* 4. Webhook Configuration Box */}
-        <div className="pt-3 border-t border-stone-100 bg-[#FAF7F2] p-3.5 rounded-xl border border-[#E8DCCF] space-y-2 text-xs">
+        <div className="pt-3 border-t border-stone-100 bg-[#FAF7F2] p-3.5 rounded-xl border border-[#E8DCCF] space-y-3 text-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-bold text-[#2A1E17]">
               <Webhook className="w-4 h-4 text-[#C86A28]" />
@@ -575,35 +575,62 @@ export default function AdminShippingPage() {
           </div>
 
           <p className="text-[11px] text-stone-600 leading-relaxed">
-            Configure this URL in your Shiprocket Dashboard (<em>Settings &gt; API &gt; Webhooks</em>) to automatically sync tracking events:
+            Configure this URL in your Shiprocket Dashboard (<em>Settings &gt; API &gt; Webhooks &gt; Add Webhook</em>) to automatically sync tracking events.
           </p>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
-              value={webhookUrl}
-              className="flex-1 bg-white border border-[#E8DCCF] px-3 py-1.5 rounded-lg font-mono text-[11px] text-stone-800"
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleCopyWebhook}
-              className="text-xs h-8 bg-white border-[#E8DCCF] text-[#2A1E17]"
-            >
-              {copiedWebhook ? (
-                <>
-                  <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                  <span className="text-emerald-600 font-semibold">Copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 mr-1" />
-                  <span>Copy URL</span>
-                </>
-              )}
-            </Button>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-stone-500 uppercase">Webhook URL (Keyword-compliant)</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={webhookUrl}
+                className="flex-1 bg-white border border-[#E8DCCF] px-3 py-1.5 rounded-lg font-mono text-[11px] text-stone-800"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCopyWebhook}
+                className="text-xs h-8 bg-white border-[#E8DCCF] text-[#2A1E17]"
+              >
+                {copiedWebhook ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    <span className="text-emerald-600 font-semibold">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                    <span>Copy URL</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-[10px] text-amber-800 bg-amber-50/70 border border-amber-200/60 p-2 rounded-md">
+              <strong>Shiprocket Constraint:</strong> Shiprocket prohibits keywords like <code>shiprocket</code>, <code>kartrocket</code>, <code>sr</code>, or <code>kr</code> in the webhook URL. This <code>/api/webhooks/delivery</code> endpoint complies with this requirement.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className="text-[10px] font-semibold text-stone-500 uppercase">Auth Token Type in Shiprocket</label>
+              <input
+                type="text"
+                readOnly
+                value="x-api-key"
+                className="mt-1 w-full bg-white border border-[#E8DCCF] px-2.5 py-1 rounded-lg font-mono text-[11px] text-stone-700"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-stone-500 uppercase">Token / Secret</label>
+              <input
+                type="text"
+                readOnly
+                value={shippingConfig.shiprocketWebhookSecret || "prec_shiprocket_sec_2026"}
+                className="mt-1 w-full bg-white border border-[#E8DCCF] px-2.5 py-1 rounded-lg font-mono text-[11px] text-stone-700"
+              />
+            </div>
           </div>
         </div>
       </div>
