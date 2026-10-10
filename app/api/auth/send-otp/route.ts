@@ -100,6 +100,7 @@ export async function POST(req: Request) {
     let deliverySuccess = false;
     let actualChannel = channel === "sms" ? "sms" : "whatsapp";
     let fallbackUsed = false;
+    let lastDeliveryError = "";
 
     if (actualChannel === "whatsapp") {
       const waResult = await sendWhatsAppOtp(canonicalPhone, rawOtp);
@@ -121,6 +122,7 @@ export async function POST(req: Request) {
             );
           }
         } else {
+          lastDeliveryError = smsResult.error || waResult.error || "";
           console.error(`[AUTH-OTP] Both WhatsApp and SMS fallback failed for ${canonicalPhone}:`, smsResult.error);
         }
       }
@@ -128,13 +130,16 @@ export async function POST(req: Request) {
       // Explicitly requested SMS channel
       const smsResult = await sendSmsOtp(canonicalPhone, rawOtp);
       deliverySuccess = smsResult.success;
+      if (!deliverySuccess) {
+        lastDeliveryError = smsResult.error || "";
+      }
     }
 
     if (!deliverySuccess) {
       return NextResponse.json(
         {
           success: false,
-          error: "Unable to deliver verification code. Please check your network or try again.",
+          error: lastDeliveryError || "Unable to deliver verification code. Please check your network or try again.",
         },
         { status: 502 }
       );

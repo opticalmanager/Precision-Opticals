@@ -22,6 +22,9 @@ import {
   Eye,
   EyeOff,
   MessageSquare,
+  RotateCcw,
+  RefreshCw,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -68,7 +71,7 @@ function AdminSettingsContent() {
     lowStockStaffAlert: true,
   });
 
-  // WhatsApp & SMS Auth State
+  // WhatsApp & Fast2SMS Auth State
   const [whatsappAuthConfig, setWhatsappAuthConfig] = useState({
     wacrmApiUrl: "https://broadcast.opticalmanager.in",
     wacrmApiKey: "",
@@ -76,11 +79,64 @@ function AdminSettingsContent() {
     templateLanguage: "en_US",
     whatsappEnabled: true,
     smsFallbackEnabled: true,
-    msg91AuthKey: "",
-    msg91TemplateId: "",
+    fast2smsApiKey: "6bnxOW40vwCaHNIXuR2KdlSYq8pk1MJto5LeBDrPZ7GQ3cFyhz3i4WMem0lqVKJdvGp7YyaCb2ro8wzh",
+    fast2smsRoute: "otp" as "otp" | "dlt",
+    fast2smsSenderId: "",
+    fast2smsTemplateId: "",
   });
   const [showWacrmKey, setShowWacrmKey] = useState(false);
-  const [showMsg91Key, setShowMsg91Key] = useState(false);
+  const [showFast2SmsKey, setShowFast2SmsKey] = useState(false);
+  const [fast2smsWallet, setFast2smsWallet] = useState<{ wallet: number; smsCount: number } | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [testMobile, setTestMobile] = useState("");
+  const [testSending, setTestSending] = useState(false);
+
+  const fetchFast2SmsWallet = async (keyOverride?: string) => {
+    setWalletLoading(true);
+    try {
+      const q = keyOverride ? `?key=${encodeURIComponent(keyOverride)}` : "";
+      const res = await fetch(`/api/admin/fast2sms/wallet${q}`);
+      const data = await res.json();
+      if (data.success) {
+        setFast2smsWallet({ wallet: data.wallet, smsCount: data.smsCount });
+      } else {
+        setFast2smsWallet(null);
+      }
+    } catch {
+      setFast2smsWallet(null);
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  const handleSendTestOtp = async () => {
+    const cleanPhone = testMobile.replace(/[^0-9]/g, "");
+    if (cleanPhone.length < 10) {
+      toast.error("Invalid phone", { description: "Please enter a valid 10-digit mobile number." });
+      return;
+    }
+    setTestSending(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone, channel: "sms" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Test OTP Dispatched!", {
+          description: `SMS successfully sent via Fast2SMS to +91 ${cleanPhone.slice(-10)}`,
+        });
+        fetchFast2SmsWallet();
+      } else {
+        toast.error("Dispatch Failed", { description: data.error || "Unable to send SMS." });
+      }
+    } catch (e: any) {
+      toast.error("Network Error", { description: e?.message || "Failed to reach server." });
+    } finally {
+      setTestSending(false);
+    }
+  };
 
   // Roles state
   const [roles, setRoles] = useState<StaffRole[]>([]);
@@ -120,6 +176,9 @@ function AdminSettingsContent() {
         }
         if (waData.success && waData.value) {
           setWhatsappAuthConfig((prev) => ({ ...prev, ...waData.value }));
+          fetchFast2SmsWallet(waData.value.fast2smsApiKey);
+        } else {
+          fetchFast2SmsWallet();
         }
         if (rolesData.success && Array.isArray(rolesData.value) && rolesData.value.length > 0) {
           setRoles(rolesData.value);
@@ -574,21 +633,50 @@ function AdminSettingsContent() {
                 </div>
               </div>
 
-              {/* Card 2: SMS Fallback Gateway (MSG91) */}
+              {/* Card 2: Fast2SMS Gateway (Bulk V2) */}
               <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-100 gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-[#C86A28]">
                       <Smartphone className="w-4 h-4" />
                     </div>
                     <div>
                       <h2 className="text-sm font-bold text-[#2A1E17]">
-                        SMS Fallback Gateway (MSG91 SendOTP)
+                        SMS Gateway (Fast2SMS Bulk V2)
                       </h2>
                       <p className="text-xs text-stone-500">
-                        Automatic fallback when WhatsApp delivery fails or customer clicks &apos;Get OTP via SMS&apos;
+                        High-throughput transactional SMS gateway for mobile OTPs &amp; instant failover
                       </p>
                     </div>
+                  </div>
+
+                  {/* Live Fast2SMS Wallet Balance Pill */}
+                  <div className="flex items-center gap-2">
+                    <div className="px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#E8DCCF] text-[11px] font-mono flex items-center gap-1.5 text-stone-700">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      {walletLoading ? (
+                        <span className="flex items-center gap-1 text-stone-400">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Querying Fast2SMS...
+                        </span>
+                      ) : fast2smsWallet ? (
+                        <span>
+                          <strong className="text-stone-900 font-bold">₹{fast2smsWallet.wallet.toFixed(2)}</strong> balance
+                          {" "}&bull;{" "}
+                          <strong className="text-[#C86A28] font-bold">{fast2smsWallet.smsCount}</strong> credits
+                        </span>
+                      ) : (
+                        <span className="text-stone-400">Balance unverified</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fetchFast2SmsWallet(whatsappAuthConfig.fast2smsApiKey)}
+                      disabled={walletLoading}
+                      className="p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                      title="Refresh Fast2SMS Balance"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${walletLoading ? "animate-spin text-[#C86A28]" : ""}`} />
+                    </button>
                   </div>
                 </div>
 
@@ -596,10 +684,10 @@ function AdminSettingsContent() {
                 <div className="flex items-center justify-between p-3.5 rounded-lg bg-[#FAF7F2] border border-[#E8DCCF]">
                   <div>
                     <label className="text-xs font-bold text-[#2A1E17] block">
-                      Enable SMS OTP Fallback
+                      Enable SMS OTP Delivery
                     </label>
                     <span className="text-[11px] text-stone-500">
-                      Permits automatic failover and customer-requested SMS dispatch
+                      Permits automatic failover when WhatsApp is unavailable and on-demand customer SMS dispatch
                     </span>
                   </div>
                   <input
@@ -611,61 +699,197 @@ function AdminSettingsContent() {
                         smsFallbackEnabled: e.target.checked,
                       })
                     }
-                    className="w-4 h-4 accent-[#007AFF] cursor-pointer"
+                    className="w-4 h-4 accent-[#C86A28] cursor-pointer"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
-                  <div>
-                    <label className="block text-stone-700 font-semibold mb-1">
-                      MSG91 Auth Key
+                {/* Fast2SMS API Key Input */}
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-stone-700 font-semibold">
+                      Fast2SMS API Secret Key *
                     </label>
-                    <div className="relative">
-                      <input
-                        type={showMsg91Key ? "text" : "password"}
-                        value={whatsappAuthConfig.msg91AuthKey}
-                        onChange={(e) =>
-                          setWhatsappAuthConfig({
-                            ...whatsappAuthConfig,
-                            msg91AuthKey: e.target.value,
-                          })
-                        }
-                        placeholder="Leave empty for development simulation..."
-                        className="w-full pl-3 pr-9 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowMsg91Key(!showMsg91Key)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
-                        title={showMsg91Key ? "Mask key" : "Reveal key"}
-                      >
-                        {showMsg91Key ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-stone-400 mt-1">
-                      When left empty, safe development simulation mode outputs the OTP to server logs.
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fetchFast2SmsWallet(whatsappAuthConfig.fast2smsApiKey)}
+                      className="text-[10px] text-[#C86A28] hover:underline font-medium cursor-pointer"
+                    >
+                      Test Key &amp; Refresh Credits
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="block text-stone-700 font-semibold mb-1">
-                      MSG91 Flow / Template ID
-                    </label>
+                  <div className="relative">
                     <input
-                      type="text"
-                      value={whatsappAuthConfig.msg91TemplateId}
+                      type={showFast2SmsKey ? "text" : "password"}
+                      value={whatsappAuthConfig.fast2smsApiKey}
                       onChange={(e) =>
                         setWhatsappAuthConfig({
                           ...whatsappAuthConfig,
-                          msg91TemplateId: e.target.value,
+                          fast2smsApiKey: e.target.value,
                         })
                       }
-                      placeholder="e.g. 642e8..."
-                      className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                      placeholder="Enter 6bnx... API key"
+                      className="w-full pl-3 pr-9 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
                     />
-                    <p className="text-[10px] text-stone-400 mt-1">
-                      Pre-approved DLT-compliant SMS template ID in MSG91 console.
+                    <button
+                      type="button"
+                      onClick={() => setShowFast2SmsKey(!showFast2SmsKey)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
+                      title={showFast2SmsKey ? "Mask key" : "Reveal key"}
+                    >
+                      {showFast2SmsKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-stone-400">
+                    Stored securely in database with fallback to <code className="text-stone-600 font-mono">FAST2SMS_API_KEY</code> in <code className="text-stone-600">.env.local</code>.
+                  </p>
+                </div>
+
+                {/* Route Selection: Quick OTP vs. DLT Route */}
+                <div className="pt-2 border-t border-stone-100 space-y-3">
+                  <label className="block text-xs font-bold text-[#2A1E17]">
+                    SMS Routing Architecture
+                  </label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {/* Quick OTP Route Option */}
+                    <div
+                      onClick={() => setWhatsappAuthConfig({ ...whatsappAuthConfig, fast2smsRoute: "otp" })}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        whatsappAuthConfig.fast2smsRoute === "otp"
+                          ? "border-[#C86A28] bg-orange-50/50 ring-1 ring-[#C86A28]"
+                          : "border-[#E8DCCF] bg-[#FAF7F2] hover:bg-stone-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="fast2smsRoute"
+                            checked={whatsappAuthConfig.fast2smsRoute === "otp"}
+                            onChange={() => setWhatsappAuthConfig({ ...whatsappAuthConfig, fast2smsRoute: "otp" })}
+                            className="accent-[#C86A28]"
+                          />
+                          Quick OTP Route
+                        </span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">
+                          Zero DLT Required
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 leading-relaxed">
+                        Uses Fast2SMS transactional pipes to send 6-digit OTPs immediately with zero regulatory setup.
+                      </p>
+                    </div>
+
+                    {/* DLT Route Option */}
+                    <div
+                      onClick={() => setWhatsappAuthConfig({ ...whatsappAuthConfig, fast2smsRoute: "dlt" })}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        whatsappAuthConfig.fast2smsRoute === "dlt"
+                          ? "border-[#C86A28] bg-orange-50/50 ring-1 ring-[#C86A28]"
+                          : "border-[#E8DCCF] bg-[#FAF7F2] hover:bg-stone-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                          <input
+                            type="radio"
+                            name="fast2smsRoute"
+                            checked={whatsappAuthConfig.fast2smsRoute === "dlt"}
+                            onChange={() => setWhatsappAuthConfig({ ...whatsappAuthConfig, fast2smsRoute: "dlt" })}
+                            className="accent-[#C86A28]"
+                          />
+                          Enterprise DLT Route
+                        </span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold">
+                          TRAI Approved
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 leading-relaxed">
+                        Sends branded SMS with your approved 6-character DLT Header and TRAI Content Template ID.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* DLT specific fields (conditionally enabled/visible) */}
+                  {whatsappAuthConfig.fast2smsRoute === "dlt" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2 p-3 bg-blue-50/40 rounded-lg border border-blue-200/60 animate-in fade-in duration-150">
+                      <div>
+                        <label className="block text-stone-700 font-semibold mb-1">
+                          DLT Approved Sender ID (Header) *
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={whatsappAuthConfig.fast2smsSenderId}
+                          onChange={(e) =>
+                            setWhatsappAuthConfig({
+                              ...whatsappAuthConfig,
+                              fast2smsSenderId: e.target.value.toUpperCase(),
+                            })
+                          }
+                          placeholder="e.g. PRCOPT"
+                          className="w-full px-3 py-1.5 bg-white border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono uppercase"
+                        />
+                        <p className="text-[10px] text-stone-500 mt-1">
+                          6-character alphabet header approved on your DLT portal (e.g. Jio/Vodafone/Airtel).
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-stone-700 font-semibold mb-1">
+                          Fast2SMS Template / Message ID *
+                        </label>
+                        <input
+                          type="text"
+                          value={whatsappAuthConfig.fast2smsTemplateId}
+                          onChange={(e) =>
+                            setWhatsappAuthConfig({
+                              ...whatsappAuthConfig,
+                              fast2smsTemplateId: e.target.value,
+                            })
+                          }
+                          placeholder="e.g. 129482"
+                          className="w-full px-3 py-1.5 bg-white border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
+                        />
+                        <p className="text-[10px] text-stone-500 mt-1">
+                          Template ID registered in Fast2SMS mapped to your DLT Content Template.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Test OTP Dispatcher */}
+                <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FAF7F2] p-3 rounded-lg border border-[#E8DCCF]">
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[#2A1E17]">Test Live SMS Dispatch</h4>
+                    <p className="text-[11px] text-stone-500">
+                      Send an authentic verification test message to verify delivery
                     </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={testMobile}
+                      onChange={(e) => setTestMobile(e.target.value.replace(/[^0-9]/g, ""))}
+                      placeholder="10-digit mobile number"
+                      className="w-36 px-2.5 py-1.5 bg-white border border-[#E8DCCF] rounded-md text-xs font-mono"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSendTestOtp}
+                      disabled={testSending || testMobile.length < 10}
+                      className="bg-[#2A1E17] hover:bg-black text-white text-xs shrink-0 cursor-pointer"
+                    >
+                      {testSending ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : (
+                        <Send className="w-3 h-3 mr-1" />
+                      )}
+                      <span>Dispatch OTP</span>
+                    </Button>
                   </div>
                 </div>
               </div>
