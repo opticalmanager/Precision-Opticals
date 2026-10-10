@@ -21,6 +21,8 @@ import {
   Copy,
   Check,
   PackageCheck,
+  Package,
+  AlertCircle,
   FileDown,
   Edit3,
   Building2,
@@ -52,6 +54,21 @@ export default function AdminOrderDetailPage() {
   const [bookingShiprocket, setBookingShiprocket] = useState(false);
   const [loadingCouriers, setLoadingCouriers] = useState(false);
 
+  // Product-Level Packaging Dimensions
+  const [packageDimensions, setPackageDimensions] = useState<{
+    length: number | string;
+    breadth: number | string;
+    height: number | string;
+    weight: number | string;
+  }>({
+    length: "",
+    breadth: "",
+    height: "",
+    weight: "",
+  });
+  const [dimensionsAutofetched, setDimensionsAutofetched] = useState(false);
+  const [productNameForDims, setProductNameForDims] = useState<string>("");
+
   // Consignment Origin / Pickup Point details
   const [pickupDetails, setPickupDetails] = useState({
     location: "work",
@@ -68,7 +85,7 @@ export default function AdminOrderDetailPage() {
   const [editPincode, setEditPincode] = useState("201316");
   const [saveAsDefaultPickup, setSaveAsDefaultPickup] = useState(false);
 
-  const fetchCourierRates = async (deliveryPincode: string, customPickupPin?: string) => {
+  const fetchCourierRates = async (deliveryPincode: string, customPickupPin?: string, customWeight?: number) => {
     if (!deliveryPincode || deliveryPincode.length !== 6) return;
     setLoadingCouriers(true);
     try {
@@ -80,6 +97,7 @@ export default function AdminOrderDetailPage() {
           action: "calculate_rates",
           deliveryPincode,
           pickupPincode: pin,
+          weight: customWeight,
         }),
       });
       const data = await res.json();
@@ -149,6 +167,20 @@ export default function AdminOrderDetailPage() {
   };
 
   const handleBookShiprocket = async () => {
+    // Ensure packaging dimensions and weight are present
+    if (
+      !packageDimensions.weight ||
+      !packageDimensions.length ||
+      !packageDimensions.breadth ||
+      !packageDimensions.height
+    ) {
+      toast.error("Packaging Dimensions Required", {
+        description:
+          "Please enter Dead Weight, Length, Breadth, and Height in the Packaging Specification box before booking courier.",
+      });
+      return;
+    }
+
     setBookingShiprocket(true);
     const selectedCourier =
       courierOptions.find((c) => c.courierId === selectedCourierId) || courierOptions[0];
@@ -163,6 +195,12 @@ export default function AdminOrderDetailPage() {
           courierId: selectedCourierId,
           pickupLocation: pickupDetails.location,
           deliveryCost: selectedCourier?.rate,
+          dimensions: {
+            length: Number(packageDimensions.length),
+            breadth: Number(packageDimensions.breadth),
+            height: Number(packageDimensions.height),
+          },
+          weight: Number(packageDimensions.weight),
         }),
       });
       const data = await res.json();
@@ -194,8 +232,64 @@ export default function AdminOrderDetailPage() {
         setNewStatus(data.order.status);
         setCourierPartner(data.order.courier_partner || "BlueDart Express");
         setTrackingNumber(data.order.tracking_number || "");
-        if (data.order.shipping_address?.pincode) {
-          fetchCourierRates(data.order.shipping_address.pincode);
+
+        // Autofetch packaging dimensions from order items
+        let detectedDims: { length?: number; breadth?: number; height?: number; weight?: number } | null = null;
+        let sourceProdName = "";
+
+        const itemsList = Array.isArray(data.order.items) ? data.order.items : [];
+        for (const item of itemsList) {
+          const snap = item.product_snapshot || {};
+          const pDims = snap.packageDimensions || snap.package_dimensions || snap.specs?.packageDimensions;
+          const pWeight = snap.packageDimensions?.weightKg || snap.package_dimensions?.weightKg || snap.specs?.weight;
+
+          let parsedWeight: number | undefined = undefined;
+          if (typeof pWeight === "number") {
+            parsedWeight = pWeight;
+          } else if (typeof pWeight === "string") {
+            const m = pWeight.match(/([\d.]+)/);
+            if (m) {
+              parsedWeight = pWeight.includes("g") && !pWeight.includes("kg") ? Number(m[1]) / 1000 : Number(m[1]);
+            }
+          }
+
+          if (pDims && (pDims.lengthCm || pDims.length)) {
+            detectedDims = {
+              length: Number(pDims.lengthCm || pDims.length),
+              breadth: Number(pDims.breadthCm || pDims.breadth),
+              height: Number(pDims.heightCm || pDims.height),
+              weight: parsedWeight || (pDims.weightKg ? Number(pDims.weightKg) : 0.25),
+            };
+            sourceProdName = snap.name || item.name || "Eyewear";
+            break;
+          }
+        }
+
+        if (detectedDims) {
+          setPackageDimensions({
+            length: detectedDims.length ?? "",
+            breadth: detectedDims.breadth ?? "",
+            height: detectedDims.height ?? "",
+            weight: detectedDims.weight ?? "",
+          });
+          setDimensionsAutofetched(true);
+          setProductNameForDims(sourceProdName);
+          if (data.order.shipping_address?.pincode) {
+            fetchCourierRates(data.order.shipping_address.pincode, undefined, detectedDims.weight);
+          }
+        } else {
+          // If not set on product, leave blank so admin enters before AWB booking
+          setPackageDimensions({
+            length: "",
+            breadth: "",
+            height: "",
+            weight: "",
+          });
+          setDimensionsAutofetched(false);
+          setProductNameForDims("");
+          if (data.order.shipping_address?.pincode) {
+            fetchCourierRates(data.order.shipping_address.pincode);
+          }
         }
       }
     } catch (err) {
@@ -498,6 +592,127 @@ export default function AdminOrderDetailPage() {
                   Ready for AWB Booking
                 </span>
               )}
+            </div>
+
+            {/* 1. Eyewear Packaging Specification (Product-Specific Autofetch) */}
+            <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-stone-200/80 pb-2">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-[#C86A28]" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                    Eyewear Packaging Specification (For Courier Volumetric Weight)
+                  </span>
+                </div>
+                {dimensionsAutofetched ? (
+                  <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span>Autofetched from Product: {productNameForDims}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    <span>Dimensions Missing on Product — Please enter below</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label className="block text-stone-600 font-semibold mb-1">
+                    Dead Weight (kg) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g. 0.35"
+                    value={packageDimensions.weight}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPackageDimensions((prev) => ({ ...prev, weight: val }));
+                    }}
+                    className={`w-full px-2.5 py-1.5 rounded-md border text-xs text-[#2A1E17] font-mono ${
+                      !packageDimensions.weight ? "border-amber-300 bg-amber-50/60" : "border-[#E8DCCF] bg-white"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-stone-600 font-semibold mb-1">
+                    Length (cm) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. 18"
+                    value={packageDimensions.length}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPackageDimensions((prev) => ({ ...prev, length: val }));
+                    }}
+                    className={`w-full px-2.5 py-1.5 rounded-md border text-xs text-[#2A1E17] font-mono ${
+                      !packageDimensions.length ? "border-amber-300 bg-amber-50/60" : "border-[#E8DCCF] bg-white"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-stone-600 font-semibold mb-1">
+                    Breadth (cm) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. 12"
+                    value={packageDimensions.breadth}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPackageDimensions((prev) => ({ ...prev, breadth: val }));
+                    }}
+                    className={`w-full px-2.5 py-1.5 rounded-md border text-xs text-[#2A1E17] font-mono ${
+                      !packageDimensions.breadth ? "border-amber-300 bg-amber-50/60" : "border-[#E8DCCF] bg-white"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-stone-600 font-semibold mb-1">
+                    Height (cm) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="e.g. 8"
+                    value={packageDimensions.height}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPackageDimensions((prev) => ({ ...prev, height: val }));
+                    }}
+                    className={`w-full px-2.5 py-1.5 rounded-md border text-xs text-[#2A1E17] font-mono ${
+                      !packageDimensions.height ? "border-amber-300 bg-amber-50/60" : "border-[#E8DCCF] bg-white"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-1 text-[11px] text-stone-500">
+                <span>
+                  Volumetric Weight: <strong>{packageDimensions.length && packageDimensions.breadth && packageDimensions.height ? ((Number(packageDimensions.length) * Number(packageDimensions.breadth) * Number(packageDimensions.height)) / 5000).toFixed(2) : "0.00"} kg</strong> (Air Divisor: 5000)
+                </span>
+                {shipping?.pincode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (packageDimensions.weight) {
+                        fetchCourierRates(shipping.pincode, pickupDetails.pincode, Number(packageDimensions.weight));
+                        toast.success("Recalculated courier freight with updated package weight");
+                      }
+                    }}
+                    className="text-[#C86A28] font-semibold hover:underline cursor-pointer"
+                  >
+                    Recalculate courier freight for this weight
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Consignment Origin & Delivery Cost Confirmation Section */}

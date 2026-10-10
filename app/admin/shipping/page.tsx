@@ -1,24 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Truck,
   ShieldCheck,
   Save,
   Loader2,
-  Copy,
-  Check,
-  Eye,
-  EyeOff,
-  Radio,
-  Package,
-  Layers,
-  Webhook,
-  Activity,
-  AlertCircle,
+  KeyRound,
   CheckCircle2,
-  MapPin,
-  Building2,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  PackageCheck,
+  Layers,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
@@ -33,71 +29,59 @@ export default function AdminShippingPage() {
     supportedCarriers: ["BlueDart Express", "Delhivery Air", "DTDC Priority Air"],
     enableWhiteGloveHomeTrial: true,
     trialDepositAmount: 3000,
-
-    // Shiprocket Settings
     shiprocketEmail: "service.viralnest@gmail.com",
-    shiprocketPassword: "ou6wb4ob*JiuAl6zW5^KM7DWX*Ln#wpx",
     shiprocketPickupLocation: "work",
-    shiprocketPickupAddress: "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
     shiprocketPickupCity: "Noida",
-    shiprocketPickupState: "Uttar Pradesh",
     shiprocketPickupPincode: "201316",
-    shiprocketWebhookSecret: "prec_shiprocket_sec_2026",
     fulfillmentMode: "manual_1click",
-    defaultWeightKg: 0.35,
-    packageDimensions: {
-      length: 18,
-      breadth: 12,
-      height: 8,
-    },
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [copiedWebhook, setCopiedWebhook] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<{
-    tested: boolean;
-    connected: boolean;
-    message?: string;
-  }>({
-    tested: false,
-    connected: false,
-  });
+  const [apiConnected, setApiConnected] = useState<boolean | null>(null);
 
-  const webhookUrl = "https://precision-opticals.vercel.app/api/webhooks/delivery";
+  // Simulated cart value to preview the storefront incentive bar
+  const [previewCartValue, setPreviewCartValue] = useState(3800);
 
   useEffect(() => {
-    fetch("/api/admin/settings?key=shipping")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success && data.value) {
+    Promise.all([
+      fetch("/api/admin/settings?key=shipping").then((r) => r.json()),
+      fetch("/api/admin/shipping/shiprocket").then((r) => r.json()).catch(() => ({ connected: false })),
+    ])
+      .then(([settingsData, connectionData]) => {
+        if (settingsData.success && settingsData.value) {
           setShippingConfig((prev: any) => ({
             ...prev,
-            ...data.value,
-            packageDimensions: {
-              ...prev.packageDimensions,
-              ...(data.value.packageDimensions || {}),
-            },
+            ...settingsData.value,
           }));
         }
+        if (connectionData) {
+          setApiConnected(Boolean(connectionData.connected));
+        }
       })
-      .catch((e) => console.warn("Failed to fetch shipping settings:", e))
+      .catch((e) => console.warn("Failed to load shipping data:", e))
       .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Fetch latest to preserve all API/webhook secrets while saving rules
+      const existingRes = await fetch("/api/admin/settings?key=shipping");
+      const existingData = await existingRes.json();
+      const mergedConfig = {
+        ...(existingData.value || {}),
+        ...shippingConfig,
+      };
+
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: "shipping", value: shippingConfig }),
+        body: JSON.stringify({ key: "shipping", value: mergedConfig }),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Shipping & Shiprocket logistics rules saved successfully");
+        toast.success("Shipping rules and storefront incentives saved successfully");
       } else {
         toast.error("Failed to save rules", { description: data.error });
       }
@@ -108,45 +92,6 @@ export default function AdminShippingPage() {
     }
   };
 
-  const handleTestConnection = async () => {
-    setTestingConnection(true);
-    try {
-      const res = await fetch("/api/admin/shipping/shiprocket");
-      const data = await res.json();
-      setConnectionStatus({
-        tested: true,
-        connected: data.connected,
-        message: data.message,
-      });
-
-      if (data.connected) {
-        toast.success("Shiprocket API Connected", {
-          description: "Live connection verified successfully.",
-        });
-      } else {
-        toast.info("Shiprocket Credentials Stored", {
-          description: data.message || "Ensure API User is configured in Shiprocket dashboard.",
-        });
-      }
-    } catch (err: any) {
-      setConnectionStatus({
-        tested: true,
-        connected: false,
-        message: err.message || "Network error while connecting to Shiprocket",
-      });
-      toast.error("Connection Test Failed", { description: err.message });
-    } finally {
-      setTestingConnection(false);
-    }
-  };
-
-  const handleCopyWebhook = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setCopiedWebhook(true);
-    toast.success("Webhook URL copied to clipboard");
-    setTimeout(() => setCopiedWebhook(false), 2000);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -155,499 +100,124 @@ export default function AdminShippingPage() {
     );
   }
 
+  // Calculate incentive delta for preview
+  const threshold = Number(shippingConfig.freeShippingThreshold || 5000);
+  const remainingForFreeShipping = Math.max(0, threshold - previewCartValue);
+  const incentivePercentage = Math.min(100, Math.round((previewCartValue / threshold) * 100));
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header */}
+    <div className="space-y-6 animate-in fade-in duration-200 max-w-[1400px] mx-auto">
+      {/* Header with Configure API button in top right */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E8DCCF]">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[#2A1E17] font-serif">
             Shipping &amp; Logistics Operating Center
           </h1>
           <p className="text-xs text-stone-500">
-            Configure Shiprocket carrier routing, live rates, optical lab dispatch gates, and webhook synchronization
+            Manage storefront delivery incentives, customer shipping rates, and white-glove atelier trials
           </p>
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleSave}
-          disabled={saving}
-          className="text-xs bg-[#C86A28] hover:bg-[#b0581e] text-white shadow-xs"
-        >
-          {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
-          <span>Save Configuration</span>
-        </Button>
-      </div>
-
-      {/* 1. Shiprocket Logistics Gateway Integration Card */}
-      <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#FAF3EB] border border-[#E8DCCF] flex items-center justify-center text-[#C86A28]">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-[#2A1E17]">Shiprocket API Gateway</h2>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Primary Logistics Provider
-                </span>
-              </div>
-              <p className="text-xs text-stone-500">
-                Multi-courier air dispatch (BlueDart, Delhivery, DTDC) with automated AWB generation
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {/* Top-Right Configure API Button */}
+          <Link href="/admin/shipping/api">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleTestConnection}
-              disabled={testingConnection}
-              className="text-xs h-8 border-[#E8DCCF] text-stone-700 bg-[#FAF7F2] hover:bg-stone-100"
+              className="text-xs border-[#E8DCCF] bg-white text-[#2A1E17] hover:bg-[#FAF7F2] h-8 shadow-2xs"
             >
-              {testingConnection ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin text-[#C86A28]" />
-              ) : (
-                <Activity className="w-3.5 h-3.5 mr-1.5 text-[#C86A28]" />
-              )}
-              <span>Test API Connection</span>
+              <KeyRound className="w-3.5 h-3.5 mr-1.5 text-[#C86A28]" />
+              <span>Configure Carrier API &amp; Webhook</span>
             </Button>
-          </div>
-        </div>
+          </Link>
 
-        {/* Connection Status Pill if Tested */}
-        {connectionStatus.tested && (
-          <div
-            className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
-              connectionStatus.connected
-                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                : "bg-amber-50 border-amber-200 text-amber-900"
-            }`}
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            className="text-xs bg-[#C86A28] hover:bg-[#b0581e] text-white shadow-xs h-8"
           >
-            {connectionStatus.connected ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            )}
-            <div className="space-y-0.5">
-              <div className="font-semibold">
-                {connectionStatus.connected
-                  ? "Shiprocket API Connected & Active"
-                  : "Shiprocket API Credentials Stored"}
-              </div>
-              <div className="text-[11px] leading-relaxed">
-                {connectionStatus.message ||
-                  (connectionStatus.connected
-                    ? "Live rates and AWB dispatch are operational."
-                    : "If login returns invalid combination, configure an API User in Shiprocket Dashboard -> Settings -> API -> Configure API Users.")}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Credentials Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs pt-1">
-          <div>
-            <label className="block text-stone-700 font-semibold mb-1">
-              Shiprocket API Email
-            </label>
-            <input
-              type="email"
-              value={shippingConfig.shiprocketEmail || ""}
-              onChange={(e) =>
-                setShippingConfig({
-                  ...shippingConfig,
-                  shiprocketEmail: e.target.value,
-                })
-              }
-              placeholder="pprecisionoptics7@gmail.com"
-              className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-stone-700 font-semibold mb-1">
-              Shiprocket API Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={shippingConfig.shiprocketPassword || ""}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    shiprocketPassword: e.target.value,
-                  })
-                }
-                placeholder="API Password"
-                className="w-full px-3 py-1.5 pr-8 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17] font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
-              >
-                {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Primary Atelier Pickup Location & Dispatch Point */}
-        <div className="pt-3 border-t border-stone-100 space-y-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-            <div className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#C86A28]" />
-              <span>Primary Atelier Pickup Location (Shiprocket Consignment Origin)</span>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                setShippingConfig({
-                  ...shippingConfig,
-                  shiprocketPickupLocation: "precision optics",
-                  shiprocketPickupAddress: "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
-                  shiprocketPickupCity: "Noida",
-                  shiprocketPickupState: "Uttar Pradesh",
-                  shiprocketPickupPincode: "201316",
-                })
-              }
-              className="text-[11px] font-bold text-[#C86A28] hover:underline cursor-pointer"
-            >
-              Load Spectrum Metro Mall (Noida 201316)
-            </button>
-          </div>
-
-          <p className="text-[11px] text-stone-500 leading-relaxed">
-            This pickup address is passed to Shiprocket as the dispatch origin when assigning AWBs and scheduling courier pickups.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div>
-              <label className="block text-stone-700 font-semibold mb-1">
-                Pickup Location Nickname
-              </label>
-              <input
-                type="text"
-                value={shippingConfig.shiprocketPickupLocation || ""}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    shiprocketPickupLocation: e.target.value,
-                  })
-                }
-                placeholder="precision optics"
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
-              />
-            </div>
-
-            <div className="lg:col-span-2">
-              <label className="block text-stone-700 font-semibold mb-1">
-                Street Address / Mall Unit
-              </label>
-              <input
-                type="text"
-                value={shippingConfig.shiprocketPickupAddress || ""}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    shiprocketPickupAddress: e.target.value,
-                  })
-                }
-                placeholder="GF-45D, Spectrum metro mall, Phase-1, Sector 75"
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-700 font-semibold mb-1">
-                Postal PIN Code
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                value={shippingConfig.shiprocketPickupPincode || ""}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    shiprocketPickupPincode: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-                placeholder="201316"
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs font-mono text-[#2A1E17]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-700 font-semibold mb-1">
-                City
-              </label>
-              <input
-                type="text"
-                value={shippingConfig.shiprocketPickupCity || ""}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    shiprocketPickupCity: e.target.value,
-                  })
-                }
-                placeholder="Noida"
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-700 font-semibold mb-1">
-                State
-              </label>
-              <input
-                type="text"
-                value={shippingConfig.shiprocketPickupState || ""}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    shiprocketPickupState: e.target.value,
-                  })
-                }
-                placeholder="Uttar Pradesh"
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Packaging & Volumetric Defaults */}
-        <div className="pt-3 border-t border-stone-100">
-          <div className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-2 flex items-center gap-1.5">
-            <Package className="w-3.5 h-3.5 text-[#C86A28]" />
-            <span>Eyewear Box Packaging Specification (For Courier Volumetric Weight)</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div>
-              <label className="block text-stone-600 font-medium mb-1">
-                Dead Weight (kg)
-              </label>
-              <input
-                type="number"
-                step="0.05"
-                value={shippingConfig.defaultWeightKg || 0.35}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    defaultWeightKg: Number(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-600 font-medium mb-1">
-                Length (cm)
-              </label>
-              <input
-                type="number"
-                value={shippingConfig.packageDimensions?.length || 18}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    packageDimensions: {
-                      ...shippingConfig.packageDimensions,
-                      length: Number(e.target.value),
-                    },
-                  })
-                }
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-600 font-medium mb-1">
-                Breadth (cm)
-              </label>
-              <input
-                type="number"
-                value={shippingConfig.packageDimensions?.breadth || 12}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    packageDimensions: {
-                      ...shippingConfig.packageDimensions,
-                      breadth: Number(e.target.value),
-                    },
-                  })
-                }
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-stone-600 font-medium mb-1">
-                Height (cm)
-              </label>
-              <input
-                type="number"
-                value={shippingConfig.packageDimensions?.height || 8}
-                onChange={(e) =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    packageDimensions: {
-                      ...shippingConfig.packageDimensions,
-                      height: Number(e.target.value),
-                    },
-                  })
-                }
-                className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Optical Lab Dispatch Policy Gate */}
-        <div className="pt-3 border-t border-stone-100 space-y-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-stone-600 mb-1 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-[#C86A28]" />
-            <span>Fulfillment Gate &amp; AWB Dispatch Workflow</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              {
-                id: "manual_1click",
-                title: "Manual 1-Click Dispatch",
-                badge: "Recommended",
-                desc: "Master optician inspects lenses and 1-click books courier & prints label in Order Details view.",
-              },
-              {
-                id: "hybrid",
-                title: "Hybrid Fulfillment",
-                badge: "Intelligent",
-                desc: "Auto-books sunglasses & accessories on payment; prescription glasses wait for Lab Quality Check.",
-              },
-              {
-                id: "auto_dispatch",
-                title: "Instant Auto-Booking",
-                badge: "Fastest",
-                desc: "Instantly creates Shiprocket consignment and assigns AWB upon payment capture.",
-              },
-            ].map((mode) => (
-              <div
-                key={mode.id}
-                onClick={() =>
-                  setShippingConfig({
-                    ...shippingConfig,
-                    fulfillmentMode: mode.id,
-                  })
-                }
-                className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-                  shippingConfig.fulfillmentMode === mode.id
-                    ? "border-[#C86A28] bg-[#FAF3EB] ring-1 ring-[#C86A28]"
-                    : "border-stone-200 bg-white hover:border-stone-300"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-[#2A1E17]">{mode.title}</span>
-                  <span className="text-[9px] bg-stone-100 text-stone-700 px-1.5 py-0.2 rounded font-semibold uppercase">
-                    {mode.badge}
-                  </span>
-                </div>
-                <p className="text-[11px] text-stone-600 leading-relaxed">{mode.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 4. Webhook Configuration Box */}
-        <div className="pt-3 border-t border-stone-100 bg-[#FAF7F2] p-3.5 rounded-xl border border-[#E8DCCF] space-y-3 text-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-bold text-[#2A1E17]">
-              <Webhook className="w-4 h-4 text-[#C86A28]" />
-              <span>Shiprocket Webhook Receiver</span>
-            </div>
-            <span className="text-[10px] text-stone-500 uppercase tracking-wider">
-              Automatic Status Updates
-            </span>
-          </div>
-
-          <p className="text-[11px] text-stone-600 leading-relaxed">
-            Configure this URL in your Shiprocket Dashboard (<em>Settings &gt; API &gt; Webhooks &gt; Add Webhook</em>) to automatically sync tracking events.
-          </p>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-semibold text-stone-500 uppercase">Webhook URL (Keyword-compliant)</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={webhookUrl}
-                className="flex-1 bg-white border border-[#E8DCCF] px-3 py-1.5 rounded-lg font-mono text-[11px] text-stone-800"
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleCopyWebhook}
-                className="text-xs h-8 bg-white border-[#E8DCCF] text-[#2A1E17]"
-              >
-                {copiedWebhook ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                    <span className="text-emerald-600 font-semibold">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 mr-1" />
-                    <span>Copy URL</span>
-                  </>
-                )}
-              </Button>
-            </div>
-            <p className="text-[10px] text-amber-800 bg-amber-50/70 border border-amber-200/60 p-2 rounded-md">
-              <strong>Shiprocket Constraint:</strong> Shiprocket prohibits keywords like <code>shiprocket</code>, <code>kartrocket</code>, <code>sr</code>, or <code>kr</code> in the webhook URL. This <code>/api/webhooks/delivery</code> endpoint complies with this requirement.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div>
-              <label className="text-[10px] font-semibold text-stone-500 uppercase">Auth Token Type in Shiprocket</label>
-              <input
-                type="text"
-                readOnly
-                value="x-api-key"
-                className="mt-1 w-full bg-white border border-[#E8DCCF] px-2.5 py-1 rounded-lg font-mono text-[11px] text-stone-700"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-semibold text-stone-500 uppercase">Token / Secret</label>
-              <input
-                type="text"
-                readOnly
-                value={shippingConfig.shiprocketWebhookSecret || "prec_shiprocket_sec_2026"}
-                className="mt-1 w-full bg-white border border-[#E8DCCF] px-2.5 py-1 rounded-lg font-mono text-[11px] text-stone-700"
-              />
-            </div>
-          </div>
+            {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+            <span>Save Rules</span>
+          </Button>
         </div>
       </div>
 
-      {/* Free Shipping Rule Module */}
-      <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-[#C86A28] mb-1">
-            Storewide Incentive Policy
+      {/* 1. Carrier Connection Status Mini-Banner */}
+      <div className="bg-[#FAF3EB] border border-[#E8DCCF] rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white border border-[#E8DCCF] flex items-center justify-center text-[#C86A28] shrink-0">
+            <Truck className="w-4 h-4" />
           </div>
-          <h2 className="text-base font-bold text-[#2A1E17]">Complimentary Insured Transit</h2>
-          <p className="text-xs text-stone-600 max-w-xl mt-1 leading-relaxed">
-            Orders surpassing this value receive zero-cost priority armored transit with transit insurance coverage included.
-          </p>
+          <div>
+            <div className="flex items-center gap-2 font-bold text-[#2A1E17]">
+              <span>Carrier Provider: Shiprocket Logistics</span>
+              {apiConnected ? (
+                <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full uppercase">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  API Active
+                </span>
+              ) : (
+                <span className="text-[10px] bg-stone-100 text-stone-600 font-bold px-2 py-0.5 rounded-full uppercase">
+                  Credentials Stored
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-stone-600 mt-0.5">
+              Pickup Origin: {shippingConfig.shiprocketPickupCity || "Noida"} ({shippingConfig.shiprocketPickupPincode || "201316"}) • AWB Gate: {shippingConfig.fulfillmentMode || "manual_1click"}
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-stone-100 text-xs">
+        <Link
+          href="/admin/shipping/api"
+          className="text-xs font-semibold text-[#C86A28] hover:underline self-start sm:self-auto flex items-center gap-1"
+        >
+          <span>Manage API Credentials &amp; Webhook</span>
+          <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
+
+      {/* Note about Product-Specific Packaging Dimensions */}
+      <div className="bg-white border border-[#E8DCCF] rounded-xl p-4 flex items-start gap-3 text-xs text-stone-600">
+        <Info className="w-4 h-4 text-[#C86A28] shrink-0 mt-0.5" />
+        <div className="space-y-0.5">
+          <div className="font-semibold text-[#2A1E17]">
+            Packaging Dimensions are Product-Specific
+          </div>
+          <p className="text-[11px] leading-relaxed">
+            Box dimensions and dead weights are defined individually per eyewear product or custom case. When an order arrives, the system auto-fetches the packaging specs directly from the ordered product, allowing opticians to review or adjust them before booking the AWB.
+          </p>
+        </div>
+      </div>
+
+      {/* 2. Storewide Incentive Policy (Free Shipping & Threshold) */}
+      <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#FAF3EB] border border-[#E8DCCF] flex items-center justify-center text-[#C86A28]">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[#2A1E17]">
+                  Storewide Complimentary Insured Delivery Policy
+                </h2>
+                <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full uppercase">
+                  Cart &amp; Checkout Incentive
+                </span>
+              </div>
+              <p className="text-xs text-stone-500">
+                Encourages higher cart values by unlocking free insured air transit when orders exceed the threshold
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Incentive Settings Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
             <label className="block text-stone-700 font-semibold mb-1">
               Free Shipping Threshold (INR ₹)
@@ -661,13 +231,17 @@ export default function AdminShippingPage() {
                   freeShippingThreshold: Number(e.target.value),
                 })
               }
-              className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+              placeholder="5000"
+              className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-lg text-xs text-[#2A1E17] font-semibold focus:outline-none focus:border-[#C86A28]"
             />
+            <p className="text-[10px] text-stone-400 mt-1">
+              Orders reaching this subtotal receive complimentary insured delivery
+            </p>
           </div>
 
           <div>
             <label className="block text-stone-700 font-semibold mb-1">
-              Standard Courier Rate (Sub-threshold) (INR ₹)
+              Standard Courier Rate (Sub-Threshold) (INR ₹)
             </label>
             <input
               type="number"
@@ -678,30 +252,133 @@ export default function AdminShippingPage() {
                   standardShippingFee: Number(e.target.value),
                 })
               }
-              className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+              placeholder="250"
+              className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-lg text-xs text-[#2A1E17] focus:outline-none focus:border-[#C86A28]"
             />
+            <p className="text-[10px] text-stone-400 mt-1">
+              Charged to the customer when the order subtotal is below the threshold
+            </p>
           </div>
 
           <div>
             <label className="block text-stone-700 font-semibold mb-1">
-              Default Primary Air Courier
+              Express Priority Air Add-On (INR ₹)
+            </label>
+            <input
+              type="number"
+              value={shippingConfig.expressShippingFee || 490}
+              onChange={(e) =>
+                setShippingConfig({
+                  ...shippingConfig,
+                  expressShippingFee: Number(e.target.value),
+                })
+              }
+              placeholder="490"
+              className="w-full px-3 py-2 bg-[#FAF7F2] border border-[#E8DCCF] rounded-lg text-xs text-[#2A1E17] focus:outline-none focus:border-[#C86A28]"
+            />
+            <p className="text-[10px] text-stone-400 mt-1">
+              Client upgrade fee for next-day priority air transit
+            </p>
+          </div>
+        </div>
+
+        {/* Carrier Options */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-stone-100 text-xs">
+          <div>
+            <label className="block text-stone-700 font-semibold mb-1">
+              Default Primary Carrier Partner
             </label>
             <input
               type="text"
-              value={shippingConfig.defaultCarrier}
+              value={shippingConfig.defaultCarrier || "BlueDart Express"}
               onChange={(e) =>
                 setShippingConfig({
                   ...shippingConfig,
                   defaultCarrier: e.target.value,
                 })
               }
-              className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+              className="w-full px-3 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-lg text-xs text-[#2A1E17]"
             />
+          </div>
+
+          <div>
+            <label className="block text-stone-700 font-semibold mb-1">
+              Supported Logistics Carriers
+            </label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {(shippingConfig.supportedCarriers || ["BlueDart Express", "Delhivery Air", "DTDC Priority Air"]).map(
+                (carrier: string) => (
+                  <span
+                    key={carrier}
+                    className="bg-[#FAF7F2] border border-[#E8DCCF] text-[#2A1E17] px-2.5 py-1 rounded-md text-[11px] font-medium"
+                  >
+                    {carrier}
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Live Storefront Incentive Simulator */}
+        <div className="pt-3 border-t border-stone-100 bg-[#FAF7F2] p-4 rounded-xl border border-[#E8DCCF] space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#2A1E17]">
+              <Sparkles className="w-3.5 h-3.5 text-[#C86A28]" />
+              <span>Live Storefront Incentive Simulator (Client View in Cart &amp; Checkout)</span>
+            </div>
+            <span className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold">
+              Real-time customer preview
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-stone-600 whitespace-nowrap">Simulate Cart Subtotal:</span>
+            <input
+              type="range"
+              min={1000}
+              max={10000}
+              step={200}
+              value={previewCartValue}
+              onChange={(e) => setPreviewCartValue(Number(e.target.value))}
+              className="flex-1 accent-[#C86A28] cursor-pointer"
+            />
+            <span className="text-xs font-bold text-[#2A1E17] font-mono min-w-[70px] text-right">
+              ₹{previewCartValue.toLocaleString("en-IN")}
+            </span>
+          </div>
+
+          {/* Client-Facing Progress Bar Simulation */}
+          <div className="p-3.5 bg-white border border-[#E8DCCF] rounded-xl space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#2A1E17]">
+                {remainingForFreeShipping > 0 ? (
+                  <>
+                    Add <strong className="text-[#C86A28]">₹{remainingForFreeShipping.toLocaleString("en-IN")}</strong> more to unlock Complimentary Insured Air Transit
+                  </>
+                ) : (
+                  <span className="text-emerald-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Complimentary Insured Air Transit Unlocked
+                  </span>
+                )}
+              </span>
+              <span className="text-[11px] font-mono text-stone-500">{incentivePercentage}%</span>
+            </div>
+
+            <div className="w-full bg-[#FAF7F2] border border-[#E8DCCF] rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  remainingForFreeShipping === 0 ? "bg-emerald-600" : "bg-[#C86A28]"
+                }`}
+                style={{ width: `${incentivePercentage}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* White-Glove Concierge Home Trial */}
+      {/* 3. Luxury Atelier Service (White-Glove Home Trial) */}
       <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
         <div className="flex items-start justify-between">
           <div>

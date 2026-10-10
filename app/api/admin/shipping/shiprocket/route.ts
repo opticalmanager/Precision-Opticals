@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
     if (action === "calculate_rates") {
       const deliveryPincode = body.deliveryPincode?.trim();
       const pickupPincode = body.pickupPincode?.trim() || config.shiprocketPickupPincode || "201316";
+      const customWeight = body.weight !== undefined ? Number(body.weight) : (body.weightKg !== undefined ? Number(body.weightKg) : config.defaultWeightKg || 0.35);
 
       if (!deliveryPincode || !/^\d{6}$/.test(deliveryPincode)) {
         return NextResponse.json(
@@ -85,13 +86,13 @@ export async function POST(req: NextRequest) {
       const result = await checkCourierServiceability({
         deliveryPincode,
         pickupPincode,
-        weightKg: Number(body.weightKg) || 0.35,
+        weightKg: customWeight,
         cod: Boolean(body.cod),
       });
 
       return NextResponse.json({
         ...result,
-        pickupLocation: config.shiprocketPickupLocation,
+        pickupLocation: config.shiprocketPickupLocation || "work",
         pickupAddress: config.shiprocketPickupAddress,
         pickupCity: config.shiprocketPickupCity,
         pickupState: config.shiprocketPickupState,
@@ -102,8 +103,10 @@ export async function POST(req: NextRequest) {
     if (action === "book_shipment") {
       const orderId = body.orderId;
       const courierId = body.courierId ? Number(body.courierId) : undefined;
-      const pickupLocation = body.pickupLocation?.trim() || config.shiprocketPickupLocation || "precision optics";
+      const pickupLocation = body.pickupLocation?.trim() || config.shiprocketPickupLocation || "work";
       const deliveryCost = body.deliveryCost ? Number(body.deliveryCost) : undefined;
+      const customDimensions = body.dimensions;
+      const customWeight = body.weight !== undefined ? Number(body.weight) : undefined;
 
       if (!orderId) {
         return NextResponse.json(
@@ -169,6 +172,8 @@ export async function POST(req: NextRequest) {
         paymentMethod: order.payment_method === "cod" ? "cod" : "prepaid",
         courierId,
         pickupLocation,
+        weight: customWeight,
+        dimensions: customDimensions,
       });
 
       if (bookingResult.success && bookingResult.awbCode) {

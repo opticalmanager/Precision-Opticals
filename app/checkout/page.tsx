@@ -63,10 +63,34 @@ function CheckoutContent() {
     }
   }, [isLoggedIn, user]);
 
+  // Dynamic Storefront Shipping Policy & Incentive
+  const [shippingPolicy, setShippingPolicy] = useState({
+    freeShippingThreshold: 5000,
+    standardShippingFee: 250,
+    expressShippingFee: 490,
+  });
+
+  useEffect(() => {
+    fetch("/api/shipping/config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.freeShippingThreshold) {
+          setShippingPolicy({
+            freeShippingThreshold: data.freeShippingThreshold,
+            standardShippingFee: data.standardShippingFee ?? 250,
+            expressShippingFee: data.expressShippingFee ?? 490,
+          });
+        }
+      })
+      .catch((e) => console.warn("Failed to load shipping policy in checkout:", e));
+  }, []);
+
+  const isEligibleForFreeShipping = rawSubtotal >= shippingPolicy.freeShippingThreshold;
+
   // Shipping fees
   const shippingRates = {
-    standard: 0, // FREE Standard Shipping as shown in reference
-    express: 490, // Express Shipping fee
+    standard: isEligibleForFreeShipping ? 0 : shippingPolicy.standardShippingFee,
+    express: shippingPolicy.expressShippingFee,
   };
 
   const currentShippingFee =
@@ -390,7 +414,13 @@ function CheckoutContent() {
             items={items}
             subtotal={rawSubtotal}
             shippingFee={currentShippingFee}
-            shippingLabel={shippingMethod === "standard" ? "FREE" : "₹490"}
+            shippingLabel={
+              shippingMethod === "standard"
+                ? isEligibleForFreeShipping
+                  ? "FREE"
+                  : `₹${shippingRates.standard}`
+                : `₹${shippingRates.express}`
+            }
             discountAmount={discountAmount}
             totalPayable={totalPayable}
           />

@@ -286,6 +286,12 @@ export async function bookShiprocketShipment(params: {
   paymentMethod: "prepaid" | "cod";
   courierId?: number;
   pickupLocation?: string;
+  weight?: number;
+  dimensions?: {
+    length?: number;
+    breadth?: number;
+    height?: number;
+  };
 }): Promise<ShiprocketOrderResult> {
   const config = await getShippingConfig();
   const { token } = await getShiprocketToken();
@@ -302,7 +308,7 @@ export async function bookShiprocketShipment(params: {
       const orderPayload = {
         order_id: params.orderNumber,
         order_date: formattedDate,
-        pickup_location: params.pickupLocation || config.shiprocketPickupLocation || "precision optics",
+        pickup_location: params.pickupLocation || config.shiprocketPickupLocation || "work",
         billing_customer_name: params.customerName.split(" ")[0] || "Patron",
         billing_last_name: params.customerName.split(" ").slice(1).join(" ") || "Client",
         billing_address: params.address.streetAddress,
@@ -321,10 +327,10 @@ export async function bookShiprocketShipment(params: {
         })),
         payment_method: params.paymentMethod === "cod" ? "COD" : "Prepaid",
         sub_total: params.subtotal,
-        length: config.packageDimensions.length || 18,
-        breadth: config.packageDimensions.breadth || 12,
-        height: config.packageDimensions.height || 8,
-        weight: config.defaultWeightKg || 0.35,
+        length: Number(params.dimensions?.length || config.packageDimensions?.length || 18),
+        breadth: Number(params.dimensions?.breadth || config.packageDimensions?.breadth || 12),
+        height: Number(params.dimensions?.height || config.packageDimensions?.height || 8),
+        weight: Number(params.weight || config.defaultWeightKg || 0.35),
       };
 
       // 1. Create order

@@ -55,6 +55,39 @@ export const CartPage: React.FC<CartPageProps> = ({
     grandTotal,
   } = useCart();
 
+  // Dynamic Storefront Shipping Policy & Incentive
+  const [shippingPolicy, setShippingPolicy] = useState<{
+    freeShippingThreshold: number;
+    standardShippingFee: number;
+    expressShippingFee: number;
+  }>({
+    freeShippingThreshold: 5000,
+    standardShippingFee: 250,
+    expressShippingFee: 490,
+  });
+
+  useEffect(() => {
+    fetch("/api/shipping/config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.freeShippingThreshold) {
+          setShippingPolicy({
+            freeShippingThreshold: data.freeShippingThreshold,
+            standardShippingFee: data.standardShippingFee ?? 250,
+            expressShippingFee: data.expressShippingFee ?? 490,
+          });
+        }
+      })
+      .catch((e) => console.warn("Failed to load shipping policy in cart:", e));
+  }, []);
+
+  const threshold = shippingPolicy.freeShippingThreshold;
+  const isFreeShipping = rawSubtotal >= threshold;
+  const remainingForFree = Math.max(0, threshold - rawSubtotal);
+  const progressPercent = Math.min(100, Math.round((rawSubtotal / threshold) * 100));
+  const shippingFee = isFreeShipping ? 0 : shippingPolicy.standardShippingFee;
+  const finalCartTotal = grandTotal + shippingFee;
+
   // Recommended products for "You May Also Like"
   const recommendedProducts = useMemo(() => {
     const cartProductIds = new Set(items.map((i) => i.product.id));
@@ -318,6 +351,31 @@ export const CartPage: React.FC<CartPageProps> = ({
                   </h2>
                 </div>
 
+                {/* Storewide Free Insured Shipping Incentive Bar */}
+                <div className="my-4 p-3.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#2A1E17]">
+                      {isFreeShipping ? (
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Complimentary Insured Air Delivery Unlocked</span>
+                        </span>
+                      ) : (
+                        <span>
+                          Add <strong className="text-[#C86A28] font-bold">₹{remainingForFree.toLocaleString("en-IN")}</strong> more for Free Insured Delivery
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[11px] font-mono text-stone-500 font-bold">{progressPercent}%</span>
+                  </div>
+                  <div className="w-full bg-[#E8DCCF] rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${isFreeShipping ? "bg-emerald-600" : "bg-[#C86A28]"}`}
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+
                 {/* Pricing Rows */}
                 <div className="py-4 space-y-3 text-xs sm:text-sm">
                   <div className="flex items-center justify-between text-stone-600">
@@ -338,7 +396,16 @@ export const CartPage: React.FC<CartPageProps> = ({
 
                   <div className="flex items-center justify-between text-stone-600">
                     <span>Shipping</span>
-                    <span className="font-sans font-medium text-[#2A1E17]">Free</span>
+                    <span className="font-sans font-medium text-[#2A1E17]">
+                      {isFreeShipping ? (
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1.5">
+                          <span className="line-through text-stone-400 text-xs">₹{shippingPolicy.standardShippingFee}</span>
+                          <span>Free</span>
+                        </span>
+                      ) : (
+                        <span>₹{shippingPolicy.standardShippingFee.toLocaleString("en-IN")}</span>
+                      )}
+                    </span>
                   </div>
 
                   {/* Promo Code Input / Indicator */}
@@ -391,7 +458,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                       Total
                     </span>
                     <span className="font-sans font-bold text-xl sm:text-2xl text-[#2A1E17]">
-                      ₹{grandTotal.toLocaleString("en-IN")}
+                      ₹{finalCartTotal.toLocaleString("en-IN")}
                     </span>
                   </div>
                 </div>
