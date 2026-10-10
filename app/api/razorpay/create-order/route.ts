@@ -40,9 +40,9 @@ export async function POST(req: Request) {
     let activeKeyId =
       process.env.RAZORPAY_KEY_ID ||
       process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
-      "rzp_test_TfX2gVZqD6Ern5";
+      "rzp_live_TmDHdDVheIZGdt";
     let activeKeySecret =
-      process.env.RAZORPAY_KEY_SECRET || "9lrOQWoB18TQgHvX46AcBk2a";
+      process.env.RAZORPAY_KEY_SECRET || "YBvoduAYTChXWVcfH6TdYdV1";
 
     // Use fast in-memory check to avoid slow database pooler round-trips
     try {

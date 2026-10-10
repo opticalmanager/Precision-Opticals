@@ -44,11 +44,11 @@ export async function GET() {
     const razorpayKeyId =
       rawPayments.razorpayUpi?.keyId ||
       process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
-      "rzp_test_TfV4G6DOOj6ykQ";
+      "rzp_live_TmDHdDVheIZGdt";
     const razorpayMode =
       rawPayments.razorpayUpi?.mode ||
       process.env.RAZORPAY_MODE ||
-      "test";
+      "live";
 
     const payments = {
       razorpayUpi: {

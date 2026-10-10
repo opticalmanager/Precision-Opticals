@@ -13,6 +13,7 @@ import {
   Phone,
   Mail,
   User,
+  Truck,
 } from "lucide-react";
 import { ShippingAddress } from "@/types";
 import { useAuth } from "@/context/AuthContext";
@@ -311,6 +312,12 @@ export const StepShippingAddress: React.FC<StepShippingAddressProps> = ({
               <span className="text-[11px] text-stone-500 mt-1 block pl-1">
                 Region: <strong className="text-stone-800">{city}, {state}</strong>
               </span>
+            )}
+            {pincode.length === 6 && (
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg mt-2 font-medium">
+                <Truck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span>Express courier delivery serviceable by BlueDart &amp; Delhivery Air</span>
+              </div>
             )}
           </div>
 

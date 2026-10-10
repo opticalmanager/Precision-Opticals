@@ -20,6 +20,11 @@ import {
   Glasses,
   Copy,
   Check,
+  PackageCheck,
+  FileDown,
+  Edit3,
+  Building2,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/common/StatusBadge";
@@ -41,6 +46,144 @@ export default function AdminOrderDetailPage() {
   const [courierPartner, setCourierPartner] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
 
+  // Shiprocket states
+  const [courierOptions, setCourierOptions] = useState<any[]>([]);
+  const [selectedCourierId, setSelectedCourierId] = useState<number | undefined>(undefined);
+  const [bookingShiprocket, setBookingShiprocket] = useState(false);
+  const [loadingCouriers, setLoadingCouriers] = useState(false);
+
+  // Consignment Origin / Pickup Point details
+  const [pickupDetails, setPickupDetails] = useState({
+    location: "precision optics",
+    address: "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
+    city: "Noida",
+    state: "Uttar Pradesh",
+    pincode: "201316",
+  });
+  const [isEditingPickup, setIsEditingPickup] = useState(false);
+  const [editLocationName, setEditLocationName] = useState("precision optics");
+  const [editAddress, setEditAddress] = useState("GF-45D, Spectrum metro mall, Phase-1, Sector 75");
+  const [editCity, setEditCity] = useState("Noida");
+  const [editState, setEditState] = useState("Uttar Pradesh");
+  const [editPincode, setEditPincode] = useState("201316");
+  const [saveAsDefaultPickup, setSaveAsDefaultPickup] = useState(false);
+
+  const fetchCourierRates = async (deliveryPincode: string, customPickupPin?: string) => {
+    if (!deliveryPincode || deliveryPincode.length !== 6) return;
+    setLoadingCouriers(true);
+    try {
+      const pin = customPickupPin || pickupDetails.pincode || "201316";
+      const res = await fetch("/api/admin/shipping/shiprocket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "calculate_rates",
+          deliveryPincode,
+          pickupPincode: pin,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (Array.isArray(data.couriers) && data.couriers.length > 0) {
+          setCourierOptions(data.couriers);
+          const rec = data.couriers.find((c: any) => c.isRecommended) || data.couriers[0];
+          setSelectedCourierId(rec.courierId);
+        }
+        if (data.pickupLocation) {
+          const loaded = {
+            location: data.pickupLocation,
+            address: data.pickupAddress || "GF-45D, Spectrum metro mall, Phase-1, Sector 75",
+            city: data.pickupCity || "Noida",
+            state: data.pickupState || "Uttar Pradesh",
+            pincode: data.pickupPincode || "201316",
+          };
+          setPickupDetails(loaded);
+          setEditLocationName(loaded.location);
+          setEditAddress(loaded.address);
+          setEditCity(loaded.city);
+          setEditState(loaded.state);
+          setEditPincode(loaded.pincode);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch Shiprocket rates:", e);
+    } finally {
+      setLoadingCouriers(false);
+    }
+  };
+
+  const handleUpdatePickupPoint = async () => {
+    const updated = {
+      location: editLocationName.trim() || "precision optics",
+      address: editAddress.trim(),
+      city: editCity.trim() || "Noida",
+      state: editState.trim() || "Uttar Pradesh",
+      pincode: editPincode.trim() || "201316",
+    };
+    setPickupDetails(updated);
+    setIsEditingPickup(false);
+
+    if (saveAsDefaultPickup) {
+      try {
+        await fetch("/api/admin/shipping/shiprocket", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "update_pickup_location",
+            pickupLocation: updated.location,
+            pickupAddress: updated.address,
+            pickupCity: updated.city,
+            pickupState: updated.state,
+            pickupPincode: updated.pincode,
+          }),
+        });
+        toast.success("Primary pickup location saved to settings");
+      } catch (err) {
+        console.warn("Failed to persist default pickup location:", err);
+      }
+    }
+
+    if (order?.shipping_address?.pincode) {
+      fetchCourierRates(order.shipping_address.pincode, updated.pincode);
+    }
+  };
+
+  const handleBookShiprocket = async () => {
+    setBookingShiprocket(true);
+    const selectedCourier =
+      courierOptions.find((c) => c.courierId === selectedCourierId) || courierOptions[0];
+
+    try {
+      const res = await fetch("/api/admin/shipping/shiprocket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "book_shipment",
+          orderId: id,
+          courierId: selectedCourierId,
+          pickupLocation: pickupDetails.location,
+          deliveryCost: selectedCourier?.rate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.booking) {
+        toast.success("Shipment Booked Successfully", {
+          description: `${data.booking.courierName} • AWB: ${data.booking.awbCode}`,
+        });
+        setTrackingNumber(data.booking.awbCode);
+        setCourierPartner(data.booking.courierName);
+        setNewStatus("dispatched");
+        fetchOrderDetail();
+      } else {
+        toast.error("Failed to book shipment", { description: data.message });
+      }
+    } catch (err: any) {
+      toast.error("Booking error", { description: err.message });
+    } finally {
+      setBookingShiprocket(false);
+    }
+  };
+
   const fetchOrderDetail = async () => {
     setLoading(true);
     try {
@@ -51,6 +194,9 @@ export default function AdminOrderDetailPage() {
         setNewStatus(data.order.status);
         setCourierPartner(data.order.courier_partner || "BlueDart Express");
         setTrackingNumber(data.order.tracking_number || "");
+        if (data.order.shipping_address?.pincode) {
+          fetchCourierRates(data.order.shipping_address.pincode);
+        }
       }
     } catch (err) {
       console.warn("Failed to fetch order:", err);
@@ -120,6 +266,8 @@ export default function AdminOrderDetailPage() {
 
   const shipping = order.shipping_address || {};
   const items = order.items || [];
+  const selectedCourier =
+    courierOptions.find((c) => c.courierId === selectedCourierId) || courierOptions[0];
 
   return (
     <>
@@ -333,17 +481,294 @@ export default function AdminOrderDetailPage() {
             </div>
           </div>
 
-          {/* Courier & Tracking Assignment */}
-          <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-[#2A1E17] flex items-center gap-2">
-              <Truck className="w-4 h-4 text-[#C86A28]" />
-              <span>Logistics & Courier Assignment</span>
-            </h3>
+          {/* Shiprocket Logistics & Courier Allocation Center */}
+          <div className="bg-white border border-[#E8DCCF] rounded-xl p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+              <h3 className="text-sm font-bold text-[#2A1E17] flex items-center gap-2">
+                <Truck className="w-4 h-4 text-[#C86A28]" />
+                <span>Shiprocket Logistics Command</span>
+              </h3>
+              {order.status === "dispatched" || order.status === "delivered" ? (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  <span>AWB Assigned ({order.tracking_number || "Dispatched"})</span>
+                </span>
+              ) : (
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Ready for AWB Booking
+                </span>
+              )}
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {/* Consignment Origin & Delivery Cost Confirmation Section */}
+            <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-stone-200/80 pb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                  Consignment Origin &amp; Freight Breakdown
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingPickup(!isEditingPickup)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C86A28] hover:text-[#2A1E17] transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{isEditingPickup ? "Close Editor" : "Edit / Change Pickup Point"}</span>
+                </button>
+              </div>
+
+              {/* Inline Pickup Location Editor */}
+              {isEditingPickup && (
+                <div className="bg-white border border-[#E8DCCF] rounded-xl p-3.5 space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#2A1E17] flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-[#C86A28]" />
+                      <span>Edit Dispatch Pickup Point</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditLocationName("precision optics");
+                        setEditAddress("GF-45D, Spectrum metro mall, Phase-1, Sector 75");
+                        setEditCity("Noida");
+                        setEditState("Uttar Pradesh");
+                        setEditPincode("201316");
+                      }}
+                      className="text-[10px] font-bold text-[#C86A28] hover:underline cursor-pointer"
+                    >
+                      Reset to Spectrum Mall Primary
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+                    <div>
+                      <label className="block text-stone-600 font-semibold mb-1">
+                        Location Nickname (Shiprocket ID)
+                      </label>
+                      <input
+                        type="text"
+                        value={editLocationName}
+                        onChange={(e) => setEditLocationName(e.target.value)}
+                        placeholder="precision optics"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                      />
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <label className="block text-stone-600 font-semibold mb-1">
+                        Street Address / Mall Unit
+                      </label>
+                      <input
+                        type="text"
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        placeholder="GF-45D, Spectrum metro mall, Phase-1, Sector 75"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-stone-600 font-semibold mb-1">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={editCity}
+                        onChange={(e) => setEditCity(e.target.value)}
+                        placeholder="Noida"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-stone-600 font-semibold mb-1">
+                        State
+                      </label>
+                      <input
+                        type="text"
+                        value={editState}
+                        onChange={(e) => setEditState(e.target.value)}
+                        placeholder="Uttar Pradesh"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs text-[#2A1E17]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-stone-600 font-semibold mb-1">
+                        Postal PIN Code
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={editPincode}
+                        onChange={(e) => setEditPincode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="201316"
+                        className="w-full px-2.5 py-1.5 bg-[#FAF7F2] border border-[#E8DCCF] rounded-md text-xs font-mono text-[#2A1E17]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-stone-100">
+                    <label className="flex items-center gap-2 text-xs font-medium text-stone-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={saveAsDefaultPickup}
+                        onChange={(e) => setSaveAsDefaultPickup(e.target.checked)}
+                        className="rounded text-[#C86A28] w-4 h-4 cursor-pointer"
+                      />
+                      <span>Save as default primary atelier in store settings</span>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingPickup(false)}
+                        className="text-xs h-7.5 bg-white border-stone-300"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleUpdatePickupPoint}
+                        className="text-xs h-7.5 bg-[#C86A28] hover:bg-[#b0581e] text-white"
+                      >
+                        Apply &amp; Recalculate Rates
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Origin vs Delivery Cost Summary Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {/* Pickup Origin Point */}
+                <div className="bg-white p-3 rounded-lg border border-[#E8DCCF] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-stone-700 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#C86A28]" />
+                      <span>Dispatch Pickup Point</span>
+                    </span>
+                    <span className="text-[10px] font-mono bg-stone-100 text-stone-700 px-1.5 py-0.2 rounded font-bold">
+                      PIN: {pickupDetails.pincode}
+                    </span>
+                  </div>
+                  <div className="font-bold text-[#2A1E17] text-xs">
+                    {pickupDetails.location}
+                  </div>
+                  <p className="text-[11px] text-stone-600 leading-relaxed">
+                    {pickupDetails.address}, {pickupDetails.city}, {pickupDetails.state}
+                  </p>
+                </div>
+
+                {/* Delivery Cost & Courier Choice */}
+                <div className="bg-white p-3 rounded-lg border border-[#E8DCCF] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-stone-700 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Owner Delivery Freight</span>
+                    </span>
+                    <span className="text-xs font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ₹{selectedCourier?.rate ?? 95}
+                    </span>
+                  </div>
+                  <div className="font-bold text-[#2A1E17] text-xs flex items-center justify-between">
+                    <span>{selectedCourier?.courierName || "BlueDart Express Air"}</span>
+                    <span className="text-[11px] text-stone-500 font-normal">
+                      ETA: {selectedCourier?.estimatedDays || 2} days
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500">
+                    Direct freight billed to Shiprocket balance upon AWB booking
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Courier Comparison Cards */}
+            {courierOptions.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[11px] font-semibold text-stone-600 flex items-center justify-between">
+                  <span>Available Air Couriers to {shipping.pincode || "Destination"}:</span>
+                  <span className="text-stone-400 font-normal">Live rates via Shiprocket</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {courierOptions.map((opt) => (
+                    <div
+                      key={opt.courierId}
+                      onClick={() => setSelectedCourierId(opt.courierId)}
+                      className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                        selectedCourierId === opt.courierId
+                          ? "border-[#C86A28] bg-[#FAF3EB] ring-1 ring-[#C86A28]"
+                          : "border-stone-200 bg-[#FAF7F2] hover:border-stone-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-[#2A1E17] truncate">{opt.courierName}</span>
+                        {opt.isRecommended && (
+                          <span className="text-[9px] bg-[#C86A28] text-white px-1.5 py-0.2 rounded font-bold uppercase">
+                            Fastest
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-baseline justify-between text-[11px] text-stone-600 pt-1 border-t border-stone-200/60">
+                        <span>Owner Cost: <strong className="text-[#2A1E17]">₹{opt.rate}</strong></span>
+                        <span className="text-emerald-700 font-medium">{opt.estimatedDays} {opt.estimatedDays === 1 ? "day" : "days"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 1-Click Dispatch Action Bar with Pre-Booking Confirmation */}
+            <div className="bg-[#FAF7F2] border border-[#E8DCCF] rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs space-y-0.5">
+                <div className="font-bold text-[#2A1E17] flex items-center gap-1.5">
+                  <PackageCheck className="w-3.5 h-3.5 text-[#C86A28]" />
+                  <span>Clinical Lab Dispatch Confirmation</span>
+                </div>
+                <p className="text-[11px] text-stone-600">
+                  Ready to dispatch from <strong className="text-stone-800">{pickupDetails.location} ({pickupDetails.pincode})</strong> &rarr; <strong className="text-stone-800">{shipping.city} ({shipping.pincode})</strong> via <strong className="text-stone-800">{selectedCourier?.courierName || "BlueDart Air"}</strong> for <strong className="text-emerald-700 font-mono">₹{selectedCourier?.rate ?? 95}</strong> freight.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {order.payment_details?.shiprocket?.labelUrl ? (
+                  <a
+                    href={order.payment_details.shiprocket.labelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#E8DCCF] hover:bg-stone-50 text-[#2A1E17] rounded-md text-xs font-semibold shadow-2xs"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-[#C86A28]" />
+                    <span>Print Label PDF</span>
+                  </a>
+                ) : null}
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleBookShiprocket}
+                  disabled={bookingShiprocket}
+                  className="text-xs bg-[#2A1E17] hover:bg-[#C86A28] text-white shadow-xs"
+                >
+                  {bookingShiprocket ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5 mr-1.5 text-white" />
+                  )}
+                  <span>{order.tracking_number ? "Re-book Courier" : "Confirm Booking & Generate AWB"}</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Manual Edit Overrides */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2 border-t border-stone-100">
               <div>
                 <label className="block text-stone-600 font-semibold mb-1">
-                  Courier Partner
+                  Active Courier Partner
                 </label>
                 <input
                   type="text"
@@ -355,7 +780,7 @@ export default function AdminOrderDetailPage() {
 
               <div>
                 <label className="block text-stone-600 font-semibold mb-1">
-                  Airway Bill / Tracking Number
+                  Airway Bill (AWB) Tracking Number
                 </label>
                 <input
                   type="text"

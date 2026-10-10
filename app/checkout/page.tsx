@@ -230,7 +230,7 @@ function CheckoutContent() {
 
       // Step C: Trigger Official Razorpay Standard Checkout Modal (media_1790173604184.png)
       const options: any = {
-        key: createData.keyId || "rzp_test_TfV4G6DOOj6ykQ",
+        key: createData.keyId || "rzp_live_TmDHdDVheIZGdt",
         amount: amountInPaise,
         currency: createData.currency || "INR",
         name: "Precision Optics",

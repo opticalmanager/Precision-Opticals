@@ -26,6 +26,7 @@ import { formatINR } from "@/utils/formatters";
 import { ImageWithFallback } from "../common/ImageWithFallback";
 import { ProductCard } from "../shop/ProductCard";
 import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
+import { PincodeEstimator } from "./PincodeEstimator";
 
 interface ProductDetailPageProps {
   product: Product;
@@ -620,6 +621,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <span>ADD PRESCRIPTION LENSES (NIKON • ZEISS • ESSILOR)</span>
               </button>
             )}
+
+            {/* Real-Time Courier EDD & Serviceability Estimator */}
+            <PincodeEstimator isRx={product.category !== "contact-lenses" && product.category !== "accessories"} />
 
             {/* Coupon Box */}
             <div className="bg-[#FAF3EB] border border-[#E8DCCF] p-3 sm:p-3.5 flex items-center justify-between font-sans text-[12px] text-[#2A1E17]">
