@@ -18,12 +18,7 @@ export const DEFAULT_CALIBRATION: FrameCalibration = {
 export function applyCalibration(
   pose: FacePose,
   calibration: FrameCalibration = DEFAULT_CALIBRATION
-): {
-  position: { x: number; y: number; z: number };
-  rotation: { pitch: number; yaw: number; roll: number };
-  quaternion: { x: number; y: number; z: number; w: number };
-  scale: number;
-} {
+): FacePose {
   const finalScale = pose.scale * (calibration.scaleMultiplier || 1.0);
 
   // 1. Compose orientation quaternion with local calibration rotation offsets
@@ -57,6 +52,7 @@ export function applyCalibration(
   const euler = new THREE.Euler().setFromQuaternion(baseQuat, "YXZ");
 
   return {
+    ...pose,
     position: finalPos,
     rotation: {
       pitch: euler.x,

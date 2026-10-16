@@ -65,6 +65,33 @@ export interface FacePose {
   eyeDistance: number;
   /** Calculated base scale for 3D model */
   scale: number;
+  /** Online Bayesian calibrated user IPD in millimeters */
+  calibratedIpdMm?: number;
+  /** Personal cranial scale factor (calibratedIpdMm / 63.0) */
+  cranialScaleFactor?: number;
+  /** Estimated bizygomatic face width in millimeters */
+  faceWidthMm?: number;
+  /** Expression activity score [0, 1] for dynamic measurement weighting */
+  expressionActivity?: number;
+  /** Measurement confidence weight [0.1, 1.0] */
+  poseConfidence?: number;
+  /** Metric depth Z in meters */
+  metricDepthMeters?: number;
+  /** Normalized dynamic activity factor from EKF */
+  activityFactor?: number;
+  /** Anatomical sellion (168) position in world space */
+  sellionPosition?: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  /** Head orientation quaternion prior to pantoscopic tilt */
+  headQuaternion?: {
+    x: number;
+    y: number;
+    z: number;
+    w: number;
+  };
 }
 
 export type TrackingConfidenceState =
@@ -99,6 +126,9 @@ export interface DiagnosticMetrics {
   rawWidthMm?: number;
   normalizedWidthMm?: number;
   autoScaleFactor?: number;
+  calibratedIpdMm?: number;
+  faceWidthMm?: number;
+  activityFactor?: number;
 }
 
 export type CameraErrorType =

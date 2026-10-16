@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, Suspense } from "react";
+import * as THREE from "three";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -134,7 +135,15 @@ function AdminTryOnCalibratorContent() {
             const calibrated = applyCalibration(rawPose, calibrationRef.current);
 
             renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
-            renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            if (calibrated.sellionPosition && calibrated.headQuaternion) {
+              renderer.occlusion.updateOccluder(
+                new THREE.Vector3(calibrated.sellionPosition.x, calibrated.sellionPosition.y, calibrated.sellionPosition.z),
+                new THREE.Quaternion(calibrated.headQuaternion.x, calibrated.headQuaternion.y, calibrated.headQuaternion.z, calibrated.headQuaternion.w),
+                calibrated.scale
+              );
+            } else {
+              renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            }
             renderer.eyewear.setOpacity(1.0);
           }
         }

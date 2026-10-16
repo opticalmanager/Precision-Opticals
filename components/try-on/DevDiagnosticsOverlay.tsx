@@ -93,6 +93,26 @@ export const DevDiagnosticsOverlay: React.FC<DevDiagnosticsOverlayProps> = ({
             <span className="text-stone-400">Scale factor:</span>
             <span>{metrics.appliedScale.toFixed(3)}x</span>
           </div>
+          {metrics.calibratedIpdMm !== undefined && (
+            <div className="flex justify-between">
+              <span className="text-stone-400">Bayesian IPD:</span>
+              <span className="text-emerald-400 font-semibold">{metrics.calibratedIpdMm.toFixed(1)} mm</span>
+            </div>
+          )}
+          {metrics.faceWidthMm !== undefined && (
+            <div className="flex justify-between">
+              <span className="text-stone-400">Face Width:</span>
+              <span>{metrics.faceWidthMm.toFixed(0)} mm</span>
+            </div>
+          )}
+          {metrics.activityFactor !== undefined && (
+            <div className="flex justify-between">
+              <span className="text-stone-400">Filter Regime:</span>
+              <span className={metrics.activityFactor > 0.2 ? "text-amber-400" : "text-sky-400"}>
+                {metrics.activityFactor > 0.2 ? "Dynamic EKF" : "Quiescent Lock"}
+              </span>
+            </div>
+          )}
           {metrics.normalizedWidthMm !== undefined && (
             <div className="flex justify-between text-stone-300">
               <span className="text-stone-400">Physical Frame:</span>

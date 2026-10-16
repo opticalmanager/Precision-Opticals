@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import * as THREE from "three";
 import {
   Camera,
   X,
@@ -102,6 +103,7 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
   // Engine Instances
   const cameraManagerRef = useRef<CameraManager>(new CameraManager());
   const rendererRef = useRef<ThreeRenderer | null>(null);
+  const poseEstimatorRef = useRef<FacePoseEstimator>(new FacePoseEstimator());
   const smoothingRef = useRef<SmoothingEngine>(new SmoothingEngine());
   const lostHandlerRef = useRef<LostTrackingHandler>(new LostTrackingHandler(350));
   const animFrameIdRef = useRef<number | null>(null);
@@ -222,15 +224,56 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
           const primaryFace = detectionResult.faceLandmarks[0];
           const matrixData = detectionResult.facialTransformationMatrixes?.[0];
 
-          // Estimate 3D face pose with quaternion orientation and dynamic depth
-          const rawPose = FacePoseEstimator.estimate(
+          // 1. Estimate 3D rigid cranial head pose with Bayesian IPD & 14-point osteological basis
+          const estimated = poseEstimatorRef.current.estimatePose(
             primaryFace,
             matrixData,
             renderer.getCoordinateMapper()
           );
 
-          if (rawPose) {
-            // Assess face tracking quality
+          if (estimated) {
+            const rawPose: FacePose = {
+              position: {
+                x: estimated.eyewearPosition.x,
+                y: estimated.eyewearPosition.y,
+                z: estimated.eyewearPosition.z,
+              },
+              rotation: {
+                pitch: (estimated.eulerDegrees.pitch * Math.PI) / 180,
+                yaw: (estimated.eulerDegrees.yaw * Math.PI) / 180,
+                roll: (estimated.eulerDegrees.roll * Math.PI) / 180,
+              },
+              quaternion: {
+                x: estimated.eyewearQuaternion.x,
+                y: estimated.eyewearQuaternion.y,
+                z: estimated.eyewearQuaternion.z,
+                w: estimated.eyewearQuaternion.w,
+              },
+              eyeDistance:
+                primaryFace[473] && primaryFace[468]
+                  ? Math.hypot(primaryFace[473].x - primaryFace[468].x, primaryFace[473].y - primaryFace[468].y)
+                  : 0.095,
+              scale: estimated.cranialScaleFactor,
+              calibratedIpdMm: estimated.calibratedIpdMm,
+              cranialScaleFactor: estimated.cranialScaleFactor,
+              faceWidthMm: estimated.faceWidthMm,
+              expressionActivity: estimated.expressionActivity,
+              poseConfidence: estimated.poseConfidence,
+              metricDepthMeters: estimated.metricDepthMeters,
+              sellionPosition: {
+                x: estimated.sellionPosition.x,
+                y: estimated.sellionPosition.y,
+                z: estimated.sellionPosition.z,
+              },
+              headQuaternion: {
+                x: estimated.headQuaternion.x,
+                y: estimated.headQuaternion.y,
+                z: estimated.headQuaternion.z,
+                w: estimated.headQuaternion.w,
+              },
+            };
+
+            // 2. Assess face tracking quality
             const quality = FaceQualityAssessor.assess(
               primaryFace,
               rawPose.rotation.pitch,
@@ -239,7 +282,7 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
             );
             latestQualityRef.current = quality;
 
-            // Apply adaptive smoothing
+            // 3. Apply CA-EKF predictive smoothing
             let processedPose: FacePose = rawPose;
             if (smoothingEnabledRef.current) {
               processedPose = smoothingRef.current.filter(rawPose, now, quality.state);
@@ -247,14 +290,23 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
 
             lostHandlerRef.current.onPoseDetected(processedPose);
 
-            // Apply product frame-specific optical calibration
+            // 4. Apply product frame-specific optical calibration
             const calibrated = applyCalibration(processedPose, activeCalibrationRef.current);
 
-            // Update Three.js scene transforms using direct Quaternion orientation
+            // 5. Update Three.js scene transforms
             renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
-            renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            if (calibrated.sellionPosition && calibrated.headQuaternion) {
+              renderer.occlusion.updateOccluder(
+                new THREE.Vector3(calibrated.sellionPosition.x, calibrated.sellionPosition.y, calibrated.sellionPosition.z),
+                new THREE.Quaternion(calibrated.headQuaternion.x, calibrated.headQuaternion.y, calibrated.headQuaternion.z, calibrated.headQuaternion.w),
+                calibrated.scale
+              );
+            } else {
+              renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            }
             renderer.eyewear.setOpacity(1.0);
 
+            // 6. Record HUD diagnostics
             latestDiagnosticsRef.current.trackingLatencyMs = trackLatency;
             latestDiagnosticsRef.current.confidence = quality.overallConfidence;
             latestDiagnosticsRef.current.facePitchDeg = (calibrated.rotation.pitch * 180) / Math.PI;
@@ -262,6 +314,9 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
             latestDiagnosticsRef.current.faceRollDeg = (calibrated.rotation.roll * 180) / Math.PI;
             latestDiagnosticsRef.current.appliedScale = calibrated.scale;
             latestDiagnosticsRef.current.metricDepthM = Math.abs(calibrated.position.z);
+            latestDiagnosticsRef.current.calibratedIpdMm = estimated.calibratedIpdMm;
+            latestDiagnosticsRef.current.faceWidthMm = estimated.faceWidthMm;
+            latestDiagnosticsRef.current.activityFactor = processedPose.activityFactor;
           }
         } else {
           // Face tracking momentarily lost

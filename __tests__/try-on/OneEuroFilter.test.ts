@@ -62,4 +62,79 @@ describe("OneEuroFilter", () => {
     assert.equal(res.y, 2);
     assert.equal(res.z, 3);
   });
+
+  it("should freeze stationary sensor noise via CA-EKF quiescent deadband", () => {
+    const { SmoothingEngine } = require("../../lib/try-on/tracking/SmoothingEngine");
+    const THREE = require("three");
+    const engine = new SmoothingEngine();
+
+    const nominalPos = new THREE.Vector3(0.0, 0.0, -0.55);
+    const nominalQuat = new THREE.Quaternion(0, 0, 0, 1);
+
+    let time = 1000;
+    // Initialize
+    engine.filterPose(nominalPos, nominalQuat, time, 16);
+
+    const filteredSamples: number[] = [];
+    const noisySamples: number[] = [];
+
+    // Feed small stationary Gaussian-like micro-tremor (sensor noise ~ 0.5mm)
+    for (let i = 0; i < 40; i++) {
+      time += 33;
+      const noise = (Math.sin(i * 1.9) + Math.cos(i * 4.3)) * 0.0006;
+      const sample = new THREE.Vector3(noise, 0.0, -0.55);
+      noisySamples.push(noise);
+
+      const out = engine.filterPose(sample, nominalQuat, time, 16);
+      filteredSamples.push(out.position.x);
+    }
+
+    const steadyFiltered = filteredSamples.slice(15);
+    const steadyNoisy = noisySamples.slice(15);
+
+    const varFiltered = steadyFiltered.reduce((sum, v) => sum + v * v, 0) / steadyFiltered.length;
+    const varNoisy = steadyNoisy.reduce((sum, v) => sum + v * v, 0) / steadyNoisy.length;
+
+    assert.ok(
+      varFiltered < varNoisy * 0.25,
+      `EKF quiescent deadband should damp stationary noise variance by >75%. Filtered var: ${varFiltered.toExponential(3)}, Noisy var: ${varNoisy.toExponential(3)}`
+    );
+    assert.ok(engine.getActivityFactor() < 0.2, "Activity factor should remain low during stationary state");
+  });
+
+  it("should forward-extrapolate during head motion to cancel tracking latency", () => {
+    const { SmoothingEngine } = require("../../lib/try-on/tracking/SmoothingEngine");
+    const THREE = require("three");
+    const engine = new SmoothingEngine();
+
+    let time = 1000;
+    const quat = new THREE.Quaternion(0, 0, 0, 1);
+
+    // Initial settle
+    for (let i = 0; i < 10; i++) {
+      time += 33;
+      engine.filterPose(new THREE.Vector3(0, 0, -0.55), quat, time, 20);
+    }
+
+    // Move along +X at constant velocity (0.2 m/s -> 0.0066m per 33ms)
+    let currentX = 0;
+    let lastOut: any = null;
+    for (let i = 0; i < 15; i++) {
+      time += 33;
+      currentX += 0.0066;
+      lastOut = engine.filterPose(new THREE.Vector3(currentX, 0, -0.55), quat, time, 24);
+    }
+
+    assert.ok(lastOut, "Output must be defined");
+    assert.ok(
+      engine.getActivityFactor() > 0.3,
+      `Activity factor should detect active motion, got ${engine.getActivityFactor()}`
+    );
+    // Predictive lead should place extrapolated position ahead of or equal to current measured X
+    assert.ok(
+      lastOut.position.x >= currentX - 0.002,
+      `Predicted X (${lastOut.position.x.toFixed(4)}) should compensate lag relative to measured X (${currentX.toFixed(4)})`
+    );
+  });
 });
+

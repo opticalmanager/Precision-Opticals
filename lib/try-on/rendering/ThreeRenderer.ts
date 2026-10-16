@@ -55,15 +55,16 @@ export class ThreeRenderer {
     this.renderer.toneMappingExposure = 0.95;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    // 4. Coordinate Mapper
+    // 4. Coordinate Mapper & Frustum Synchronization
     this.coordMapper = new VideoToRenderCoordinateMapper({
       containerWidth,
       containerHeight,
       videoWidth,
       videoHeight,
-      cameraFovDeg: cameraFov,
-      mirrored,
+      verticalFovDeg: cameraFov ?? 63.0,
+      isMirrored: mirrored,
     });
+    this.coordMapper.applyToThreeCamera(this.camera);
 
     // 5. Managers
     this.lighting = new LightingManager(this.scene, this.renderer);
@@ -97,17 +98,16 @@ export class ThreeRenderer {
   public resize(width: number, height: number, videoWidth?: number, videoHeight?: number): void {
     if (this.isContextLost || width <= 0 || height <= 0) return;
 
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-
     this.renderer.setSize(width, height, false);
 
-    this.coordMapper.updateViewport({
-      containerWidth: width,
-      containerHeight: height,
-      videoWidth,
-      videoHeight,
-    });
+    const cfg = this.coordMapper.getConfig();
+    this.coordMapper.updateDimensions(
+      videoWidth ?? cfg.videoWidth,
+      videoHeight ?? cfg.videoHeight,
+      width,
+      height
+    );
+    this.coordMapper.applyToThreeCamera(this.camera);
   }
 
   public render(): void {

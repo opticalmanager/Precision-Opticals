@@ -55,4 +55,74 @@ describe("VideoToRenderCoordinateMapper", () => {
     assert.equal(Math.round(screen.x), 200);
     assert.equal(Math.round(screen.y), 400);
   });
+
+  it("should calculate exact unprojection-reprojection identity across mobile and desktop viewports", () => {
+    const THREE = require("three");
+    const mapper = new VideoToRenderCoordinateMapper({
+      containerWidth: 390,
+      containerHeight: 844,
+      videoWidth: 1280,
+      videoHeight: 720,
+      verticalFovDeg: 63.0,
+      isMirrored: true,
+    });
+
+    const camera = new THREE.PerspectiveCamera(45, 390 / 844, 0.01, 10.0);
+    mapper.applyToThreeCamera(camera);
+
+    // Unproject landmark at (0.48, 0.45) at depth Z = -0.55m
+    const worldPos = mapper.unprojectLandmarkToWorld(0.48, 0.45, -0.55);
+    assert.ok(worldPos.z < 0, "Depth Z must be negative in Three.js world space");
+    assert.equal(Math.round(worldPos.z * 100) / 100, -0.55);
+
+    // Reproject via videoNormalizedToNDC
+    const ndc = mapper.videoNormalizedToNDC(0.48, 0.45);
+    assert.ok(ndc.xNdc >= -1.0 && ndc.xNdc <= 1.0, "NDC X must be within [-1, 1]");
+    assert.ok(ndc.yNdc >= -1.0 && ndc.yNdc <= 1.0, "NDC Y must be within [-1, 1]");
+
+    // Exact identity: WorldPos projected through camera projection matrix must equal ndc
+    const projected = worldPos.clone().applyMatrix4(camera.projectionMatrix);
+    assert.ok(Math.abs(projected.x - ndc.xNdc) < 1e-4, "Projected X must match NDC X");
+    assert.ok(Math.abs(projected.y - ndc.yNdc) < 1e-4, "Projected Y must match NDC Y");
+  });
+
+  it("should accurately synchronize Three.js camera projection matrix with cover crop factors", () => {
+    const THREE = require("three");
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 10.0);
+
+    const mapper = new VideoToRenderCoordinateMapper({
+      containerWidth: 800,
+      containerHeight: 500,
+      videoWidth: 1280,
+      videoHeight: 720,
+      verticalFovDeg: 63.0,
+      isMirrored: true,
+    });
+
+    mapper.applyToThreeCamera(camera);
+
+    assert.ok(camera.fov > 50 && camera.fov < 70, `Effective FOV should be reasonable, got ${camera.fov}`);
+    assert.equal(camera.aspect, 800 / 500);
+
+    // Projection matrix should have valid non-zero elements
+    assert.ok(camera.projectionMatrix.elements[0] > 0);
+    assert.ok(camera.projectionMatrix.elements[5] > 0);
+    assert.ok(camera.projectionMatrix.elements[11] === -1);
+  });
+
+  it("should infer sensor FOV accurately based on track label and orientation", () => {
+    const macbookTrack = {
+      label: "FaceTime HD Camera",
+    };
+    const mockMacStream = {
+      getVideoTracks: () => [macbookTrack],
+    } as any;
+
+    const fovLandscape = VideoToRenderCoordinateMapper.inferCameraVerticalFovDeg(mockMacStream, 1280, 720);
+    assert.equal(fovLandscape, 54.0);
+
+    const fovPortrait = VideoToRenderCoordinateMapper.inferCameraVerticalFovDeg(mockMacStream, 720, 1280);
+    assert.equal(fovPortrait, 63.0);
+  });
 });
+

@@ -33,6 +33,7 @@ function normalizeCategory(rawCat: string, rawType?: string): 'sunglasses' | 'ey
  */
 export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx) => {
   const category = normalizeCategory(item.category, item.type);
+  const shape = normalizeShape(item.shape);
   const isContactLens = category === 'contact-lenses';
   const images = (item.images && item.images.length > 0) ? item.images : (item.img ? [item.img] : []);
   const primaryImage = item.img || images[0] || '';
@@ -68,7 +69,7 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
     originalPrice: item.originalPrice ? Number(item.originalPrice) : undefined,
     category,
     gender: (item.gender || 'unisex') as GenderCategory,
-    shape: normalizeShape(item.shape),
+    shape,
     rimType: isContactLens ? 'rimless' : (item.rimType || 'full-rim'),
     material: item.material || (isContactLens ? 'silicone-hydrogel' : 'acetate'),
     color: variants[0]?.colorName || (isContactLens ? 'Clear' : 'Black'),
@@ -103,7 +104,17 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
     })),
     sourceUrl: item.sourceUrl || '',
     packageDimensions,
-    contactLensSpecs: item.contactLensSpecs || undefined,
     tryOnEnabled: !isContactLens,
+    tryOnModelUrl: isContactLens
+      ? undefined
+      : shape.includes('round') || shape.includes('oval')
+      ? '/models/eyewear/cartier_rimless_round.glb'
+      : shape.includes('wayfarer') || shape.includes('square') || shape.includes('clubmaster')
+      ? '/models/eyewear/fastrack_wayfarer_black.glb'
+      : shape.includes('aviator')
+      ? '/models/eyewear/classic_aviator_gold.glb'
+      : shape.includes('cat') || shape.includes('butterfly')
+      ? '/models/eyewear/cateye_luxury_havana.glb'
+      : '/models/eyewear/rectangle_titanium_gold.glb',
   };
 });
