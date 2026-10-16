@@ -263,8 +263,10 @@ export async function POST(req: NextRequest) {
       categoryId = cRes.rows[0]?.id || null;
     }
 
-    const tryOnEnabled = body.tryOnEnabled !== undefined ? Boolean(body.tryOnEnabled) : false;
-    const tryOnModelUrl = body.tryOnModelUrl || null;
+    const rawModelUrl = body.tryOnModelUrl ? String(body.tryOnModelUrl).trim() : null;
+    const isValidGlb = Boolean(rawModelUrl && (rawModelUrl.toLowerCase().split("?")[0].endsWith(".glb") || rawModelUrl.toLowerCase().split("?")[0].endsWith(".gltf")));
+    const tryOnEnabled = isValidGlb && Boolean(body.tryOnEnabled);
+    const tryOnModelUrl = isValidGlb ? rawModelUrl : null;
     const tryOnConfiguration = body.tryOnConfiguration ? (typeof body.tryOnConfiguration === "string" ? body.tryOnConfiguration : JSON.stringify(body.tryOnConfiguration)) : null;
 
     // Insert product

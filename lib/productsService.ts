@@ -98,75 +98,94 @@ export function mapRowToProduct(row: any): Product {
   const rawSubtitle = row.subtitle || localMatch?.subtitle || cleanName;
   const cleanSubtitle = rawSubtitle.replace(/\s+/g, ' ').trim();
 
-  return {
-    id: row.slug || row.id,
-    brand: row.brand?.name || localMatch?.brand || "PRECISION",
-    name: cleanName,
-    subtitle: cleanSubtitle,
-    price: Number(row.base_price) || localMatch?.price || 87125,
-    originalPrice: row.original_price ? Number(row.original_price) : localMatch?.originalPrice,
-    category: row.category?.slug || localMatch?.category || "sunglasses",
-    gender: row.gender || localMatch?.gender || "unisex",
-    shape: row.shape || localMatch?.shape || "rectangle",
-    rimType: row.rim_type || localMatch?.rimType || "rimless",
-    material: row.material || localMatch?.material || "titanium",
-    color: row.color || localMatch?.color || "Gold",
-    colorHex: row.color_hex || localMatch?.colorHex || "#D4AF37",
-    lensProperties: row.lens_properties && row.lens_properties.length > 0 ? row.lens_properties : (localMatch?.lensProperties || ["uv-protection"]),
-    isNewArrival: row.is_new_arrival ?? localMatch?.isNewArrival ?? false,
-    isBestSeller: row.is_best_seller ?? localMatch?.isBestSeller ?? false,
-    isOnSale: row.is_on_sale ?? localMatch?.isOnSale ?? false,
-    isLimitedEdition: row.is_limited_edition ?? localMatch?.isLimitedEdition ?? false,
-    rating: Number(row.rating) || localMatch?.rating || 5.0,
-    reviewCount: Number(row.review_count) || localMatch?.reviewCount || 0,
-    images: resolvedImages,
-    description: row.description || localMatch?.description || "",
-    specs: row.specs || localMatch?.specs || {
-      lensWidth: 53,
-      bridgeWidth: 18,
-      templeLength: 145,
-      frameWidth: 140,
-      weight: "20g",
-    },
-    packageDimensions: row.package_dimensions || row.specs?.packageDimensions || localMatch?.packageDimensions,
-    contactLensSpecs: row.specs?.contactLensSpecs || localMatch?.contactLensSpecs,
-    colorVariants: (row.color_variants || localMatch?.colorVariants || []).map((cv: any) => ({
-      ...cv,
-      colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
-    })),
-    sourceUrl: row.source_url || localMatch?.sourceUrl,
-    variants: row.product_variants && row.product_variants.length > 0
-      ? row.product_variants.map((v: any) => {
-          const variantImgObj = (row.product_images || []).find((img: any) => img.variant_id === v.id);
-          const rawVarUrl = variantImgObj?.url || variantImgObj?.image_url;
-          const validVarImg = (rawVarUrl && (rawVarUrl.startsWith("/") || rawVarUrl.startsWith("http")))
-            ? rawVarUrl.trim()
-            : resolvedImages[0];
+    // 3D Virtual Try-On: strictly require a valid .glb/.gltf 3D model asset
+    const rawModelUrl = (row.try_on_model_url !== null && row.try_on_model_url !== undefined
+      ? row.try_on_model_url
+      : (localMatch?.tryOnModelUrl || ""))?.trim();
 
-          return {
-            id: v.id,
-            colorName: (v.color_name || "").replace(/\s+/g, ' ').trim(),
-            colorHex: v.color_hex,
-            image: validVarImg,
-            inStock: v.stock_quantity > 0,
-          };
-        })
-      : (row.color_variants && row.color_variants.length > 0
-          ? row.color_variants.map((cv: any, cIdx: number) => ({
-              id: cv.id || `var-${row.slug || row.id}-${cIdx}`,
-              colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
-              colorHex: cv.colorHex || '#1A1A1A',
-              image: cv.featuredImage || cv.gallery?.[0] || resolvedImages[0],
-              inStock: cv.available !== false,
-            }))
-          : (localMatch?.variants || []).map((v: any) => ({
-              ...v,
-              colorName: (v.colorName || '').replace(/\s+/g, ' ').trim(),
-            }))),
-    tryOnEnabled: row.try_on_enabled ?? localMatch?.tryOnEnabled ?? false,
-    tryOnModelUrl: row.try_on_model_url || localMatch?.tryOnModelUrl,
-    tryOnConfig: row.try_on_configuration || localMatch?.tryOnConfig,
-  };
+    const hasValidModelAsset = Boolean(
+      rawModelUrl &&
+      (rawModelUrl.toLowerCase().split("?")[0].endsWith(".glb") ||
+       rawModelUrl.toLowerCase().split("?")[0].endsWith(".gltf"))
+    );
+
+    const tryOnEnabled = Boolean(
+      hasValidModelAsset &&
+      (row.try_on_enabled !== null && row.try_on_enabled !== undefined
+        ? row.try_on_enabled
+        : (localMatch?.tryOnEnabled ?? false))
+    );
+    const tryOnModelUrl = tryOnEnabled ? rawModelUrl : undefined;
+
+    return {
+      id: row.slug || row.id,
+      brand: row.brand?.name || localMatch?.brand || "PRECISION",
+      name: cleanName,
+      subtitle: cleanSubtitle,
+      price: Number(row.base_price) || localMatch?.price || 87125,
+      originalPrice: row.original_price ? Number(row.original_price) : localMatch?.originalPrice,
+      category: row.category?.slug || localMatch?.category || "sunglasses",
+      gender: row.gender || localMatch?.gender || "unisex",
+      shape: row.shape || localMatch?.shape || "rectangle",
+      rimType: row.rim_type || localMatch?.rimType || "rimless",
+      material: row.material || localMatch?.material || "titanium",
+      color: row.color || localMatch?.color || "Gold",
+      colorHex: row.color_hex || localMatch?.colorHex || "#D4AF37",
+      lensProperties: row.lens_properties && row.lens_properties.length > 0 ? row.lens_properties : (localMatch?.lensProperties || ["uv-protection"]),
+      isNewArrival: row.is_new_arrival ?? localMatch?.isNewArrival ?? false,
+      isBestSeller: row.is_best_seller ?? localMatch?.isBestSeller ?? false,
+      isOnSale: row.is_on_sale ?? localMatch?.isOnSale ?? false,
+      isLimitedEdition: row.is_limited_edition ?? localMatch?.isLimitedEdition ?? false,
+      rating: Number(row.rating) || localMatch?.rating || 5.0,
+      reviewCount: Number(row.review_count) || localMatch?.reviewCount || 0,
+      images: resolvedImages,
+      description: row.description || localMatch?.description || "",
+      specs: row.specs || localMatch?.specs || {
+        lensWidth: 53,
+        bridgeWidth: 18,
+        templeLength: 145,
+        frameWidth: 140,
+        weight: "20g",
+      },
+      packageDimensions: row.package_dimensions || row.specs?.packageDimensions || localMatch?.packageDimensions,
+      contactLensSpecs: row.specs?.contactLensSpecs || localMatch?.contactLensSpecs,
+      colorVariants: (row.color_variants || localMatch?.colorVariants || []).map((cv: any) => ({
+        ...cv,
+        colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+      })),
+      sourceUrl: row.source_url || localMatch?.sourceUrl,
+      variants: row.product_variants && row.product_variants.length > 0
+        ? row.product_variants.map((v: any) => {
+            const variantImgObj = (row.product_images || []).find((img: any) => img.variant_id === v.id);
+            const rawVarUrl = variantImgObj?.url || variantImgObj?.image_url;
+            const validVarImg = (rawVarUrl && (rawVarUrl.startsWith("/") || rawVarUrl.startsWith("http")))
+              ? rawVarUrl.trim()
+              : resolvedImages[0];
+
+            return {
+              id: v.id,
+              colorName: (v.color_name || "").replace(/\s+/g, ' ').trim(),
+              colorHex: v.color_hex,
+              image: validVarImg,
+              inStock: v.stock_quantity > 0,
+            };
+          })
+        : (row.color_variants && row.color_variants.length > 0
+            ? row.color_variants.map((cv: any, cIdx: number) => ({
+                id: cv.id || `var-${row.slug || row.id}-${cIdx}`,
+                colorName: (cv.colorName || '').replace(/\s+/g, ' ').trim(),
+                colorHex: cv.colorHex || '#1A1A1A',
+                image: cv.featuredImage || cv.gallery?.[0] || resolvedImages[0],
+                inStock: cv.available !== false,
+              }))
+            : (localMatch?.variants || []).map((v: any) => ({
+                ...v,
+                colorName: (v.colorName || '').replace(/\s+/g, ' ').trim(),
+              }))),
+      tryOnEnabled,
+      tryOnModelUrl,
+      tryOnConfig: row.try_on_configuration || localMatch?.tryOnConfig,
+    };
 }
 
 /**

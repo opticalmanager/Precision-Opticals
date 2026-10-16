@@ -63,6 +63,13 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
   const [isLoadingModel, setIsLoadingModel] = useState(true);
   const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null);
 
+  // Guard: if activeProduct has no valid 3D model, dismiss modal safely
+  useEffect(() => {
+    if (!hasTryOnModel(activeProduct)) {
+      onClose();
+    }
+  }, [activeProduct, onClose]);
+
   const initialDiagnostics: DiagnosticMetrics = {
     renderFps: 0,
     trackingFps: 0,

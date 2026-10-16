@@ -27,9 +27,48 @@ function normalizeCategory(rawCat: string, rawType?: string): 'sunglasses' | 'ey
   return 'eyeglasses';
 }
 
+const ALLOWED_TRY_ON_MODELS_MAP: Record<string, string> = {
+  // Aviator
+  'do-7768807407862': '/models/eyewear/classic_aviator_gold.glb',
+  'do-9472808255734': '/models/eyewear/classic_aviator_gold.glb',
+  'do-7768807014646': '/models/eyewear/classic_aviator_gold.glb',
+  'do-10328545427702': '/models/eyewear/classic_aviator_gold.glb',
+
+  // Wayfarer / Square
+  'do-7775902597366': '/models/eyewear/fastrack_wayfarer_black.glb',
+  'do-7755061625078': '/models/eyewear/fastrack_wayfarer_black.glb',
+  'do-9215419678966': '/models/eyewear/fastrack_wayfarer_black.glb',
+  'do-9217741193462': '/models/eyewear/fastrack_wayfarer_black.glb',
+
+  // Round / Rimless
+  'do-7768808358134': '/models/eyewear/cartier_rimless_round.glb',
+  'do-7768808521974': '/models/eyewear/cartier_rimless_round.glb',
+  'do-7768808784118': '/models/eyewear/cartier_rimless_round.glb',
+  'do-8872681111798': '/models/eyewear/cartier_rimless_round.glb',
+
+  // Cat-Eye
+  'do-9412932567286': '/models/eyewear/cateye_luxury_havana.glb',
+  'do-9414431768822': '/models/eyewear/cateye_luxury_havana.glb',
+  'do-9414435176694': '/models/eyewear/cateye_luxury_havana.glb',
+  'do-7970540880118': '/models/eyewear/cateye_luxury_havana.glb',
+
+  // Rectangle / Titanium
+  'do-7774373019894': '/models/eyewear/rectangle_titanium_gold.glb',
+  'do-7756053872886': '/models/eyewear/rectangle_titanium_gold.glb',
+  'do-9212133769462': '/models/eyewear/rectangle_titanium_gold.glb',
+  'do-9215431573750': '/models/eyewear/rectangle_titanium_gold.glb',
+
+  // Flagships
+  'figma-cartier-blue-rimless': '/models/eyewear/cartier_rimless_round.glb',
+  'figma-brown-gradient-rimless': '/models/eyewear/rectangle_titanium_gold.glb',
+  'figma-fastrack-black-wayfarer': '/models/eyewear/fastrack_wayfarer_black.glb',
+  'figma-fastrack-gold-oval': '/models/eyewear/classic_aviator_gold.glb',
+  'figma-cartier-gold-rectangle': '/models/eyewear/rectangle_titanium_gold.glb',
+};
+
 /**
  * Precision Optics - Active Fallback & Master Catalog
- * Cleanly mapped from the 902 authentic scraped & curated designer eyewear & contact lens products.
+ * Cleanly mapped from the authentic scraped & curated designer eyewear & contact lens products.
  */
 export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx) => {
   const category = normalizeCategory(item.category, item.type);
@@ -59,6 +98,20 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
   const packageDimensions = item.packageDimensions || (isContactLens
     ? { lengthCm: 15, breadthCm: 10, heightCm: 4, weightKg: 0.08 }
     : { lengthCm: 18, breadthCm: 9, heightCm: 7, weightKg: 0.25 });
+
+  const allowedModelUrl =
+    item.tryOnModelUrl ||
+    item.try_on_model_url ||
+    ALLOWED_TRY_ON_MODELS_MAP[item.id] ||
+    ALLOWED_TRY_ON_MODELS_MAP[item.slug];
+
+  const hasAllowedModel = Boolean(
+    !isContactLens &&
+    allowedModelUrl &&
+    typeof allowedModelUrl === 'string' &&
+    (allowedModelUrl.toLowerCase().split('?')[0].endsWith('.glb') ||
+     allowedModelUrl.toLowerCase().split('?')[0].endsWith('.gltf'))
+  );
 
   return {
     id: item.id || `prod-${idx + 1}`,
@@ -104,17 +157,7 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
     })),
     sourceUrl: item.sourceUrl || '',
     packageDimensions,
-    tryOnEnabled: !isContactLens,
-    tryOnModelUrl: isContactLens
-      ? undefined
-      : shape.includes('round') || shape.includes('oval')
-      ? '/models/eyewear/cartier_rimless_round.glb'
-      : shape.includes('wayfarer') || shape.includes('square') || shape.includes('clubmaster')
-      ? '/models/eyewear/fastrack_wayfarer_black.glb'
-      : shape.includes('aviator')
-      ? '/models/eyewear/classic_aviator_gold.glb'
-      : shape.includes('cat') || shape.includes('butterfly')
-      ? '/models/eyewear/cateye_luxury_havana.glb'
-      : '/models/eyewear/rectangle_titanium_gold.glb',
+    tryOnEnabled: hasAllowedModel,
+    tryOnModelUrl: hasAllowedModel ? allowedModelUrl : undefined,
   };
 });

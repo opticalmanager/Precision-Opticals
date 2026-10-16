@@ -101,8 +101,11 @@ export async function PUT(
       categoryId = cRes.rows[0]?.id || null;
     }
 
-    const tryOnEnabled = body.tryOnEnabled !== undefined ? Boolean(body.tryOnEnabled) : null;
-    const tryOnModelUrl = body.tryOnModelUrl !== undefined ? body.tryOnModelUrl : null;
+    const hasTryOnEnabled = body.tryOnEnabled !== undefined;
+    const hasTryOnModelUrl = body.tryOnModelUrl !== undefined;
+    const rawModelUrl = hasTryOnModelUrl ? (body.tryOnModelUrl ? String(body.tryOnModelUrl).trim() : null) : null;
+    const isValidGlb = Boolean(rawModelUrl && (rawModelUrl.toLowerCase().split("?")[0].endsWith(".glb") || rawModelUrl.toLowerCase().split("?")[0].endsWith(".gltf")));
+    const tryOnEnabledVal = hasTryOnEnabled ? (isValidGlb && Boolean(body.tryOnEnabled)) : false;
     const tryOnConfiguration = body.tryOnConfiguration ? (typeof body.tryOnConfiguration === "string" ? body.tryOnConfiguration : JSON.stringify(body.tryOnConfiguration)) : null;
 
     const isNewArrival = body.isNewArrival !== undefined ? Boolean(body.isNewArrival) : null;
@@ -118,17 +121,17 @@ export async function PUT(
            specs = $14, description = $15, is_active = $16,
            is_new_arrival = COALESCE($17, is_new_arrival),
            is_best_seller = COALESCE($18, is_best_seller),
-           try_on_enabled = COALESCE($19, try_on_enabled),
-           try_on_model_url = COALESCE($20, try_on_model_url),
-           try_on_configuration = COALESCE($21, try_on_configuration),
+           try_on_enabled = CASE WHEN $19::boolean THEN $20::boolean ELSE try_on_enabled END,
+           try_on_model_url = CASE WHEN $21::boolean THEN $22::text ELSE try_on_model_url END,
+           try_on_configuration = COALESCE($23, try_on_configuration),
            updated_at = NOW()
-       WHERE id::text = $22 OR slug = $22
+       WHERE id::text = $24 OR slug = $24
        RETURNING id, slug, name;`,
       [
         name, subtitle, basePrice, originalPrice, gender, shape, rimType, material,
         color, colorHex, brandId, categoryId, lensProperties, JSON.stringify(specs),
         description, isActive, isNewArrival, isBestSeller,
-        tryOnEnabled, tryOnModelUrl, tryOnConfiguration, id
+        hasTryOnEnabled, tryOnEnabledVal, hasTryOnModelUrl, rawModelUrl, tryOnConfiguration, id
       ]
     );
 

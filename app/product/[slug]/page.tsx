@@ -19,6 +19,7 @@ import { CheckoutModal } from "@/components/cart/CheckoutModal";
 import { OrderSuccessModal } from "@/components/cart/OrderSuccessModal";
 import { getCatalogProducts, getProductBySlug, ALL_FALLBACK_PRODUCTS } from "@/lib/productsService";
 import { Product, SelectedLensConfig, Order } from "@/types";
+import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -89,9 +90,9 @@ function ProductPageContent() {
     );
   }, [slug, singleProduct, products]);
 
-  // Deep link support: auto-open 3D try-on if ?tryon=true is passed
+  // Deep link support: auto-open 3D try-on if ?tryon=true is passed AND product has valid 3D model
   useEffect(() => {
-    if (product && searchParams?.get("tryon") === "true") {
+    if (product && searchParams?.get("tryon") === "true" && hasTryOnModel(product)) {
       setSelectedVirtualTryOnProduct(product);
     }
   }, [product, searchParams]);
