@@ -28,42 +28,42 @@ function normalizeCategory(rawCat: string, rawType?: string): 'sunglasses' | 'ey
 }
 
 const ALLOWED_TRY_ON_MODELS_MAP: Record<string, string> = {
-  // Aviator
-  'do-7768807407862': '/models/eyewear/classic_aviator_gold.glb',
-  'do-9472808255734': '/models/eyewear/classic_aviator_gold.glb',
-  'do-7768807014646': '/models/eyewear/classic_aviator_gold.glb',
-  'do-10328545427702': '/models/eyewear/classic_aviator_gold.glb',
+  // Aviator (Real double-bridge & teardrop frames)
+  'do-7768807407862': '/models/real/glasses-12.glb',
+  'do-9472808255734': '/models/real/glasses-12.glb',
+  'do-7768807014646': '/models/real/glasses-1-.glb',
+  'do-10328545427702': '/models/real/glasses-12.glb',
 
-  // Wayfarer / Square
-  'do-7775902597366': '/models/eyewear/fastrack_wayfarer_black.glb',
-  'do-7755061625078': '/models/eyewear/fastrack_wayfarer_black.glb',
-  'do-9215419678966': '/models/eyewear/fastrack_wayfarer_black.glb',
-  'do-9217741193462': '/models/eyewear/fastrack_wayfarer_black.glb',
+  // Wayfarer & Square Acetate
+  'do-7775902597366': '/models/real/glasses-5c.glb',
+  'do-7755061625078': '/models/real/glasses-5c.glb',
+  'do-9217741193462': '/models/real/glasses-5c.glb',
+  'do-9215419678966': '/models/real/glasses-8c.glb',
 
-  // Round / Rimless
-  'do-7768808358134': '/models/eyewear/cartier_rimless_round.glb',
-  'do-7768808521974': '/models/eyewear/cartier_rimless_round.glb',
-  'do-7768808784118': '/models/eyewear/cartier_rimless_round.glb',
-  'do-8872681111798': '/models/eyewear/cartier_rimless_round.glb',
+  // Round / Luxury Designer Wire
+  'do-7768808358134': '/models/real/glasses-7.glb',
+  'do-7768808521974': '/models/real/glasses-7.glb',
+  'do-7768808784118': '/models/real/glasses-7.glb',
+  'do-8872681111798': '/models/real/glasses-7.glb',
 
-  // Cat-Eye
-  'do-9412932567286': '/models/eyewear/cateye_luxury_havana.glb',
-  'do-9414431768822': '/models/eyewear/cateye_luxury_havana.glb',
-  'do-9414435176694': '/models/eyewear/cateye_luxury_havana.glb',
-  'do-7970540880118': '/models/eyewear/cateye_luxury_havana.glb',
+  // Cat-Eye & Butterfly Luxury
+  'do-9412932567286': '/models/real/glasses-11c.glb',
+  'do-9414431768822': '/models/real/glasses-11c.glb',
+  'do-9414435176694': '/models/real/glasses-11c.glb',
+  'do-7970540880118': '/models/real/glasses-11c.glb',
 
-  // Rectangle / Titanium
-  'do-7774373019894': '/models/eyewear/rectangle_titanium_gold.glb',
-  'do-7756053872886': '/models/eyewear/rectangle_titanium_gold.glb',
-  'do-9212133769462': '/models/eyewear/rectangle_titanium_gold.glb',
-  'do-9215431573750': '/models/eyewear/rectangle_titanium_gold.glb',
+  // Rectangle & Titanium (including RAY BAN 0RB 3947)
+  'do-7774373019894': '/models/real/glasses-6.glb',
+  'do-7756053872886': '/models/real/glasses-6.glb',
+  'do-9212133769462': '/models/real/glasses-6.glb',
+  'do-9215431573750': '/models/real/glasses-6.glb',
 
   // Flagships
-  'figma-cartier-blue-rimless': '/models/eyewear/cartier_rimless_round.glb',
-  'figma-brown-gradient-rimless': '/models/eyewear/rectangle_titanium_gold.glb',
-  'figma-fastrack-black-wayfarer': '/models/eyewear/fastrack_wayfarer_black.glb',
-  'figma-fastrack-gold-oval': '/models/eyewear/classic_aviator_gold.glb',
-  'figma-cartier-gold-rectangle': '/models/eyewear/rectangle_titanium_gold.glb',
+  'figma-cartier-blue-rimless': '/models/real/glasses-7.glb',
+  'figma-brown-gradient-rimless': '/models/real/glasses-6.glb',
+  'figma-fastrack-black-wayfarer': '/models/real/glasses-5c.glb',
+  'figma-fastrack-gold-oval': '/models/real/glasses-12.glb',
+  'figma-cartier-gold-rectangle': '/models/real/glasses-6.glb',
 };
 
 /**
