@@ -472,6 +472,11 @@ export class FacePoseEstimator {
     const p151 = getCranialPoint3D(151, new THREE.Vector3());
     const rawUp = this.tempVecB.subVectors(p151, p195).normalize();
 
+    // Anatomical nasal dorsum slants backward by ~14.4 deg on human skulls.
+    // Calibrate rawUp to the true Frankfort horizontal normal (rotate forward around eX by -14.4 deg):
+    const frankfortCorrection = this.tempQuatA.setFromAxisAngle(eX, -0.2513);
+    rawUp.applyQuaternion(frankfortCorrection).normalize();
+
     // 3. Enforce 3-Point Kinematic Ear-Bridge Pitch & Yaw Constraint using visible Tragion (234 / 454)
     // Physical eyewear temples rest over the otobasion superius (+14.0mm superior to tragion landmarks)
     const earRestElevMeters = 0.014 * cranialScale;
@@ -505,13 +510,13 @@ export class FacePoseEstimator {
       .addScaledVector(rightEarToSellion, rightVisWeight)
       .normalize();
 
-    // Orthonormalize cranial basis with yaw-adaptive ear-bridge sagittal pitch stabilization
+    // Orthonormalize cranial basis with occlusion-aware ear-bridge stabilization.
+    // When yaw exceeds 20 deg, ears become occluded by the skull; gracefully rely on frontal bone basis.
     const eZ = new THREE.Vector3().crossVectors(eX, rawUp).normalize();
-    const earBlendWeight = THREE.MathUtils.clamp(
-      0.30 + 0.45 * Math.sin(this.lastYawRad) * Math.sin(this.lastYawRad),
-      0.30,
-      0.75
-    );
+    const yawAbs = Math.abs(this.lastYawRad);
+    const earVisFactor = THREE.MathUtils.clamp(Math.cos(yawAbs * 1.6), 0.0, 1.0);
+    const earBlendWeight = 0.25 * earVisFactor;
+
     eZ.lerp(eZFromBridgeToEar, earBlendWeight).normalize();
     const eY = new THREE.Vector3().crossVectors(eZ, eX).normalize();
     eX.crossVectors(eY, eZ).normalize();
@@ -519,7 +524,7 @@ export class FacePoseEstimator {
     const cranialBasisMatrix = this.tempMat4.makeBasis(eX, eY, eZ);
     const cranialQuat = new THREE.Quaternion().setFromRotationMatrix(cranialBasisMatrix);
 
-    // 4. Fuse with properly conjugated MediaPipe transformation matrix (if available)
+    // 4. Prioritize MediaPipe's calibrated 4x4 EPnP transformation matrix (85% weight)
     if (transformationMatrix && transformationMatrix.data && transformationMatrix.data.length >= 16) {
       const m = transformationMatrix.data;
       const scaleX = Math.hypot(m[0], m[1], m[2]);
@@ -545,9 +550,9 @@ export class FacePoseEstimator {
         }
 
         const mpTrust = THREE.MathUtils.clamp(
-          0.55 * (1.0 - 0.85 * expressionActivity),
-          0.10,
-          0.55
+          0.85 * (1.0 - 0.40 * expressionActivity),
+          0.40,
+          0.85
         );
         cranialQuat.slerp(mpQuat, mpTrust).normalize();
       }

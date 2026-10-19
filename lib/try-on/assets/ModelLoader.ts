@@ -14,6 +14,7 @@ export interface ModelInspectionData {
   bridgeContactOffsetZ: number;
   meshCount: number;
   vertexCount: number;
+  cadTemplePitchDeg?: number;
 }
 
 export interface NormalizedEyewearAsset {
@@ -21,6 +22,7 @@ export interface NormalizedEyewearAsset {
   catalogFrameWidthMm: number;
   bridgePivotLocal: THREE.Vector3;
   wasFlippedZ: boolean;
+  cadTemplePitchDeg?: number;
 }
 
 export interface LensOpticalStyle {
@@ -168,12 +170,14 @@ export class ModelLoader {
     const rootGroup = await ModelLoader.load(url, lensStyle);
     const bridgePivotLocal = (rootGroup.userData.bridgePivot as THREE.Vector3) || new THREE.Vector3();
     const wasFlippedZ = (rootGroup.userData.wasFlippedZ as boolean) ?? false;
+    const cadTemplePitchDeg = (rootGroup.userData.cadTemplePitchDeg as number) ?? 0.0;
 
     return {
       rootGroup,
       catalogFrameWidthMm,
       bridgePivotLocal,
       wasFlippedZ,
+      cadTemplePitchDeg,
     };
   }
 
@@ -239,10 +243,17 @@ export class ModelLoader {
     rawObject.position.sub(bridgePivot);
     rawObject.updateMatrixWorld(true);
 
+    // 5. Automatically level pre-baked CAD temple arm pitch slope to standard 0.0 deg baseline
+    const cadTemplePitchRad = this.levelTempleArms(
+      rawObject,
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Box3().setFromObject(rawObject)
+    );
+
     const finalBox = new THREE.Box3().setFromObject(rawObject);
     const finalSize = finalBox.getSize(new THREE.Vector3());
 
-    // 5. Upgrade materials for authentic optics & double-sided visibility
+    // 6. Upgrade materials for authentic optics & double-sided visibility
     this.upgradeEyewearMaterials(rawObject, lensStyle);
 
     // Attach developer inspection data
@@ -257,10 +268,12 @@ export class ModelLoader {
       bridgeContactOffsetZ: Math.abs(bridgePivot.z - orientedBox.max.z) * 1000,
       meshCount,
       vertexCount,
+      cadTemplePitchDeg: (cadTemplePitchRad * 180) / Math.PI,
     };
     root.userData.inspection = inspection;
     root.userData.bridgePivot = bridgePivot;
     root.userData.wasFlippedZ = wasFlippedZ;
+    root.userData.cadTemplePitchDeg = (cadTemplePitchRad * 180) / Math.PI;
 
     root.add(rawObject);
     return root;
@@ -294,6 +307,60 @@ export class ModelLoader {
     });
 
     return backZCount > frontZCount * 1.25;
+  }
+
+  /**
+   * Automatically levels pre-baked CAD temple arm pitch slope to standard 0.0 deg relative to bridge.
+   * Eliminates variations across 3D models where temples were modeled slanting downwards or upwards by 8-12 deg.
+   */
+  private static levelTempleArms(
+    model: THREE.Object3D,
+    bridgePivot: THREE.Vector3,
+    orientedBox: THREE.Box3
+  ): number {
+    const size = orientedBox.getSize(new THREE.Vector3());
+    const center = orientedBox.getCenter(new THREE.Vector3());
+
+    // Sample posterior temple tips (rear 12% of Z depth, laterally offset > 35% of width)
+    const rearSlabMaxZ = orientedBox.min.z + 0.12 * size.z;
+    let templeSumY = 0;
+    let templeSumZ = 0;
+    let templeCount = 0;
+    const tempV = new THREE.Vector3();
+
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        const posAttr = child.geometry.attributes.position;
+        if (!posAttr) return;
+        const step = Math.max(1, Math.floor(posAttr.count / 300));
+        for (let i = 0; i < posAttr.count; i += step) {
+          tempV.fromBufferAttribute(posAttr, i).applyMatrix4(child.matrixWorld);
+          if (tempV.z <= rearSlabMaxZ && Math.abs(tempV.x - center.x) > 0.35 * size.x) {
+            templeSumY += tempV.y;
+            templeSumZ += tempV.z;
+            templeCount++;
+          }
+        }
+      }
+    });
+
+    if (templeCount > 8) {
+      const avgTempleY = templeSumY / templeCount;
+      const avgTempleZ = templeSumZ / templeCount;
+      const deltaY = avgTempleY - bridgePivot.y;
+      const deltaZ = bridgePivot.z - avgTempleZ; // distance backwards (positive)
+      const templePitchRad = Math.atan2(deltaY, Math.max(0.04, deltaZ));
+
+      // Level rotation if pitch is between -25 deg and +25 deg
+      const maxCorrRad = (25.0 * Math.PI) / 180.0;
+      if (Math.abs(templePitchRad) > 0.008 && Math.abs(templePitchRad) < maxCorrRad) {
+        model.rotation.x -= templePitchRad;
+        model.updateMatrixWorld(true);
+        return templePitchRad;
+      }
+    }
+
+    return 0.0;
   }
 
   /**
