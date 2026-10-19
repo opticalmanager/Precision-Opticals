@@ -34,12 +34,12 @@ export function resolveProductTryOnConfig(product: Product): TryOnConfiguration 
   const defaultConfig: TryOnConfiguration = {
     enabled: Boolean(product.tryOnEnabled),
     modelUrl,
-    modelVersion: 1,
-    calibrationVersion: 1,
+    modelVersion: 2,
+    calibrationVersion: 2,
     scaleMultiplier: 1.0,
-    verticalOffset: -0.008,
-    depthOffset: 0.015,
-    pitchOffset: 0.02,
+    verticalOffset: 0.0,
+    depthOffset: 0.0,
+    pitchOffset: 0.0,
     yawOffset: 0.0,
     rollOffset: 0.0,
     frameWidth: product.specs?.frameWidth || 140,
@@ -54,21 +54,6 @@ export function resolveProductTryOnConfig(product: Product): TryOnConfiguration 
       ...product.tryOnConfig,
       modelUrl: product.tryOnConfig.modelUrl || modelUrl,
     };
-  }
-
-  // Adjust default calibration based on shape
-  if (product.shape === "round" || product.rimType === "rimless") {
-    defaultConfig.scaleMultiplier = 1.02;
-    defaultConfig.verticalOffset = -0.007;
-    defaultConfig.depthOffset = 0.014;
-  } else if (product.shape === "wayfarer" || product.shape === "square") {
-    defaultConfig.scaleMultiplier = 1.05;
-    defaultConfig.verticalOffset = -0.012;
-    defaultConfig.depthOffset = 0.018;
-  } else if (product.shape === "aviator") {
-    defaultConfig.scaleMultiplier = 1.06;
-    defaultConfig.verticalOffset = -0.014;
-    defaultConfig.depthOffset = 0.016;
   }
 
   return defaultConfig;

@@ -10,6 +10,18 @@ export class CalibrationStore {
         const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${productId}`);
         if (saved) {
           const parsed = JSON.parse(saved);
+          // Cleanse legacy offsets from earlier manual calibration hacks
+          if (
+            parsed &&
+            (parsed.depthOffset === 0.015 ||
+              parsed.depthOffset === 0.018 ||
+              parsed.verticalOffset === -0.008 ||
+              parsed.verticalOffset === -0.012)
+          ) {
+            parsed.depthOffset = 0.0;
+            parsed.verticalOffset = 0.0;
+            parsed.pitchOffset = 0.0;
+          }
           return { ...DEFAULT_CALIBRATION, ...fallback, ...parsed };
         }
       } catch (err) {

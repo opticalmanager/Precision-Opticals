@@ -146,6 +146,12 @@ export class SmoothingEngine {
   private readonly tempRawPos = new THREE.Vector3();
   private readonly tempRawQuat = new THREE.Quaternion();
   private readonly tempEuler = new THREE.Euler();
+  private readonly tempHeadQuat = new THREE.Quaternion();
+  private readonly tempRelQuat = new THREE.Quaternion();
+  private readonly tempSmHeadQuat = new THREE.Quaternion();
+  private readonly tempDeltaWorld = new THREE.Vector3();
+  private readonly tempLocalOffset = new THREE.Vector3();
+  private readonly tempSmSellion = new THREE.Vector3();
 
   constructor(config?: Partial<SmoothingEngineConfig>) {
     this.cfg = {
@@ -361,7 +367,8 @@ export class SmoothingEngine {
   public filter(
     rawPose: FacePose,
     timestampMs: number,
-    confidenceState: TrackingConfidenceState = "HIGH_CONFIDENCE"
+    confidenceState: TrackingConfidenceState = "HIGH_CONFIDENCE",
+    trackingLatencyMs = 16.0
   ): FacePose {
     if (!rawPose) return rawPose;
     if (confidenceState === "LOST") {
@@ -395,12 +402,60 @@ export class SmoothingEngine {
       this.tempRawPos,
       this.tempRawQuat,
       timestampMs,
-      16.0,
+      trackingLatencyMs,
       poseConfidence,
       exprActivity
     );
 
     this.tempEuler.setFromQuaternion(filtered.quaternion, "YXZ");
+
+    // Phase-lock cranial head orientation and sellion anchor to smoothed eyewear pose
+    let smoothedSellion: { x: number; y: number; z: number } | undefined;
+    let smoothedHeadQuat: { x: number; y: number; z: number; w: number } | undefined;
+
+    if (rawPose.sellionPosition && rawPose.headQuaternion) {
+      this.tempHeadQuat.set(
+        rawPose.headQuaternion.x,
+        rawPose.headQuaternion.y,
+        rawPose.headQuaternion.z,
+        rawPose.headQuaternion.w
+      );
+
+      // Relative rotation: qRel = rawHeadQuat^-1 * rawEyewearQuat
+      this.tempRelQuat.copy(this.tempHeadQuat).invert().multiply(this.tempRawQuat);
+
+      // smHeadQuat = filteredEyewearQuat * qRel^-1
+      this.tempSmHeadQuat.copy(filtered.quaternion).multiply(this.tempRelQuat.invert()).normalize();
+      smoothedHeadQuat = {
+        x: this.tempSmHeadQuat.x,
+        y: this.tempSmHeadQuat.y,
+        z: this.tempSmHeadQuat.z,
+        w: this.tempSmHeadQuat.w,
+      };
+
+      // World delta from raw sellion to raw eyewear
+      this.tempDeltaWorld.set(
+        rawPose.position.x - rawPose.sellionPosition.x,
+        rawPose.position.y - rawPose.sellionPosition.y,
+        rawPose.position.z - rawPose.sellionPosition.z
+      );
+
+      // Offset in head local coordinate space
+      this.tempLocalOffset.copy(this.tempDeltaWorld).applyQuaternion(this.tempHeadQuat.invert());
+
+      // Phase-locked sellion position in world space
+      this.tempSmSellion
+        .copy(this.tempLocalOffset)
+        .applyQuaternion(this.tempSmHeadQuat)
+        .negate()
+        .add(filtered.position);
+
+      smoothedSellion = {
+        x: this.tempSmSellion.x,
+        y: this.tempSmSellion.y,
+        z: this.tempSmSellion.z,
+      };
+    }
 
     return {
       ...rawPose,
@@ -420,6 +475,8 @@ export class SmoothingEngine {
         z: filtered.quaternion.z,
         w: filtered.quaternion.w,
       },
+      sellionPosition: smoothedSellion ?? rawPose.sellionPosition,
+      headQuaternion: smoothedHeadQuat ?? rawPose.headQuaternion,
       activityFactor: filtered.activityFactor,
     };
   }

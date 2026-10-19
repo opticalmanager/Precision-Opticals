@@ -290,10 +290,10 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
             );
             latestQualityRef.current = quality;
 
-            // 3. Apply CA-EKF predictive smoothing
+            // 3. Apply CA-EKF predictive smoothing with dynamic measured tracking latency
             let processedPose: FacePose = rawPose;
             if (smoothingEnabledRef.current) {
-              processedPose = smoothingRef.current.filter(rawPose, now, quality.state);
+              processedPose = smoothingRef.current.filter(rawPose, now, quality.state, trackLatency);
             }
 
             lostHandlerRef.current.onPoseDetected(processedPose);
@@ -318,6 +318,7 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
               renderer.occlusion.updatePoseQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
             }
             renderer.eyewear.setOpacity(1.0);
+            renderer.occlusion.setVisible(true);
 
             // 6. Record HUD diagnostics
             latestDiagnosticsRef.current.trackingLatencyMs = trackLatency;
@@ -330,12 +331,19 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
             latestDiagnosticsRef.current.calibratedIpdMm = estimated.calibratedIpdMm;
             latestDiagnosticsRef.current.faceWidthMm = estimated.faceWidthMm;
             latestDiagnosticsRef.current.activityFactor = processedPose.activityFactor;
+          } else {
+            // Pose estimation returned null (e.g. degenerate facial geometry)
+            lostHandlerRef.current.onPoseLost(now);
+            const opacity = lostHandlerRef.current.getVisibilityOpacity(now);
+            renderer.eyewear.setOpacity(opacity);
+            renderer.occlusion.setVisible(opacity > 0.001);
           }
         } else {
           // Face tracking momentarily lost
           lostHandlerRef.current.onPoseLost(now);
           const opacity = lostHandlerRef.current.getVisibilityOpacity(now);
           renderer.eyewear.setOpacity(opacity);
+          renderer.occlusion.setVisible(opacity > 0.001);
 
           latestQualityRef.current = {
             overallConfidence: 0,

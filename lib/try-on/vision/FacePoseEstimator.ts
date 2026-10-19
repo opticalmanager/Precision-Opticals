@@ -52,7 +52,7 @@ export const CRANIAL_RIGID_BASIS: readonly CranialLandmarkSpec[] = [
 export interface EyewearFittingConfig {
   /** Desired corneal vertex distance in meters (standard 0.013m = 13.0mm) */
   vertexDistanceMeters: number;
-  /** Residual pantoscopic tilt in degrees applied to the frame (standard -5.0 deg) */
+  /** Residual pantoscopic tilt in degrees applied to the frame (standard +5.0 deg to tilt bottom rim toward cheeks) */
   pantoscopicTiltDeg: number;
   /** Vertical bridge contact offset relative to Sellion (168) in meters (default -0.0042m) */
   bridgeVerticalOffsetMeters: number;
@@ -116,7 +116,7 @@ export class FacePoseEstimator {
   constructor(fittingConfig?: Partial<EyewearFittingConfig>) {
     this.fittingConfig = {
       vertexDistanceMeters: fittingConfig?.vertexDistanceMeters ?? 0.013,
-      pantoscopicTiltDeg: fittingConfig?.pantoscopicTiltDeg ?? -5.0,
+      pantoscopicTiltDeg: fittingConfig?.pantoscopicTiltDeg ?? 5.0,
       bridgeVerticalOffsetMeters: fittingConfig?.bridgeVerticalOffsetMeters ?? -0.0042,
       bridgeAnteriorOffsetMeters: fittingConfig?.bridgeAnteriorOffsetMeters ?? 0.0028,
     };
@@ -205,8 +205,8 @@ export class FacePoseEstimator {
     };
 
     // 5. Unproject exact sellion position on the pinhole ray through landmark 168
-    const sellionU = 0.78 * landmarks[168].x + 0.22 * (landmarks[6]?.x ?? landmarks[168].x);
-    const sellionV = 0.85 * landmarks[168].y + 0.15 * (landmarks[6]?.y ?? landmarks[168].y);
+    const sellionU = landmarks[168].x;
+    const sellionV = landmarks[168].y;
 
     const sellionPosition = mapper.unprojectLandmarkToWorld(
       sellionU,
