@@ -24,6 +24,7 @@ import { FaceQualityAssessor } from "@/lib/try-on/vision/FaceQualityAssessor";
 import { SmoothingEngine } from "@/lib/try-on/tracking/SmoothingEngine";
 import { LostTrackingHandler } from "@/lib/try-on/tracking/LostTrackingHandler";
 import { ThreeRenderer } from "@/lib/try-on/rendering/ThreeRenderer";
+import { VideoToRenderCoordinateMapper } from "@/lib/try-on/rendering/VideoToRenderCoordinateMapper";
 import { applyCalibration } from "@/lib/try-on/calibration/FrameCalibration";
 import { CalibrationStore } from "@/lib/try-on/calibration/CalibrationStore";
 import { resolveProductTryOnConfig, hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
@@ -301,7 +302,12 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
             const calibrated = applyCalibration(processedPose, activeCalibrationRef.current);
 
             // 5. Update Three.js scene transforms
-            renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, calibrated.scale);
+            // Anthropometric Rule: Eyewear model is normalized to its physical catalog width in meters
+            // (e.g. 140mm = 0.140m). It should take product-specific manual calibration scaleMultiplier,
+            // while cranialScaleFactor scales head depth Z & the cranial occluder!
+            const frameScale = activeCalibrationRef.current.scaleMultiplier || 1.0;
+            renderer.eyewear.updateTransformQuaternion(calibrated.position, calibrated.quaternion, frameScale);
+
             if (calibrated.sellionPosition && calibrated.headQuaternion) {
               renderer.occlusion.updateOccluder(
                 new THREE.Vector3(calibrated.sellionPosition.x, calibrated.sellionPosition.y, calibrated.sellionPosition.z),
@@ -381,11 +387,17 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
     setCameraState("active");
     TryOnAnalytics.track("vto_permission_granted", { productId: activeProduct.id });
 
-    // 3. Initialize ThreeRenderer
+    // 3. Initialize ThreeRenderer with hardware-inferred camera FOV (FaceTime/Logitech/Mobile sensor prior)
     const stageRect = stage.getBoundingClientRect();
     const containerW = stageRect.width || 800;
     const containerH = stageRect.height || 500;
     const videoDims = cameraManagerRef.current.getVideoDimensions();
+    const mediaStream = cameraManagerRef.current.getStream();
+    const inferredFov = VideoToRenderCoordinateMapper.inferCameraVerticalFovDeg(
+      mediaStream,
+      videoDims.width,
+      videoDims.height
+    );
 
     if (!rendererRef.current) {
       rendererRef.current = new ThreeRenderer({
@@ -394,10 +406,11 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
         containerHeight: containerH,
         videoWidth: videoDims.width,
         videoHeight: videoDims.height,
+        cameraFov: inferredFov,
         mirrored: true,
       });
     } else {
-      rendererRef.current.resize(containerW, containerH, videoDims.width, videoDims.height);
+      rendererRef.current.resize(containerW, containerH, videoDims.width, videoDims.height, inferredFov);
     }
 
     // 4. Load initial product model
@@ -415,14 +428,27 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
     startTryOn();
     TryOnAnalytics.track("vto_opened", { productId: initialProduct.id, brand: initialProduct.brand });
 
-    // Window resize observer
+    // Viewport & layout resize observer
     const handleResize = () => {
       if (stageRef.current && rendererRef.current) {
         const rect = stageRef.current.getBoundingClientRect();
         const videoDims = cameraManagerRef.current.getVideoDimensions();
-        rendererRef.current.resize(rect.width, rect.height, videoDims.width, videoDims.height);
+        const mediaStream = cameraManagerRef.current.getStream();
+        const inferredFov = VideoToRenderCoordinateMapper.inferCameraVerticalFovDeg(
+          mediaStream,
+          videoDims.width,
+          videoDims.height
+        );
+        rendererRef.current.resize(rect.width, rect.height, videoDims.width, videoDims.height, inferredFov);
       }
     };
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    if (stageRef.current) {
+      resizeObserver.observe(stageRef.current);
+    }
 
     window.addEventListener("resize", handleResize);
 
@@ -444,6 +470,7 @@ export const VirtualTryOnModal: React.FC<VirtualTryOnModalProps> = ({
 
     return () => {
       // Clean disposal
+      resizeObserver.disconnect();
       window.removeEventListener("resize", handleResize);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
 

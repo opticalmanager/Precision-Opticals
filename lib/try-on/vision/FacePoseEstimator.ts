@@ -473,8 +473,10 @@ export class FacePoseEstimator {
     const rawUp = this.tempVecB.subVectors(p151, p195).normalize();
 
     // 3. Enforce 3-Point Kinematic Ear-Bridge Pitch & Yaw Constraint using visible Tragion (234 / 454)
-    const p234 = getCranialPoint3D(234, new THREE.Vector3());
-    const p454 = getCranialPoint3D(454, new THREE.Vector3());
+    // Physical eyewear temples rest over the otobasion superius (+14.0mm superior to tragion landmarks)
+    const earRestElevMeters = 0.014 * cranialScale;
+    const p234EarRest = getCranialPoint3D(234, new THREE.Vector3()).addScaledVector(rawUp, earRestElevMeters);
+    const p454EarRest = getCranialPoint3D(454, new THREE.Vector3()).addScaledVector(rawUp, earRestElevMeters);
 
     const leftVisWeight = THREE.MathUtils.clamp(
       Math.cos(Math.max(0, -this.lastYawRad) * 1.5),
@@ -490,11 +492,11 @@ export class FacePoseEstimator {
     const eZFromBridgeToEar = this.tempVecC.set(0, 0, 1);
     const leftEarToSellion = p168
       .clone()
-      .sub(p234)
+      .sub(p234EarRest)
       .addScaledVector(eX, (config.isMirrored ? -1 : 1) * 0.0688 * cranialScale);
     const rightEarToSellion = p168
       .clone()
-      .sub(p454)
+      .sub(p454EarRest)
       .addScaledVector(eX, (config.isMirrored ? 1 : -1) * 0.0688 * cranialScale);
 
     eZFromBridgeToEar
@@ -503,9 +505,14 @@ export class FacePoseEstimator {
       .addScaledVector(rightEarToSellion, rightVisWeight)
       .normalize();
 
-    // Orthonormalize cranial basis
+    // Orthonormalize cranial basis with yaw-adaptive ear-bridge sagittal pitch stabilization
     const eZ = new THREE.Vector3().crossVectors(eX, rawUp).normalize();
-    eZ.lerp(eZFromBridgeToEar, 0.40).normalize();
+    const earBlendWeight = THREE.MathUtils.clamp(
+      0.30 + 0.45 * Math.sin(this.lastYawRad) * Math.sin(this.lastYawRad),
+      0.30,
+      0.75
+    );
+    eZ.lerp(eZFromBridgeToEar, earBlendWeight).normalize();
     const eY = new THREE.Vector3().crossVectors(eZ, eX).normalize();
     eX.crossVectors(eY, eZ).normalize();
 

@@ -29,13 +29,13 @@ export class ThreeRenderer {
 
   constructor(config: ThreeRendererConfig) {
     this.canvas = config.canvas;
-    const { containerWidth, containerHeight, videoWidth, videoHeight, cameraFov = 45, mirrored = true } = config;
+    const { containerWidth, containerHeight, videoWidth, videoHeight, cameraFov = 63.0, mirrored = true } = config;
 
     // 1. Scene setup
     this.scene = new THREE.Scene();
 
     // 2. Camera setup matching optical perspective
-    const aspect = containerWidth / containerHeight;
+    const aspect = containerWidth / Math.max(1, containerHeight);
     this.camera = new THREE.PerspectiveCamera(cameraFov, aspect, 0.01, 20.0);
     this.camera.position.set(0, 0, 0);
     this.scene.add(this.camera);
@@ -61,7 +61,7 @@ export class ThreeRenderer {
       containerHeight,
       videoWidth,
       videoHeight,
-      verticalFovDeg: cameraFov ?? 63.0,
+      verticalFovDeg: cameraFov,
       isMirrored: mirrored,
     });
     this.coordMapper.applyToThreeCamera(this.camera);
@@ -95,7 +95,13 @@ export class ThreeRenderer {
     );
   }
 
-  public resize(width: number, height: number, videoWidth?: number, videoHeight?: number): void {
+  public resize(
+    width: number,
+    height: number,
+    videoWidth?: number,
+    videoHeight?: number,
+    cameraFov?: number
+  ): void {
     if (this.isContextLost || width <= 0 || height <= 0) return;
 
     this.renderer.setSize(width, height, false);
@@ -105,7 +111,21 @@ export class ThreeRenderer {
       videoWidth ?? cfg.videoWidth,
       videoHeight ?? cfg.videoHeight,
       width,
-      height
+      height,
+      cameraFov
+    );
+    this.coordMapper.applyToThreeCamera(this.camera);
+  }
+
+  public updateCameraFov(fovDeg: number): void {
+    if (fovDeg <= 20 || fovDeg >= 110) return;
+    const cfg = this.coordMapper.getConfig();
+    this.coordMapper.updateDimensions(
+      cfg.videoWidth,
+      cfg.videoHeight,
+      cfg.containerWidth,
+      cfg.containerHeight,
+      fovDeg
     );
     this.coordMapper.applyToThreeCamera(this.camera);
   }
