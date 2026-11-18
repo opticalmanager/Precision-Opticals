@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Heart, Star, Tag, Zap } from "lucide-react";
 import { Product } from "@/types";
 import { useWishlist } from "@/context/WishlistContext";
+import { formatProductName } from "@/lib/utils";
 
 interface HomeProductCardProps {
   product: Product;
@@ -94,11 +95,14 @@ export const HomeProductCard = memo(function HomeProductCard({
             <div className="h-3" />
           )}
 
-          {/* Subtitle / Model description */}
+          {/* Product Name */}
           <Link href={`/product/${product.id}`} className="block">
-            <p className="font-sans font-normal text-[11px] leading-[15px] text-[#4B5563] line-clamp-2 mt-1 hover:text-[#C86A28] transition-colors">
-              {product.subtitle || product.name}
-            </p>
+            <h3
+              className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-2 mt-1 hover:text-[#C86A28] transition-colors"
+              title={product.name}
+            >
+              {formatProductName(product.name, product.brand)}
+            </h3>
           </Link>
         </div>
 

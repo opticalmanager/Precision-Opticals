@@ -117,7 +117,7 @@ export const PRODUCTS: Product[] = (rawScrapedProducts as any[]).map((item, idx)
     id: item.id || `prod-${idx + 1}`,
     brand: item.brand || 'Precision',
     name: (item.name || 'Designer Eyewear').replace(/\s+/g, ' ').trim(),
-    subtitle: item.tag || (isContactLens ? 'Clinical Contact Lenses' : `${item.brand} Luxury Eyewear`),
+    subtitle: isContactLens ? 'Clinical Contact Lenses' : `${item.brand || 'Luxury'} Atelier Eyewear`,
     price: Number(item.price) || 4999,
     originalPrice: item.originalPrice ? Number(item.originalPrice) : undefined,
     category,

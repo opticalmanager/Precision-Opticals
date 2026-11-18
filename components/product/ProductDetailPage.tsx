@@ -23,6 +23,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { formatINR } from "@/utils/formatters";
+import { formatProductName } from "@/lib/utils";
 import { ImageWithFallback } from "../common/ImageWithFallback";
 import { ProductCard } from "../shop/ProductCard";
 import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
@@ -543,8 +544,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <span className="font-sans text-[12px] sm:text-[13px] font-normal uppercase tracking-[0.2em] text-[#2A1E17] block mb-1">
                 {product.brand}
               </span>
-              <h1 className="font-sans text-[24px] sm:text-[28px] font-normal uppercase tracking-[0.03em] text-[#2A1E17] leading-[1.25]">
-                {product.name.replace(/\s+/g, ' ').trim()}
+              <h1 className="font-sans text-[24px] sm:text-[28px] font-normal tracking-[0.01em] text-[#2A1E17] leading-[1.25]">
+                {formatProductName(product.name, product.brand)}
               </h1>
             </div>
 

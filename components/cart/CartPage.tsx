@@ -20,6 +20,7 @@ import {
 import { Product } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { ProductCard } from "@/components/shop/ProductCard";
+import { formatProductName } from "@/lib/utils";
 
 interface CartPageProps {
   onNavigateHome: () => void;
@@ -260,7 +261,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                               onClick={() => onSelectProduct(item.product)}
                               className="font-serif font-bold text-sm sm:text-base text-[#2A1E17] hover:text-[#C86A28] transition-colors cursor-pointer leading-snug"
                             >
-                              {item.product.name}
+                              {formatProductName(item.product.name, item.product.brand)}
                             </h3>
                             <p className="text-xs text-stone-500 mt-1">
                               Color: <span className="text-stone-700 font-medium">{colorLabel}</span>

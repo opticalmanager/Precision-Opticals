@@ -7,6 +7,7 @@ import { Heart, Star, Tag, Zap, Camera } from "lucide-react";
 import { Product } from "@/types";
 import { useWishlist } from "@/context/WishlistContext";
 import { hasTryOnModel } from "@/lib/try-on/products/TryOnProductConfig";
+import { formatProductName } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -133,17 +134,13 @@ export const ProductCard = memo(function ProductCard({
 
           {/* Product Name */}
           <Link href={`/product/${product.id}`} className="block">
-            <h3 className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-1 mt-0.5 hover:text-[#C86A28] transition-colors" title={product.name}>
-              {product.name.replace(/\s+/g, ' ').trim()}
+            <h3
+              className="font-sans font-medium text-[12px] leading-snug text-[#111827] line-clamp-2 mt-0.5 hover:text-[#C86A28] transition-colors"
+              title={product.name}
+            >
+              {formatProductName(product.name, product.brand)}
             </h3>
           </Link>
-
-          {/* Subtitle / Model Title if distinct from name */}
-          {product.subtitle && product.subtitle.trim().toLowerCase() !== product.name.trim().toLowerCase() ? (
-            <p className="font-sans font-normal text-[11px] leading-[15px] text-[#6B7280] line-clamp-1 mt-0.5">
-              {product.subtitle}
-            </p>
-          ) : null}
         </div>
 
         {/* Size & Rating Row */}
